@@ -11,18 +11,44 @@ Particle struct simply goes from StructArrays SoA to AoS.
 =#
 
 
-# Static phase space coordinate vector
+"""
+    Coord{T} <: FieldVector{6, T}
+
+A static 6D phase space coordinate vector representing a particle's position and momentum.
+
+# Fields
+- `x::T`: Horizontal position
+- `px::T`: Horizontal momentum normalized by reference beta*gamma
+- `y::T`: Vertical position  
+- `py::T`: Vertical momentum normalized by reference beta*gamma
+- `z::T`: Longitudinal position
+- `pz::T`: Longitudinal momentum normalized by reference beta*gamma
+
+All fields default to 0.0 if not specified.
+"""
 Base.@kwdef struct Coord{T} <: FieldVector{6, T} 
-  x::T  = 0.0
-  px::T = 0.0
-  y::T  = 0.0
-  py::T = 0.0
-  z::T  = 0.0
-  pz::T = 0.0
+  x::T  = 0.0  # Horizontal position
+  px::T = 0.0  # Horizontal momentum 
+  y::T  = 0.0  # Vertical position
+  py::T = 0.0  # Vertical momentum
+  z::T  = 0.0  # Longitudinal position
+  pz::T = 0.0  # Longitudinal momentum
 end
 
 # Static quaternion type defined by ReferenceFrameRotatio
 
+"""
+    Bunch{T<:StructVector{<:Coord}, U<:Union{Nothing, StructVector{<:Quaternion}}}
+
+A collection of particles with their phase space coordinates and optional spin quaternions.
+Uses StructArrays for efficient memory layout (Structure of Arrays).
+
+# Fields
+- `species::Species`: Particle species (e.g., electron, proton)
+- `beta_gamma_ref::Float64`: Reference β*γ value used to normalize momenta
+- `v::T`: StructVector of phase space coordinates for all particles
+- `q::U`: Optional StructVector of spin quaternions (nothing if spin tracking disabled)
+"""
 struct Bunch{T<:StructVector{<:Coord}, U<:Union{Nothing, StructVector{<:Quaternion}}}
   species::Species
   beta_gamma_ref::Float64
@@ -134,6 +160,18 @@ function Bunch(; species::Species=Species("electron"), beta_gamma_ref=1.0,
   return Bunch(species, Float64(beta_gamma_ref), v, q)
 end
 
+"""
+    Particle{T,U<:Union{Nothing,Quaternion{T}}}
+
+A single particle representation extracted from a Bunch.
+Converts from Structure of Arrays (SoA) to Array of Structures (AoS) format.
+
+# Fields
+- `species::Species`: Particle species (e.g., electron, proton)
+- `beta_gamma_ref::Float64`: Reference β*γ value used to normalize momenta
+- `v::Coord{T}`: Phase space coordinates of the particle
+- `q::U`: Optional spin quaternion (nothing if spin tracking disabled)
+"""
 struct Particle{T,U<:Union{Nothing,Quaternion{T}}}
   species::Species
   beta_gamma_ref::Float64
@@ -141,6 +179,19 @@ struct Particle{T,U<:Union{Nothing,Quaternion{T}}}
   q::U
 end
 
+"""
+    Particle(bunch::Bunch, idx::Integer=1)
+
+Construct a single Particle from a Bunch at the specified index (defaults to first particle).
+Extracts the particle's coordinates and spin (if present) from the Bunch's StructArrays.
+
+# Arguments
+- `bunch::Bunch`: The bunch to extract the particle from
+- `idx::Integer=1`: Index of the particle to extract (default: 1)
+
+# Returns
+- `Particle`: A new Particle instance with the extracted data
+"""
 function Particle(bunch::Bunch, idx::Integer=1)
   v = bunch.v[idx] # StructArrays handles this!
   q = isnothing(bunch.q) ? nothing : bunch.q[idx]
