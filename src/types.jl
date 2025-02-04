@@ -85,18 +85,21 @@ function Bunch(; species::Species=Species("electron"), beta_gamma_ref=1.0,
                 y::Union{Number,AbstractVector}=0.0, py::Union{Number,AbstractVector}=0.0, 
                 z::Union{Number,AbstractVector}=0.0, pz::Union{Number,AbstractVector}=0.0 )
                 
+  # Step 1: Determine number of particles
+  # If any coordinate is a vector, use its length, otherwise default to 1 particle
   idx_vector = findfirst(t->t isa AbstractVector, (x, px, y, py, z, pz))
-  if isnothing(idx_vector)
-    N_particle = 1
-  else
-    N_particle = length(getindex((x, px, y, py, z, pz), idx_vector))
-  end
+  N_particle = isnothing(idx_vector) ? 1 : length(getindex((x, px, y, py, z, pz), idx_vector))
 
+  # Step 2: Determine the element type
+  # First promote all input types to find common type
   T1 = promote_type(eltype(x), eltype(px), eltype(y),eltype(py), eltype(z), eltype(pz)) 
+  
+  # Handle GTPSA map tracking if requested
   if !isnothing(gtpsa_map)
     if gtpsa_map == true
+      # Verify GTPSA descriptor has correct number of variables
       GTPSA.numvars(GTPSA.desc_current) == 6 || error("Invalid GTPSA Descriptor! Number of variables must be equal to 6.")
-      T = promote_type(TPS64, T1)
+      T = promote_type(TPS64, T1)  # Promote with TPS64 for GTPSA
     else
       error("For no GTPSA map tracking, please omit the gtpsa_map kwarg or set gtpsa_map=nothing. This is to ensure type stability.")
     end
@@ -104,17 +107,21 @@ function Bunch(; species::Species=Species("electron"), beta_gamma_ref=1.0,
     T = T1
   end
   
+  # Helper function to convert inputs to vectors of the correct type
   @inline function make_vec_T(T, vec_or_num, N_particle)
     if vec_or_num isa AbstractVector
+      # If already a vector, ensure correct element type
       if eltype(vec_or_num) == T
         return vec_or_num
       else
-        return T.(vec_or_num)
+        return T.(vec_or_num)  # Convert elements to type T
       end
     else
+      # Convert scalar to vector
       if isimmutable(T)
-        return fill(T(vec_or_num),  N_particle)
+        return fill(T(vec_or_num), N_particle)
       else
+        # Special handling for mutable types
         vec = Vector{T}(undef, N_particle)
         for i in eachindex(vec)
           vec[i] = T(vec_or_num)
@@ -124,6 +131,7 @@ function Bunch(; species::Species=Species("electron"), beta_gamma_ref=1.0,
     end
   end
 
+  # Step 3: Convert all coordinates to vectors of type T
   x1  = make_vec_T(T, x,  N_particle)
   px1 = make_vec_T(T, px, N_particle)
   y1  = make_vec_T(T, y,  N_particle)
@@ -131,8 +139,10 @@ function Bunch(; species::Species=Species("electron"), beta_gamma_ref=1.0,
   z1  = make_vec_T(T, z,  N_particle)
   pz1 = make_vec_T(T, pz, N_particle)
 
+  # Step 4: Handle GTPSA map tracking initialization
   coords = (x1, px1, y1, py1, z1, pz1)
-  if !isnothing(gtpsa_map) # Set slopes if GTPSA map tracking
+  if !isnothing(gtpsa_map)
+    # Set unit slopes for GTPSA variables
     for var_idx in eachindex(coords)
       for i in eachindex(coords[var_idx])
         coords[var_idx][i][var_idx] = 1.0
@@ -140,14 +150,17 @@ function Bunch(; species::Species=Species("electron"), beta_gamma_ref=1.0,
     end
   end
 
+  # Step 5: Create StructArray for phase space coordinates
   v = StructArray{Coord{T}}((x1, px1, y1, py1, z1, pz1))
 
+  # Step 6: Handle spin tracking initialization
   if !isnothing(spin)
     if spin == true
-      q0 = make_vec_T(T, 1, N_particle)
-      q1 = make_vec_T(T, 0, N_particle)
-      q2 = make_vec_T(T, 0, N_particle)
-      q3 = make_vec_T(T, 0, N_particle)
+      # Initialize quaternions: (1,0,0,0) represents no rotation
+      q0 = make_vec_T(T, 1, N_particle)  # Real part
+      q1 = make_vec_T(T, 0, N_particle)  # i component
+      q2 = make_vec_T(T, 0, N_particle)  # j component
+      q3 = make_vec_T(T, 0, N_particle)  # k component
       q = StructArray{Quaternion{T}}((q0, q1, q2, q3))
     else
       error("For no spin tracking, please omit the spin kwarg or set spin=nothing. This is to ensure type stability.")
@@ -156,7 +169,7 @@ function Bunch(; species::Species=Species("electron"), beta_gamma_ref=1.0,
     q = nothing
   end
 
-
+  # Step 7: Create and return the Bunch
   return Bunch(species, Float64(beta_gamma_ref), v, q)
 end
 
