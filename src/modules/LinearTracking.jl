@@ -131,23 +131,16 @@ function linear_quad_matrices(K1, L)
     return md, mf
   end
 end
-#=
-# Quadrupole kernel
-@inline function linear_quad!(i, v, work, fqi, fpi, dqi, dpi, sqrtk, L, gamma_0)
-  @assert all(t->t<=4 && t>=1, (fqi, fpi, dqi, dpi)) "Invalid focus/defocus indices for quadrupole"
-  @assert size(work, 2) >= 1 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 1) for linear_quad!"
-  @inbounds begin
-    @FastGTPSA! work[i,1] = 0 + v[i,fqi]
-    @FastGTPSA! v[i,fqi]  = cos(sqrtk*L)*v[i,fqi] + L*sincu(sqrtk*L)*v[i,fpi]
-    @FastGTPSA! v[i,fpi]  = -sqrtk*sin(sqrtk*L)*work[i,1] + cos(sqrtk*L)*v[i,fpi]
-    @FastGTPSA! work[i,1] = 0 + v[i,dqi]
-    @FastGTPSA! v[i,dqi]  = cosh(sqrtk*L)*v[i,dqi] + L*sinhcu(sqrtk*L)*v[i,dpi]
-    @FastGTPSA! v[i,dpi]  = sqrtk*sinh(sqrtk*L)*work[i,1] + cosh(sqrtk*L)*v[i,dpi]
-    @FastGTPSA! v[i,ZI]   = v[i,ZI] + v[i,PZI] * L/gamma_0^2
-  end 
-  return v
-end
-=#
+
+function linear_thin_quad_matrices(K1L)
+  mx = SA[one(K1L) zero(K1L);
+          -K1L     one(K1L)  ]
+  my = SA[one(K1L) zero(K1L);
+          K1L      one(K1L)  ]
+
+  return mx, my
+end 
+
 
 
 end

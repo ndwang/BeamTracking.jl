@@ -1,7 +1,7 @@
 
 @testset "LinearTracking" begin
   @testset "Utility functions" begin
-    # Quadrupole
+    # Thick Quadrupole
     mf(K1,L) = [cos(sqrt(K1)*L)            sincu(sqrt(K1)*L)*L;  
                 -sqrt(K1)*sin(sqrt(K1)*L)  cos(sqrt(K1)*L)     ]
     md(K1,L) = [cosh(sqrt(K1)*L)           sinhcu(sqrt(K1)*L)*L; 
@@ -16,21 +16,25 @@
     # Defocusing
     @test all(LinearTracking.linear_quad_matrices(-K1, L) .== (md(K1,L), mf(K1,L)))
 
+
+    # Thin Quadrupole
+    mft(K1L) = [one(K1L) zero(K1L);
+                -K1L     one(K1L)  ]
+    mdt(K1L) = [one(K1L) zero(K1L);
+                K1L      one(K1L)  ]
+    K1L = K1*L
+
+    @test all(LinearTracking.linear_thin_quad_matrices(K1L) .== (mft(K1L), mdt(K1L)))
+    @test all(LinearTracking.linear_thin_quad_matrices(-K1L) .== (mdt(K1L), mft(K1L)))
+    
   end
 
   @testset "Kernels" begin
-    # define default values 
-    d = Descriptor(6+10, 1) # allow 10 parameters
-    k = @vars(d)[7:end] # parameters
-
     Ls = rand(Float64)
-    Lt = rand(Float64) + k[1]
+    Lt = TPS{D}(rand(Float64))
 
-    gamma_0s = 1e5*rand(Float64)
-    gamma_0t = 1e5*rand(Float64) + k[2]
-
-    K1s = rand(Float64)
-    K1t = rand(Float64) + k[3]
+    gamma_0s = rand(Float64)
+    gamma_0t = TPS{D}(rand(Float64))
 
     # Drift =======================================================================
     M_drift(L, gamma_0) = [1.0  L    0.0  0.0  0.0  0.0;
@@ -45,21 +49,40 @@
     # GTPSA parameters
     test_matrix(LinearTracking.linear_drift!, M_drift(Lt,gamma_0t), Lt, Lt/gamma_0t^2)
 
-    # Quadrupole ==================================================================
-    function m_quad(K1,L,gamma_0)
-      M = zeros(promote_type(map(t->typeof(t), (K1,L,gamma_0))...), 6, 6)
-      mx, my = LinearTracking.linear_quad_matrices(K1, L)
-      M[1:2,1:2] .= mx
-      M[3:4,3:4] .= my
-      M[5:6,5:6] .= [1.0 L/gamma_0^2; 0.0 1.0]
-      return M
+    # Coast uncoupled  =============================================================
+    function coast_uncoupled(::Type{T}) where {T}
+      mx = T[1 2; 3 4]
+      my = T[5 6; 7 8]
+      r56 = T(9)
+      d = T[10 11 12 13 14]
+      t = T[15 16 17 18 19]
+      return mx, my, r56, d, t
     end
 
     # Scalar parameters
-    test_matrix(LinearTracking.linear_coast_uncoupled!, m_quad(K1s, Ls, gamma_0s), LinearTracking.linear_quad_matrices(K1s, Ls)..., Ls/gamma_0s^2)
+    mxs, mys, r56s, ds, ts = coast_uncoupled(Float64)
+    Ms = zeros(6,6)
+    Ms[1:2, 1:2] = mxs
+    Ms[3:4, 3:4] = mys
+    Ms[5, 5] = 1.0
+    Ms[6, 6] = 1.0
+    Ms[5, 6] = r56s
+    test_matrix(LinearTracking.linear_coast_uncoupled!, Ms, mxs, mys, r56s)
+    Ms[5, 1:4] = ts
+    Ms[6, 1:4] = ds
+    test_matrix(LinearTracking.linear_coast_uncoupled!, Ms, mxs, mys, r56s, ds, ts)
 
     # GTPSA parameters
-    test_matrix(LinearTracking.linear_coast_uncoupled!, m_quad(K1t, Lt, gamma_0t), LinearTracking.linear_quad_matrices(K1t, Lt)..., Lt/gamma_0t^2)
-
+    mxt, myt, r56t, dt, tt = coast_uncoupled(TPS64{D})
+    Mt = zeros(6,6)
+    Mt[1:2, 1:2] = mxt
+    Mt[3:4, 3:4] = myt
+    Mt[5, 5] = 1.0
+    Mt[6, 6] = 1.0
+    Mt[5, 6] = r56t
+    test_matrix(LinearTracking.linear_coast_uncoupled!, Mt, mxt, myt, r56t)
+    Mt[5, 1:4] = tt
+    Mt[6, 1:4] = dt
+    test_matrix(LinearTracking.linear_coast_uncoupled!, Mt, mxt, myt, r56t, dt, tt)
   end
 end

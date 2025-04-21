@@ -51,15 +51,25 @@ function linear_universal!(
     end
 
     bm1 = bmultipoleparams.bdict[2]
-    K1 = bm1.strength
-    if bm1.integrated
-      K1 /= L
-    end
+
+    s1 = bm1.strength
+
     if !bm1.normalized
-      K1 /= bunch.Brho_ref
+      s1 /= bunch.Brho_ref
     end
 
-    mx, my = LinearTracking.linear_quad_matrices(K1, L)
+    if L != 0
+      if bm1.integrated
+        K1 = s1/L
+      end
+      mx, my = LinearTracking.linear_quad_matrices(K1, L)
+    else
+      if !bm1.integrated
+        error("LineElement length is zero but has a non-integrated magnetic multipole")
+      end
+      mx, my = LinearTracking.linear_thin_quad_matrices(s1)
+    end
+
     r56 = L/gamma_0^2
     runkernel!(LinearTracking.linear_coast_uncoupled!, i, v, work, mx, my, r56)
   end

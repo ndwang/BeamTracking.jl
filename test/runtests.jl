@@ -7,18 +7,12 @@ using Test,
 
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
-  
-# Soon we generalize this to test_map...
-function test_matrix(kernel, M_expected, args...; type_stable=true, no_allocs=true, tol=1e-14, GTPSA_order=1)
-  if any(t->t isa TPS, args)
-    d = GTPSA.getdesc(args[findfirst(t->t isa TPS, args)])
-  else
-    d = Descriptor(6, GTPSA_order)
-  end
 
+const D = Descriptor(6, 1)
 
+function test_matrix(kernel, M_expected, args...; type_stable=true, no_allocs=true, tol=1e-14)
   n_temps = BeamTracking.MAX_TEMPS(parentmodule(kernel).TRACKING_METHOD())
-  v = transpose(@vars(d))
+  v = transpose(@vars(D))
   work = zeros(eltype(v), 1, n_temps)
 
   BeamTracking.launch!(kernel, v, work, args...)
@@ -27,11 +21,11 @@ function test_matrix(kernel, M_expected, args...; type_stable=true, no_allocs=tr
   @test norm(GTPSA.jacobian(v)[1:6,1:6] - scalar.(M_expected)) < tol 
   # 2) Type stability
   if type_stable
-  @test_opt BeamTracking.launch!(kernel, v, work, args...)
+    @test_opt BeamTracking.launch!(kernel, v, work, args...)
   end
   # 3) No Allocations
   if no_allocs
-  @test @ballocated(BeamTracking.launch!($kernel, $v, $work, $args...)) == 0 
+    @test @ballocated(BeamTracking.launch!($kernel, $v, $work, $args...)) == 0 
   end
 end
 
