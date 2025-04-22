@@ -96,7 +96,7 @@ end
 # Fake APC ====================================================================
 const Q = 1.602176634e-19 # C
 const C_LIGHT = 2.99792458e8 # m/s
-const M_ELECTRON = 0.51099895069 # eV/c^2
+const M_ELECTRON = 0.51099895069e6 # eV/c^2
 const M_PROTON = 9.3827208943e8 # eV/c^2
 
 struct Species
