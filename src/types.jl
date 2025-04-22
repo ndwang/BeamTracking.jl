@@ -23,7 +23,7 @@ function setproperty!(bunch::Bunch{A,S}, key::Symbol, value) where {A,S}
       return value
     end
     v = soaview(bunch)
-    launch!(General.update_P0!, v, nothing, bunch.Brho_ref, value)
+    launch!(Exact.update_P0!, v, nothing, bunch.Brho_ref, value)
     setfield!(bunch, :Brho_ref, S(value))
   elseif key == :species
     if value == bunch.species
@@ -31,7 +31,7 @@ function setproperty!(bunch::Bunch{A,S}, key::Symbol, value) where {A,S}
     end
     v = soaview(bunch)
     Brho_final = bunch.Brho_ref*chargeof(bunch.species)/chargeof(value)
-    launch!(General.update_P0!, v, nothing, bunch.Brho_ref, Brho_final)
+    launch!(Exact.update_P0!, v, nothing, bunch.Brho_ref, Brho_final)
     setfield!(bunch, :Brho_ref, S(Brho_final))
     setfield!(bunch, :species, value)
   else
@@ -39,7 +39,7 @@ function setproperty!(bunch::Bunch{A,S}, key::Symbol, value) where {A,S}
   end
 end
 
-function Bunch(N::Integer; mem=SoA, Brho_ref=60.0, species=ELECTRON)
+function Bunch(N::Integer; mem=SoA, Brho_ref=NaN, species=ELECTRON)
   if mem == SoA
     return Bunch{mem}(species, Brho_ref, rand(N,6))
   elseif mem == AoS
@@ -49,7 +49,7 @@ function Bunch(N::Integer; mem=SoA, Brho_ref=60.0, species=ELECTRON)
   end
 end
 
-function Bunch(v::AbstractArray; mem=SoA, Brho_ref=60.0, species=ELECTRON)
+function Bunch(v::AbstractArray; mem=SoA, Brho_ref=NaN, species=ELECTRON)
   if mem == SoA
     size(v, 2) == 6 || error("For SoA the number of columns must be equal to 6")
   elseif mem == AoS

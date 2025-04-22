@@ -1,40 +1,32 @@
 using BeamTracking, Beamlines, GTPSA, BenchmarkTools
 
-function make_fodo(K1=0.40, L_quad=0.5, L_drift=5.0)
-  qf = Quadrupole(K1=K1, L=L_quad, tracking_method=Linear())
-  d1 = Drift(L=L_drift, tracking_method=Linear())
-  qd = Quadrupole(K1=-qf.K1, L=L_quad, tracking_method=Linear())
-  d2 = Drift(L=L_drift, tracking_method=Linear())
-  return [qf, d1, qd, d2]
-end
+# Read in the Electron Storage Ring of the Electron-Ion Collider
+include("test/lattices/esr.jl") # Beamline symbol is "ring"
 
-K1 = 0.40
-L_quad = 0.5
-L_drift = 5.0
-N_fodo = 100
+# Currently only Linear tracking is supported:
+foreach(t -> t.tracking_method = Linear(), ring.line)
 
-bl = Beamline([ele for i in 1:N_fodo for ele in make_fodo(K1,L_quad,L_drift)]; Brho_ref=60.0)
+# Construct a bunch:
 N_particle = 100
+b0 = Bunch(N_particle)
 
-b0 = Bunch(N_particle, mem=BeamTracking.SoA)
+# Track the bunch through the ESR
+track!(b0, ring)
 
-# Track the bunch
-track!(b0, bl)
-
-# Also can do track! on individual elements
-track!(b0, bl.line[1])
+# Also can track! individual elements
+track!(b0, ring.line[1])
 
 # And if you want to move the particle for-loop to the outside:
-track!(b0, bl; outer_particle_loop=true)
+track!(b0, ring; outer_particle_loop=true)
 
 # Can also track the bits representation:
-bbl = BitsBeamline(bl)
-track!(b0, bbl)
+bitsring = BitsBeamline(ring)
+track!(b0, bitsring)
 
 # GTPSA map:
-const D = Descriptor(6,1)
+const D = Descriptor(6, 1) # 6 variables to 1st order
 v = @vars(D)
 b0 = Bunch(v, mem=BeamTracking.AoS)
 
-track!(b0, bl)
-track!(b0, bbl)
+track!(b0, ring)
+track!(b0, bitsring)

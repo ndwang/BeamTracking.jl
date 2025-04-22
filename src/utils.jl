@@ -78,10 +78,25 @@ function _sinhcu(x::Union{T,Complex{T}}) where {T}
     end
 end
 
+# Copied pasted from sincc in bmad-ecosystem
+function sincuc(x) 
+  if Base.Math.fastabs(x) < 0.1
+    c0 = 1/6
+    c1 = -1/120
+    c2 = 1/5040
+    c3 = -1/362880
+    x2 = x^2
+    y = c0 + x2 * (c1 + x2 * (c2 + x2 * c3))
+  else
+    y = (x - sin(x)) / x^3
+  end
+  return y
+end
+
 # Fake APC ====================================================================
 const Q = 1.602176634e-19 # C
 const C_LIGHT = 2.99792458e8 # m/s
-const M_ELECTRON = 0.51099895069 # eV/c^2
+const M_ELECTRON = 0.51099895069e6 # eV/c^2
 const M_PROTON = 9.3827208943e8 # eV/c^2
 
 struct Species

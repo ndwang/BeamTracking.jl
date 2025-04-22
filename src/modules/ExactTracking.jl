@@ -16,6 +16,7 @@ const TRACKING_METHOD = Exact
 
 # Update the reference energy of the canonical coordinates
 # BUG: z and pz are not updated correctly
+#=
 @inline function update_P0!(i, v, work, Brho_initial, Brho_final)
   @inbounds begin
     @FastGTPSA! v[i,PXI] = v[i,PXI] * Brho_initial / Brho_final
@@ -24,6 +25,7 @@ const TRACKING_METHOD = Exact
   end
   return v
 end
+=#
 
 # Misalignments (TO-DO: rotational misalignments)
 @inline function misalign!(i, v, work, x_offset, y_offset, sgn) #x_rot, y_rot, tilt,

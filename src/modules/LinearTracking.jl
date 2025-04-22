@@ -7,7 +7,7 @@ Linear tracking methods expanded around "zero orbit".
 # (equal to number of temporaries needed for a single particle)
 struct Linear end
 
-MAX_TEMPS(::Linear) = 1
+MAX_TEMPS(::Linear) = 5
 
 module LinearTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays
@@ -35,7 +35,7 @@ end
 [ t[1:2]  t[3:4]  1   r56   ]
 
 =#
-@inline function linear_coast_uncoupled!(i, v, work, mx::AbstractMatrix, my::AbstractMatrix, r56, d::Union{AbstractVector,Nothing}=nothing, t::Union{AbstractVector,Nothing}=nothing)
+@inline function linear_coast_uncoupled!(i, v, work, mx::AbstractMatrix, my::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
   @assert size(work, 2) >= 1 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 1) for linear_coast_uncoupled!"
   @assert size(mx) == (2,2) "Size of matrix mx must be (2,2) for linear_coast_uncoupled!. Received $(size(mx))"
   @assert size(my) == (2,2) "Size of matrix my must be (2,2) for linear_coast_uncoupled!. Received $(size(my))"
@@ -65,7 +65,7 @@ end
   return v
 end
 
-@inline function linear_coast!(i, v, work, mxy::AbstractMatrix, r56, d::Union{AbstractVector,Nothing}=nothing, t::Union{AbstractVector,Nothing}=nothing)
+@inline function linear_coast!(i, v, work, mxy::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
   @assert size(work, 2) >= 3 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 3) for linear_coast!"
   @assert size(mxy) == (4,4) "Size of matrix mxy must be (4,4) for linear_coast!. Received $(size(mxy))"
   @assert isnothing(d) || length(d) == 4 "The dispersion vector d must be either `nothing` or of length 4 for linear_coast!. Received $d"
@@ -131,23 +131,53 @@ function linear_quad_matrices(K1, L)
     return md, mf
   end
 end
-#=
-# Quadrupole kernel
-@inline function linear_quad!(i, v, work, fqi, fpi, dqi, dpi, sqrtk, L, gamma_0)
-  @assert all(t->t<=4 && t>=1, (fqi, fpi, dqi, dpi)) "Invalid focus/defocus indices for quadrupole"
-  @assert size(work, 2) >= 1 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 1) for linear_quad!"
-  @inbounds begin
-    @FastGTPSA! work[i,1] = 0 + v[i,fqi]
-    @FastGTPSA! v[i,fqi]  = cos(sqrtk*L)*v[i,fqi] + L*sincu(sqrtk*L)*v[i,fpi]
-    @FastGTPSA! v[i,fpi]  = -sqrtk*sin(sqrtk*L)*work[i,1] + cos(sqrtk*L)*v[i,fpi]
-    @FastGTPSA! work[i,1] = 0 + v[i,dqi]
-    @FastGTPSA! v[i,dqi]  = cosh(sqrtk*L)*v[i,dqi] + L*sinhcu(sqrtk*L)*v[i,dpi]
-    @FastGTPSA! v[i,dpi]  = sqrtk*sinh(sqrtk*L)*work[i,1] + cosh(sqrtk*L)*v[i,dpi]
-    @FastGTPSA! v[i,ZI]   = v[i,ZI] + v[i,PZI] * L/gamma_0^2
-  end 
-  return v
-end
-=#
 
+function linear_thin_quad_matrices(K1L)
+  mx = SA[1     0;
+          -K1L  1]
+  my = SA[1     0;
+          K1L   1]
+
+  return mx, my
+end 
+
+# From the Bmad manual "Solenoid Tracking" section, linearized
+function linear_solenoid_matrix(Ks, L)
+  s, c = sincos(Ks*L)
+
+  return SA[(1+c)/2     s/Ks       s/2          (1-c)/Ks;
+            -Ks*s/4     (1+c)/2    -Ks*(1-c)/4  s/2     ;
+            -s/2        -(1-c)/Ks  (1+c)/2      s/Ks    ;
+            Ks*(1-c)/4  -s/2       -Ks*s/4      (1+c)/2 ;]
+end
+
+
+function linear_bend_matrices(K0, L, gamma_0, e1=nothing, e2=nothing)
+  theta = K0*L
+  s, c = sincos(theta)
+  cc = (sincu(theta/2)^2)/2
+  sc = sincu(theta)
+  mx = SA[c  L*sc; -K0*s  c]
+  my = SA[1  L; 0 1]
+  r56 = L*(1/gamma_0^2 - theta^2*sincuc(theta))
+  d = SA[theta*L*cc, theta*sc, 0, 0]
+  t = SA[-theta*sc,  -theta*L*cc, 0, 0]
+
+  if !isnothing(e1) && e1 != 0
+    me1 = K0*tan(e1)
+    mx = mx*SA[1 0; me1  1]
+    my = my*SA[1 0; -me1 1]
+    t = SA[t[1]+me1*t[2], t[2], 0, 0]
+  end
+
+  if !isnothing(e2) && e2 != 0
+    me2 = K0*tan(e2)
+    mx = SA[1 0; me2  1]*mx
+    my = SA[1 0; -me2 1]*my
+    d = SA[d[1], me2*d[1]+d[2], 0, 0]
+  end
+
+  return mx, my, r56, d, t
+end
 
 end

@@ -1,7 +1,7 @@
 
 @testset "LinearTracking" begin
   @testset "Utility functions" begin
-    # Quadrupole
+    # Thick Quadrupole
     mf(K1,L) = [cos(sqrt(K1)*L)            sincu(sqrt(K1)*L)*L;  
                 -sqrt(K1)*sin(sqrt(K1)*L)  cos(sqrt(K1)*L)     ]
     md(K1,L) = [cosh(sqrt(K1)*L)           sinhcu(sqrt(K1)*L)*L; 
@@ -16,21 +16,78 @@
     # Defocusing
     @test all(LinearTracking.linear_quad_matrices(-K1, L) .== (md(K1,L), mf(K1,L)))
 
+
+    # Thin Quadrupole
+    mft(K1L) = [one(K1L) zero(K1L);
+                -K1L     one(K1L)  ]
+    mdt(K1L) = [one(K1L) zero(K1L);
+                K1L      one(K1L)  ]
+    K1L = K1*L
+
+    @test all(LinearTracking.linear_thin_quad_matrices(K1L) .== (mft(K1L), mdt(K1L)))
+    @test all(LinearTracking.linear_thin_quad_matrices(-K1L) .== (mdt(K1L), mft(K1L)))
+    
+
+    # Solenoid
+    M_sol_ESR = [ 0.9620267534604E+00  0.2680023374209E+01  0.1911315753266E+00 0.5324561791884E+00;
+                 -0.1363095540075E-01  0.9620267534604E+00 -0.2708142959206E-02 0.1911315753266E+00;
+                 -0.1911315753266E+00 -0.5324561791884E+00  0.9620267534604E+00 0.2680023374209E+01;
+                  0.2708142959206E-02 -0.1911315753266E+00 -0.1363095540075E-01 0.9620267534604E+00]
+    @test LinearTracking.linear_solenoid_matrix(0.142634259959, 2.75) ≈ M_sol_ESR
+
+    # SBend
+    gamma_0 = 3.4924264755852841E+04
+    L = 3.8
+    K0 = -1.4085135130897E-3
+
+    M_sbend_ESR = [  0.9999856762017098E+00  0.3799981856504840E+01  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00 -0.1016944328690584E-01
+                    -0.7538823207846669E-05  0.9999856762017098E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00 -0.5352325794382752E-02
+                    0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01  0.3800000000000000E+01  0.0000000000000000E+00  0.0000000000000000E+00
+                    0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01  0.0000000000000000E+00  0.0000000000000000E+00
+                    0.5352325794382752E-02  0.1016944328690584E-01  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01 -0.1814037965058192E-04
+                    0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01]
+
+    M = zeros(6,6)
+    mx, my, r56, d, t = LinearTracking.linear_bend_matrices(K0, L, gamma_0)
+    M[1:2, 1:2] = mx
+    M[3:4, 3:4] = my
+    M[5, 5] = 1.0
+    M[6, 6] = 1.0
+    M[5, 6] = r56
+    M[5, 1:4] = t
+    M[1:4, 6] = d
+    @test M ≈ M_sbend_ESR
+
+
+    L=3.8
+    K0=-1.4085135130897E-1
+    e1 = -2.6e1
+    e2 = 2e-1
+
+    M_crazy_bend = [  0.1461364082101138E+01  0.3621145980031785E+01  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00 -0.9928997816884232E+00
+                      0.2924452887724791E-01  0.7567578276535424E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00 -0.4816940474576835E+00
+                      0.0000000000000000E+00  0.0000000000000000E+00  0.3690896823132183E+00  0.3800000000000000E+01  0.0000000000000000E+00  0.0000000000000000E+00
+                      0.0000000000000000E+00  0.0000000000000000E+00 -0.1554907888474444E+00  0.1108497533216086E+01  0.0000000000000000E+00  0.0000000000000000E+00
+                      0.6748934931787792E+00  0.9928997816884232E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01 -0.1788540168527052E+00
+                      0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01]
+    mx, my, r56, d, t = LinearTracking.linear_bend_matrices(K0, L, gamma_0, e1, e2)
+    M[1:2, 1:2] = mx
+    M[3:4, 3:4] = my
+    M[5, 5] = 1.0
+    M[6, 6] = 1.0
+    M[5, 6] = r56
+    M[5, 1:4] = t
+    M[1:4, 6] = d
+
+    @test M ≈ M_crazy_bend
   end
 
   @testset "Kernels" begin
-    # define default values 
-    d = Descriptor(6+10, 1) # allow 10 parameters
-    k = @vars(d)[7:end] # parameters
-
     Ls = rand(Float64)
-    Lt = rand(Float64) + k[1]
+    Lt = TPS{D}(rand(Float64))
 
-    gamma_0s = 1e5*rand(Float64)
-    gamma_0t = 1e5*rand(Float64) + k[2]
-
-    K1s = rand(Float64)
-    K1t = rand(Float64) + k[3]
+    gamma_0s = rand(Float64)
+    gamma_0t = TPS{D}(rand(Float64))
 
     # Drift =======================================================================
     M_drift(L, gamma_0) = [1.0  L    0.0  0.0  0.0  0.0;
@@ -45,21 +102,87 @@
     # GTPSA parameters
     test_matrix(LinearTracking.linear_drift!, M_drift(Lt,gamma_0t), Lt, Lt/gamma_0t^2)
 
-    # Quadrupole ==================================================================
-    function m_quad(K1,L,gamma_0)
-      M = zeros(promote_type(map(t->typeof(t), (K1,L,gamma_0))...), 6, 6)
-      mx, my = LinearTracking.linear_quad_matrices(K1, L)
-      M[1:2,1:2] .= mx
-      M[3:4,3:4] .= my
-      M[5:6,5:6] .= [1.0 L/gamma_0^2; 0.0 1.0]
-      return M
+    # Coast uncoupled  =============================================================
+    function coast_uncoupled(::Type{T}) where {T}
+      mx = T[1 2; 3 4]
+      my = T[5 6; 7 8]
+      r56 = T(9)
+      d = T[10 11 12 13]
+      t = T[14 15 16 17]
+      return mx, my, r56, d, t
     end
 
     # Scalar parameters
-    test_matrix(LinearTracking.linear_coast_uncoupled!, m_quad(K1s, Ls, gamma_0s), LinearTracking.linear_quad_matrices(K1s, Ls)..., Ls/gamma_0s^2)
+    mxs, mys, r56s, ds, ts = coast_uncoupled(Float64)
+    Ms = zeros(6,6)
+    Ms[1:2, 1:2] = mxs
+    Ms[3:4, 3:4] = mys
+    Ms[5, 5] = 1.0
+    Ms[6, 6] = 1.0
+    Ms[5, 6] = r56s
+    test_matrix(LinearTracking.linear_coast_uncoupled!, Ms, mxs, mys, r56s)
+    Ms[5, 1:4] = ts
+    Ms[1:4, 6] = ds
+    test_matrix(LinearTracking.linear_coast_uncoupled!, Ms, mxs, mys, r56s, ds, ts)
 
     # GTPSA parameters
-    test_matrix(LinearTracking.linear_coast_uncoupled!, m_quad(K1t, Lt, gamma_0t), LinearTracking.linear_quad_matrices(K1t, Lt)..., Lt/gamma_0t^2)
+    mxt, myt, r56t, dt, tt = coast_uncoupled(TPS64{D})
+    Mt = zeros(TPS64{D},6,6)
+    Mt[1:2, 1:2] = mxt
+    Mt[3:4, 3:4] = myt
+    Mt[5, 5] = 1.0
+    Mt[6, 6] = 1.0
+    Mt[5, 6] = r56t
+    test_matrix(LinearTracking.linear_coast_uncoupled!, scalar.(Mt), mxt, myt, r56t)
+    Mt[5, 1:4] = tt
+    Mt[1:4, 6] = dt
+    test_matrix(LinearTracking.linear_coast_uncoupled!, scalar.(Mt), mxt, myt, r56t, dt, tt)
 
+    # Coast =============================================================
+    function coast(::Type{T}) where {T}
+      mxy = T[1 2 3 4; 5 6 7 8; 9 10 11 12; 13 14 15 16]
+      r56 = T(17)
+      d = T[18 19 20 21]
+      t = T[22 23 24 25]
+      return mxy, r56, d, t
+    end
+
+    # Scalar parameters
+    mxys, r56s, ds, ts = coast(Float64)
+    Ms = zeros(6,6)
+    Ms[1:4, 1:4] = mxys
+    Ms[5, 5] = 1.0
+    Ms[6, 6] = 1.0
+    Ms[5, 6] = r56s
+    test_matrix(LinearTracking.linear_coast!, Ms, mxys, r56s)
+    Ms[5, 1:4] = ts
+    Ms[1:4, 6] = ds
+    test_matrix(LinearTracking.linear_coast!, Ms, mxys, r56s, ds, ts)
+
+    # GTPSA parameters
+    mxyt, r56t, dt, tt = coast(TPS64{D})
+    Mt = zeros(TPS64{D},6,6)
+    Mt[1:4, 1:4] = mxyt
+    Mt[5, 5] = 1.0
+    Mt[6, 6] = 1.0
+    Mt[5, 6] = r56t
+    test_matrix(LinearTracking.linear_coast!, scalar.(Mt), mxyt, r56t)
+    Mt[5, 1:4] = tt
+    Mt[1:4, 6] = dt
+    test_matrix(LinearTracking.linear_coast!, scalar.(Mt), mxyt, r56t, dt, tt)
+
+
+    # 6D =============================================================
+    function sixD(::Type{T}) where {T}
+      collect(T, reshape(1:36, 6,6))
+    end
+
+    # Scalar parameters
+    Ms = sixD(Float64)
+    test_matrix(LinearTracking.linear_6D!, Ms, Ms)
+
+    # GTPSA parameters
+    Mt = sixD(TPS64{D})
+    test_matrix(LinearTracking.linear_6D!, Ms, Mt)
   end
 end
