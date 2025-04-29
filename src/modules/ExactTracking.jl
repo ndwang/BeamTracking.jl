@@ -3,11 +3,11 @@
 Exact tracking methods
 
 =#
-# Define the Exact tracking method, and number of columns in the work matrix 
+# Define the Exact tracking method, and number of columns in the work matrix
 # (equal to number of temporaries needed for a single particle)
 struct Exact end
 
-MAX_TEMPS(::Exact) = 1
+MAX_TEMPS(::Exact) = 5
 
 module ExactTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays
@@ -37,12 +37,23 @@ end
   return v
 end
 
+"""
+exact_drift()
+
+In the computation of z_final, we use the fact that
+    1/√a - 1/√b == (b - a)/(√a √b (√a + √b))
+to avoid the potential for severe cancellation when
+a and b both have the form 1 + ε for different small
+values of ε.
+"""
 @inline function exact_drift!(i, v, work, L, tilde_m, gamsqr_0, beta_0)
   @assert size(work, 2) >= 1 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 1) for exact_drift!"
   @inbounds begin @FastGTPSA! begin
     work[i,1] = sqrt((1.0 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2))  # P_s
     v[i,XI]   = v[i,XI] + v[i,PXI] * L / work[i,1]
     v[i,YI]   = v[i,YI] + v[i,PYI] * L / work[i,1]
+    # v[i,ZI]   = v[i,ZI] - (1.0 + v[i,PZI]) * L * (1 / work[i,1] - 1 / (beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2)))
+    # high-precision computation of z_final
     v[i,ZI]   = v[i,ZI] - ( (1.0 + v[i,PZI]) * L
                   * ((v[i,PXI]^2 + v[i,PYI]^2) - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
                   / ( beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) * work[i,1]
@@ -52,5 +63,90 @@ end
   end end
   return v
 end
+
+
+#
+# ===============  Q U A D R U P O L E  ===============
+#
+"""
+mkm_quadrupole()
+
+This integrator uses the so-called Matrix-Kick-Matrix method to implement
+a quadrupole integrator accurate though second-order in the integration
+step-size.
+
+beta_gamma_0: reference value of βγ
+k2_num: g / Bρ0 = g / (p0 / q)
+        where g and Bρ0 respectively denote the quadrupole gradient and
+        (signed) reference magnetic rigidity.
+"""
+@inline function mkm_quadrupole(i, v, work, beta_gamma_0, k2_num, L)
+  @assert size(work, 2) >= 6 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 6) for mkm_quadrupole!"
+  @inbounds begin @FastGTPSA! begin
+    quadrupole_matrix(i, v, work, k2_num, L / 2)
+    quadrupole_kick(i, v, work, beta_gamma_0, L)
+    quadrupole_matrix(i, v, work, k2_num, L / 2)
+  end end
+  return v
+end # function mkm_quadrupole()
+
+
+"""
+track "matrix part" of a quadrupole
+"""
+@inline function quadrupole_matrix(i, v, work, k2_num, s)
+  @assert size(work, 2) >= 5 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 6) for quadrupole_matrix!"
+  @inbounds begin @FastGTPSA! begin
+    work[i,1] = v[i,PXI] / (1.0 + v[i,PZI])  # x'
+    work[i,2] = v[i,PYI] / (1.0 + v[i,PZI])  # y'
+    # the following line requires complex arithmetic
+    work[i,3] = sqrt(k2_num / (1.0 + v[i,PZI])) * s  # κs for each particle
+    work[i,4] = v[i,XI]  * cos(work[i,3])  +        s * work[i,1] * sincu(work[i,3])
+    v[i,PXI]  = v[i,PXI] * cos(work[i,3])  - k2_num * s * v[i,XI] * sincu(work[i,3])
+    work[i,5] = v[i,YI]  * cosh(work[i,3]) +        s * work[i,2] * sinhcu(work[i,3])
+    v[i,PYI]  = v[i,PYI] * cosh(work[i,3]) + k2_num * s * v[i,YI] * sinhcu(work[i,3])
+    v[i,ZI]   = (v[i,ZI] - (s / 4) * ( work[i,1]^2 * (1 + sincu(2.0work[i,3])) + work[i,2]^2 * (1 + sinhcu(2.0work[i,3]))
+                                       + k2_num / (1.0 + v[i,PZI])
+                                         * (v[i,XI]^2 * (1 - sincu(2.0work[i,3])) - v[i,YI]^2 * (1 - sinhcu(2.0work[i,3]))) )
+                         + (v[i,XI] * work[i,1] * sin(work[i,3])^2 - v[i,YI] * work[i,2] * sinh(work[i,3])^2) / 2)
+    v[i,XI] = work[i,4]
+    v[i,YI] = work[i,5]
+  end end
+  return v
+end # function quadrupole_matrix()
+
+
+"""
+track "remaining part" of quadrupole, a position kick
+
+### Implementation
+A common factor that appears in the expressions for `zf.x` and `zf.y`
+originally included a factor with the generic form ``1 - \\sqrt{1 - A}``,
+which suffers a loss of precision when ``|A| \\ll 1``. To combat that
+problem, we rewrite it in the form ``A / (1 + \\sqrt{1-A})``---more
+complicated, yes, but far more accurate.
+"""
+function quadrupole_kick(i, v, work, beta_gamma_0, s)
+  @assert size(work, 2) >= 5 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 6) for quadrupole_kick!"
+  @inbounds begin @FastGTPSA! begin
+  tilde_m  = 1 / beta_gamma_0  # mc^2 / p0·c
+  gamsqr_0 = 1 + beta_gamma_0^2
+  beta_0   = beta_gamma_0 / sqrt(gamsqr_0)
+  work[i,1] = 1 + v[i,PZI]             # reduced momentum, P/P0 = 1 + δ
+  work[i,2] = v[i,PXI]^2 + v[i,PYI]^2  # P⟂^2
+  work[i,3] = sqrt(p^2 - ptr2)         # Ps
+  v[i,XI] = v[i,XI] + s * v[i,PXI] / work[i,1] * work[i,2] / (work[i,3] * (work[i,1] + work[i,3]))
+  v[i,YI] = v[i,YI] + s * v[i,PYI] / work[i,1] * work[i,2] / (work[i,3] * (work[i,1] + work[i,3]))
+  v[i,ZI] = v[i,ZI] - s * ( (1.0 + v[i,PZI])
+                              * (work[i,2] - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
+                                / ( beta_0 * sqrt((1.0 + v[i,PZI])^2 + tilde_m^2) * work[i,3]
+                                    * (beta_0 * sqrt((1.0 + v[i,PZI])^2 + tilde_m^2) + work[i,3])
+                                  )
+                            - work[i,2] / (2 * (1 + v[i,PZI])^2)
+                          )
+  end end
+  return v
+end # function quadrupole_kick
+
 
 end
