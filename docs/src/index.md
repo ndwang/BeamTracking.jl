@@ -2,12 +2,6 @@
 
 Documentation for the BeamTracking.jl package.
 
-```{toctree}
-:maxdepth: 1
-:caption: Home
-
-index.md
-```
 
 ```{toctree}
 :maxdepth: 1
