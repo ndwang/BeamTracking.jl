@@ -1,27 +1,24 @@
-name: Documentation
+# This file was created automatically with `myst init --gh-curvenote` 🪄 💚
 
+name: Curvenote Deploy
 on:
   push:
-    branches:
-      - main # update to match your development branch (master, main, dev, trunk, ...)
-    tags: '**'
-  pull_request:
-
+    # Runs on pushes targeting the default branch
+    branches: [main]
+permissions:
+  # Sets permissions of the GITHUB_TOKEN to allow read of private repos
+  contents: read
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
 jobs:
-  build:
-    permissions:
-      contents: write
-      statuses: write
+  build-and-deploy:
     runs-on: ubuntu-latest
+    if: 0 # TODO remove this once deployment domain is finalized
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: '1.10'
-      - name: Install dependencies
-        run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      - name: Build and deploy
+      - name: Deploy 🚀
+        uses: curvenote/action-myst-publish@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # If authenticating with GitHub Actions token
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # If authenticating with SSH deploy key
-        run: julia --project=docs/ docs/make.jl
+          CURVENOTE_TOKEN: ${{ secrets.CURVENOTE_TOKEN }}
