@@ -19,7 +19,7 @@ Open the file `build/html/index.html` with your web browser to visualize.
 You are now ready to edit the markdown files that compose the documentation!
 
 If you like to atuomatically rebuild changes on save of edited files, 
-run in your AcceleratorLattice directory:
+run in your BeamTracking directory:
 ```{code} bash
 sphinx-autobuild src build/html
 ```

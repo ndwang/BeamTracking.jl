@@ -6,9 +6,9 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'AcceleratorLattice.jl'
+project = 'BeamTracking.jl'
 copyright = '2025, under CC-BY 4.0 License'
-author = 'David Sagan'
+author = 'bmad-sim'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
