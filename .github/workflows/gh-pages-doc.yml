@@ -36,7 +36,7 @@ jobs:
       - name: Install MyST Markdown
         run: pip install myst-parser
       - name: Install sphinx-build
-        run: pip install sphinx sphinx-design sphinxcontrib-bibtex
+        run: pip install sphinx sphinx-design sphinxcontrib-bibtex sphinx-book-theme
       - name: Build HTML Assets
         run: make html
         working-directory: docs
