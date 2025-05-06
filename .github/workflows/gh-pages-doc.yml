@@ -36,7 +36,7 @@ jobs:
       - name: Install MyST Markdown
         run: npm install -g mystmd
       - name: Install sphinx-build
-        run: npm install -g sphinx-build
+        run: pip install sphinx
       - name: Build HTML Assets
         run: make HTML
         working-directory: docs
