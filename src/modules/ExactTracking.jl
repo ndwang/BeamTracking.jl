@@ -269,6 +269,7 @@ ksl: vector of skew integrated multipole strengths
   end
   v[i,PXI] -= work[i,1]
   v[i,PYI] += work[i,2]
+  end end
   return v
 end # function multipole_kick!()
 
@@ -294,6 +295,52 @@ end # function multipole_kick!()
 #  end
 #  return [ ar, ai ]
 #end # function binom()
+
+
+"""
+This function implements exact symplectic tracking through a
+sector bend, derived using the Hamiltonian (25.9) given in the
+BMad manual. As a consequence of using that Hamiltonian, the
+reference value of βγ must be that of a particle with the
+design energy.  Should we wish to change that, we shall need
+to carry both reference and design values.
+
+Arguments
+—————————
+beta_0: β_0 = (βγ)_0 / √(γ_0^2)
+brho_0: Bρ_0,  reference magnetic rigidity
+hc: coordinate frame curvature
+b0: magnet field strength
+e1: entrance face angle (+ve <=> toward rbend)
+e2: exit face angle (+ve <=> toward rbend)
+Lr: element arc length
+"""
+@inline function exact_sbend!(i, v, work, beta_0, brho_0, hc, b0, e1, e2, Lr)
+  @assert size(work, 2) >= 5 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 5) for multipole_kick!()."
+  @inbounds begin @FastGTPSA! begin
+  rho = brho0 / b0
+  ang = hc * Lr
+  c1 = cos(ang)
+  s1 = sin(ang)
+
+  work[i,1] = sqrt((1.0 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2))  # P_s
+  work[i,2] = sqrt((1.0 + v[i,PZI])^2 - v[i,PYI]^2)                 # P_α
+  work[i,3] = (1.0 + hc * v[i,XI]) / (hc * rho)         # scaled (1 + h x)
+  work[i,4] = work[i,1] - work[i,3]                         # Px'/h
+  work[i,5] = ang + asin(v[i,PXI] / work[i,2]) - asin((v[i,PXI] * c1 + work[i,4] * s1) / work[i,2])  # α + φ1 - φ2
+  # high-precision computation of x-final
+  v[i,XI] = (v[i,XI] * c1 - Lr * sin(ang / 2) * sincu(ang / 2)
+             + rho * (v[i,PXI] + ((v[i,PXI]^2 + (work[i,1] + work[i,4]) * work[i,3]) * s1 - 2v[i,PXI] * work[i,4] * c1)
+                             / (sqrt(work[i,2]^2 - (v[i,PXI] * c1 + work[i,4] * s1)^2) + work[i,1] * c1)) * s1)
+  v[i,PXI] = v[i,PXI] * c1 + work[i,4] * s1
+  v[i,YI] = v[i,YI] + rho * v.py * work[i,5]
+  # high-precision computation of z-final
+  v[i,ZI] = (v[i,ZI] - rho * (1.0 + v[i,PZI]) * work[i,5]
+               + (1.0 + v[i,PZI]) * Lr / (beta_0 * sqrt(1.0 / beta_0^2 + (2 + v[i,PZI]) * v[i,PZI])))
+
+  end end
+  return v
+end # function exact_sbend!()
 
 
 end
