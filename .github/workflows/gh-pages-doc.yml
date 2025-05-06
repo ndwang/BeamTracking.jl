@@ -38,7 +38,7 @@ jobs:
       - name: Install sphinx-build
         run: pip install sphinx sphinx-design sphinxcontrib-bibtex
       - name: Build HTML Assets
-        run: make HTML
+        run: make html
         working-directory: docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
