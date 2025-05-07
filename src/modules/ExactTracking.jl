@@ -145,7 +145,7 @@ quadrupole_kick!()
 
 Track "remaining part" of quadrupole —— a position kick.
 
-### Implementation
+### Note re implementation:
 A common factor that appears in the expressions for `zf.x` and `zf.y`
 originally included a factor with the generic form ``1 - \\sqrt{1 - A}``,
 which suffers a loss of precision when ``|A| \\ll 1``. To combat that
@@ -311,8 +311,8 @@ beta_0: β_0 = (βγ)_0 / √(γ_0^2)
 brho_0: Bρ_0,  reference magnetic rigidity
 hc: coordinate frame curvature
 b0: magnet field strength
-e1: entrance face angle (+ve <=> toward rbend)
-e2: exit face angle (+ve <=> toward rbend)
+e1: entrance face angle (+ve angle <=> toward rbend)
+e2: exit face angle (+ve angle <=> toward rbend)
 Lr: element arc length
 """
 @inline function exact_sbend!(i, v, work, beta_0, brho_0, hc, b0, e1, e2, Lr)
@@ -325,8 +325,8 @@ Lr: element arc length
 
   work[i,1] = sqrt((1.0 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2))  # P_s
   work[i,2] = sqrt((1.0 + v[i,PZI])^2 - v[i,PYI]^2)                 # P_α
-  work[i,3] = (1.0 + hc * v[i,XI]) / (hc * rho)         # scaled (1 + h x)
-  work[i,4] = work[i,1] - work[i,3]                         # Px'/h
+  work[i,3] = (1.0 + hc * v[i,XI]) / (hc * rho)                     # scaled (1 + h x)
+  work[i,4] = work[i,1] - work[i,3]                                 # Px'/h
   work[i,5] = ang + asin(v[i,PXI] / work[i,2]) - asin((v[i,PXI] * c1 + work[i,4] * s1) / work[i,2])  # α + φ1 - φ2
   # high-precision computation of x-final
   v[i,XI] = (v[i,XI] * c1 - Lr * sin(ang / 2) * sincu(ang / 2)
