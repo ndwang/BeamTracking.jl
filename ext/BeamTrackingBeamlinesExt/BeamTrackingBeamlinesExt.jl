@@ -14,7 +14,8 @@ function track!(
   ele::LineElement; 
   work=zeros(eltype(bunch.v), get_N_particle(bunch), MAX_TEMPS(ele.tracking_method)),
 )
-  return _track!(nothing, soaview(bunch), work, bunch, ele, ele.tracking_method)
+  @noinline _track!(nothing, soaview(bunch), work, bunch, ele, ele.tracking_method)
+  return bunch
 end
 
 # Indicies array instead of nothing

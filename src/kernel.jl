@@ -27,15 +27,41 @@ ALWAYS be the following:
 - `simd_lane_width`       -- The number of SIMD lanes to use. Default is `REGISTER_SIZE/sizeof(eltype(A))`
 - `multithread_threshold` -- Number of particles at which multithreading is used. Default is `1e6``
 """
-@inline function launch!(
-  f!::F, 
-  v::A,
-  work, 
-  args...; 
-  simd_lane_width=0, # autovectorize by default #floor(Int, REGISTER_SIZE/sizeof(eltype(A))),
-  multithread_threshold=Threads.nthreads() > 1 ? 1750*Threads.nthreads() : typemax(Int),
-) where {F<:Function,A}
+@inline @generated function launch!(f!::F, v::V, args...) where {F<:Function,V}
+  #=
   N_particle = size(v, 1)
+  @simd for i in 1:N_particle
+    @assert last(i) <= N_particle "Out of bounds!"
+    f!(i, v, args...)
+  end
+=#
+  
+  backend = get_backend(similar(V,0,0))
+  if backend isa CPU
+    groupsize = floor(Int,REGISTER_SIZE/sizeof(eltype(V))) # Explicit SIMD
+  else
+    # Then this is CUDA block size
+    groupsize = 256 
+  end
+  kernel! = tgeneric_kernel!(backend, groupsize)
+  return quote
+    N_particle = size(v, 1)
+    $(kernel!)(f!, v, args; ndrange=N_particle)
+    KernelAbstractions.synchronize($backend)
+    return v
+  end
+  #=
+  return quote
+
+  end
+  N_particle = size(v, 1)
+  backend = get_backend(v)
+  kernel! = tgeneric_kernel!(backend, groupsize)
+  kernel!(f!, v, args; ndrange = N_particle)
+  
+  return v
+  =#
+  #=
   if A <: SIMD.FastContiguousArray && eltype(A) <: SIMD.ScalarTypes && simd_lane_width != 0 # do SIMD
     lane = VecRange{simd_lane_width}(0)
     rmn = rem(N_particle, simd_lane_width)
@@ -70,15 +96,24 @@ ALWAYS be the following:
     end
   end
   return v
+  =#
+end
+@kernel function tgeneric_kernel!(f!, v, args)
+  i = @index(Global, Linear)
+  f!(i, v, args...)
 end
 
+@kernel function tlindrft!(v, args)
+  i = @index(Global, Linear)
+  LinearTracking.linear_drift!(i, v, args...)
+end
 # collective effects
 # each threads corresponds to many particles
 # go through each element, each thread loops through each 
 # particle and does stuff with it
 
 # Call launch!
-@inline runkernel!(f!::F, i::Nothing, v, work, args...) where {F} = launch!(f!, v, work, args...)
+@inline runkernel!(f!::F, i::Nothing, v, work, args...) where {F} =launch!(f!, v, work, args...)
 
 # Call kernel directly
 @inline runkernel!(f!::F, i, v, work, args...) where {F} = f!(i, v, work, args...)
