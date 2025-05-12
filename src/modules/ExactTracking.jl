@@ -98,9 +98,12 @@ L: element length
 @inline function mkm_quadrupole!(i, v, work, beta_0, gamsqr_0, tilde_m, k2_num, L)
   @assert size(work, 2) >= 5 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 5) for mkm_quadrupole!()."
   @inbounds begin @FastGTPSA! begin
+    #ds = L / ns
+    #for i = 1:ns
     quadrupole_matrix!(i, v, work, k2_num, L / 2)
     quadrupole_kick!(  i, v, work, beta_0, gamsqr_0, tilde_m, L)
     quadrupole_matrix!(i, v, work, k2_num, L / 2)
+    #end
   end end
   return v
 end # function mkm_quadrupole!()
@@ -119,22 +122,35 @@ k2_num:  g / Bρ0 = g / (p0 / q)
 s: element length
 """
 @inline function quadrupole_matrix!(i, v, work, k2_num, s)
-  @assert size(work, 2) >= 5 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 5) for quadrupole_matrix!()."
+  @assert size(work, 2) >= 7 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 7) for quadrupole_matrix!()."
   @inbounds begin @FastGTPSA! begin
     work[i,1] = v[i,PXI] / (1.0 + v[i,PZI])  # x'
     work[i,2] = v[i,PYI] / (1.0 + v[i,PZI])  # y'
-    # the following line requires complex arithmetic
-    work[i,3] = sqrt(k2_num / (1.0 + v[i,PZI])) * s  # κs for each particle
-    work[i,4] = v[i,XI]  * cos(work[i,3])  +        s * work[i,1] * sincu(work[i,3])
-    v[i,PXI]  = v[i,PXI] * cos(work[i,3])  - k2_num * s * v[i,XI] * sincu(work[i,3])
-    work[i,5] = v[i,YI]  * cosh(work[i,3]) +        s * work[i,2] * sinhcu(work[i,3])
-    v[i,PYI]  = v[i,PYI] * cosh(work[i,3]) + k2_num * s * v[i,YI] * sinhcu(work[i,3])
-    v[i,ZI]   = (v[i,ZI] - (s / 4) * ( work[i,1]^2 * (1 + sincu(2.0work[i,3])) + work[i,2]^2 * (1 + sinhcu(2.0work[i,3]))
-                                       + k2_num / (1.0 + v[i,PZI])
-                                         * (v[i,XI]^2 * (1 - sincu(2.0work[i,3])) - v[i,YI]^2 * (1 - sinhcu(2.0work[i,3]))) )
-                         + (v[i,XI] * work[i,1] * sin(work[i,3])^2 - v[i,YI] * work[i,2] * sinh(work[i,3])^2) / 2)
-    v[i,XI] = work[i,4]
-    v[i,YI] = work[i,5]
+    work[i,3] = sqrt(abs(k2_num)) / (1.0 + v[i,PZI]) * s  # κs for each particle
+    if k2_num >= 0
+      work[i,4] = cos(work[i,3])
+      work[i,5] = cosh(work[i,3])
+      work[i,6] = sincu(work[i,3])
+      work[i,7] = sinhcu(work[i,3])
+    else
+      work[i,4] = cosh(work[i,3])
+      work[i,5] = cos(work[i,3])
+      work[i,6] = sinhcu(work[i,3])
+      work[i,7] = sincu(work[i,3])
+    end
+    v[i,PXI] = v[i,PXI] * work[i,4] - k2_num * s * v[i,XI] * work[i,6]
+    v[i,PYI] = v[i,PYI] * work[i,5] + k2_num * s * v[i,YI] * work[i,7]
+    v[i,ZI]  = (v[i,ZI] - (s / 4) * (  work[i,1]^2 * (1.0 + work[i,4] * work[i,6])
+                                     + work[i,2]^2 * (1.0 + work[i,5] * work[i,7])
+                                     + k2_num / (1.0 + v[i,PZI])^2
+                                         * ( v[i,XI]^2 * (1.0 - work[i,4] * work[i,6])
+                                           + v[i,YI]^2 * (1.0 - work[i,5] * work[i,7]) )  )
+                        + (k2_num / (1.0 + v[i,PZI])^2 * s^2 / 4)
+                          * ( v[i,XI] * work[i,1] * work[i,6]^2
+                            - v[i,YI] * work[i,2] * work[i,7]^2 )
+               )
+    v[i,XI]  = v[i,XI] * work[i,4] + s * work[i,1] * work[i,6]
+    v[i,YI]  = v[i,YI] * work[i,5] + s * work[i,2] * work[i,7]
   end end
   return v
 end # function quadrupole_matrix!()
@@ -206,12 +222,12 @@ L:  element length
 @inline function dkd_multipole!(i, v, work, beta_0, gamsqr_0, tilde_m, mm, kn, ks, L)
   @assert size(work, 2) >= 3 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 3) for dkd_multipole!()."
   @inbounds begin @FastGTPSA! begin
-  # ds = L / ns
-  # for i = 1:ns
-  exact_drift!(   i, v, work, beta_0, gamsqr_0, tilde_m, L / 2)
-  multipole_kick!(i, v, work, mm, kn * L, ks * L)
-  exact_drift!(   i, v, work, beta_0, gamsqr_0, tilde_m, L / 2)
-  # end
+    #ds = L / ns
+    #for i = 1:ns
+    exact_drift!(   i, v, work, beta_0, gamsqr_0, tilde_m, L / 2)
+    multipole_kick!(i, v, work, mm, kn * L, ks * L)
+    exact_drift!(   i, v, work, beta_0, gamsqr_0, tilde_m, L / 2)
+    #end
   end end
   return v
 end # function dkd_multipole!()
