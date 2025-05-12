@@ -96,7 +96,7 @@ k2_num:   g / Bρ0 = g / (p0 / q)
 L: element length
 """
 @inline function mkm_quadrupole!(i, v, work, beta_0, gamsqr_0, tilde_m, k2_num, L)
-  @assert size(work, 2) >= 5 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 5) for mkm_quadrupole!()."
+  @assert size(work, 2) >= 7 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 7) for mkm_quadrupole!()."
   @inbounds begin @FastGTPSA! begin
     #ds = L / ns
     #for i = 1:ns
