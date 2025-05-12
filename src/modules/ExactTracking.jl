@@ -7,7 +7,7 @@ Exact tracking methods
 # (equal to number of temporaries needed for a single particle)
 struct Exact end
 
-MAX_TEMPS(::Exact) = 5
+MAX_TEMPS(::Exact) = 7
 
 module ExactTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays
@@ -126,7 +126,7 @@ s: element length
   @inbounds begin @FastGTPSA! begin
     work[i,1] = v[i,PXI] / (1.0 + v[i,PZI])  # x'
     work[i,2] = v[i,PYI] / (1.0 + v[i,PZI])  # y'
-    work[i,3] = sqrt(abs(k2_num)) / (1.0 + v[i,PZI]) * s  # κs for each particle
+    work[i,3] = sqrt(abs(k2_num)) / (1.0 + v[i,PZI]) * s  # |κ|s for each particle
     if k2_num >= 0
       work[i,4] = cos(work[i,3])
       work[i,5] = cosh(work[i,3])
