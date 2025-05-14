@@ -6,17 +6,16 @@ Linear tracking methods expanded around "zero orbit".
 # Define the Linear tracking method, and number of rows in the work matrix 
 # (equal to number of temporaries needed for a single particle)
 struct Linear end
-
 MAX_TEMPS(::Linear) = 5
+
+module LinearTracking
+using ..GTPSA, ..BeamTracking, ..StaticArrays, ..KernelAbstractions
+using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel
+const TRACKING_METHOD = Linear
 
 # Maybe get rid of inline here and put in function-wise launch! ?
 # Drift kernel
-@kernel function linear_drift!(v, work, L, r56)
-  i = @index(Global, Linear)
-  linear_drift!(i, v, work, L, r56)
-end
-
-@inline function linear_drift!(i, v, work, L, r56)
+@makekernel function linear_drift!(i, v, work, L, r56)
   @inbounds begin @FastGTPSA! begin
     v[i,XI] += v[i,PXI] * L
     v[i,YI] += v[i,PYI] * L
@@ -34,12 +33,7 @@ end
 [ t[1:2]  t[3:4]  1   r56   ]
 
 =#
-@kernel function linear_coast_uncoupled!(v, work, mx::AbstractMatrix, my::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
-  i = @index(Global, Linear)
-  linear_coast_uncoupled!(i, v, work, mx, my, r56, d, t)
-end
-
-@inline function linear_coast_uncoupled!(i, v, work, mx::AbstractMatrix, my::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
+@makekernel function linear_coast_uncoupled!(i, v, work, mx::AbstractMatrix, my::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
   @assert size(work, 2) >= 1 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 1) for linear_coast_uncoupled!"
   @assert size(mx) == (2,2) "Size of matrix mx must be (2,2) for linear_coast_uncoupled!. Received $(size(mx))"
   @assert size(my) == (2,2) "Size of matrix my must be (2,2) for linear_coast_uncoupled!. Received $(size(my))"
@@ -69,12 +63,7 @@ end
   return v
 end
 
-@kernel function linear_coast!(v, work, mxy::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
-  i = @index(Global, Linear)
-  linear_coast!(i, v, work, mxy, r56, d, t)
-end
-
-@inline function linear_coast!(i, v, work, mxy::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
+@makekernel function linear_coast!(i, v, work, mxy::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
   @assert size(work, 2) >= 3 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 3) for linear_coast!"
   @assert size(mxy) == (4,4) "Size of matrix mxy must be (4,4) for linear_coast!. Received $(size(mxy))"
   @assert isnothing(d) || length(d) == 4 "The dispersion vector d must be either `nothing` or of length 4 for linear_coast!. Received $d"
@@ -104,10 +93,9 @@ end
   return v
 end
 
-@kernel function linear_6D!(v, work, m::AbstractMatrix)
+@makekernel function linear_6D!(i, v, work, m::AbstractMatrix)
   @assert size(work, 2) >= 5 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 5) for linear_6D!"
   @assert size(m) == (6,6) "Size of matrix m must be (6,6) for linear_6D!. Received $(size(m))"
-   i = @index(Global, Linear)
   @inbounds begin @FastGTPSA! begin
     work[i,1]= v[i,XI]
     work[i,2]= v[i,PXI]
@@ -187,4 +175,6 @@ function linear_bend_matrices(K0, L, gamma_0, e1=nothing, e2=nothing)
   end
 
   return mx, my, r56, d, t
+end
+
 end

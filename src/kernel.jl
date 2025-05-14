@@ -122,6 +122,39 @@ end
 # Call kernel directly
 @inline runkernel!(f!::F, i, v, args...; kwargs...) where {F} = f!(i, v, args...)
 
+
+macro makekernel(fcn)
+  fcn.head == :function || error("@makekernel must wrap a function definition")
+  body = esc(fcn.args[2])
+  signature = fcn.args[1].args
+
+  fcn_name = esc(signature[1])
+  args = esc.(signature[2:end])
+
+  stripped_args = map(signature[2:end]) do t
+    if t isa Expr
+      if t.args[1] isa Expr
+        esc(t.args[1].args[1])
+      else
+        esc(t.args[1])
+      end
+    else
+      esc(t)
+    end
+  end
+
+  return quote
+    @kernel function $(fcn_name)($(args[2:end]...))
+      $(stripped_args[1]) = @index(Global, Linear)
+      $(fcn_name)($(stripped_args...))
+    end
+  
+    @inline function $(fcn_name)($(args...))
+        $(body)
+    end
+  end
+end
+
 #=
 
 for particle in particles

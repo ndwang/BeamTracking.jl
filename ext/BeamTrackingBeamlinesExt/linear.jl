@@ -74,7 +74,7 @@ function linear_universal!(
     if isactive(bendparams)
       error("Linear tracking requires BendParams.g == BMultipoleParams.K0")
     end
-    runkernel!(BeamTracking.linear_drift!, i, v, work, L, L/gamma_0^2; kwargs...)
+    runkernel!(LinearTracking.linear_drift!, i, v, work, L, L/gamma_0^2; kwargs...)
   elseif haskey(bmultipoleparams.bdict, 0) # Solenoid
     if any(t -> t >= 1, keys(bmultipoleparams.bdict))
       error("Linear tracking does not support combined solenoid + other multipole magnets")
@@ -88,8 +88,8 @@ function linear_universal!(
 
     Ks = get_thick_strength(bmultipoleparams.bdict[0], L, bunch.Brho_ref)
 
-    mxy = BeamTracking.linear_solenoid_matrix(Ks, L)
-    runkernel!(BeamTracking.linear_coast!, i, v, work, mxy, L/gamma_0^2; kwargs...)
+    mxy = LinearTracking.linear_solenoid_matrix(Ks, L)
+    runkernel!(LinearTracking.linear_coast!, i, v, work, mxy, L/gamma_0^2; kwargs...)
   elseif haskey(bmultipoleparams.bdict, 1) # Bend
     if !isactive(bendparams)
       error("Linear tracking requires BendParams.g ≈ BMultipoleParams.K0")
@@ -106,22 +106,22 @@ function linear_universal!(
     if !(K0 ≈ bendparams.g)
       error("Linear tracking requires BendParams.g ≈ BMultipoleParams.K0")
     end
-    mx, my, r56, d, t = BeamTracking.linear_bend_matrices(K0, L, gamma_0, bendparams.e1, bendparams.e2)
-    runkernel!(BeamTracking.linear_coast_uncoupled!, i, v, work, mx, my, r56, d, t; kwargs...)
+    mx, my, r56, d, t = LinearTracking.linear_bend_matrices(K0, L, gamma_0, bendparams.e1, bendparams.e2)
+    runkernel!(LinearTracking.linear_coast_uncoupled!, i, v, work, mx, my, r56, d, t; kwargs...)
   elseif haskey(bmultipoleparams.bdict, 2) # Quadrupole
     if isactive(bendparams)
       error("For Linear combined function magnet tracking, both the K0 multipole and BendParams must be set")
     end
     if L == 0
       K1L = get_thin_strength(bmultipoleparams.bdict[2], L, bunch.Brho_ref)
-      mx, my = BeamTracking.linear_thin_quad_matrices(K1L)
+      mx, my = LinearTracking.linear_thin_quad_matrices(K1L)
     else
       K1 = get_thick_strength(bmultipoleparams.bdict[2], L, bunch.Brho_ref)
-      mx, my = BeamTracking.linear_quad_matrices(K1, L)
+      mx, my = LinearTracking.linear_quad_matrices(K1, L)
     end
-    runkernel!(BeamTracking.linear_coast_uncoupled!, i, v, work, mx, my, L/gamma_0^2; kwargs...)
+    runkernel!(LinearTracking.linear_coast_uncoupled!, i, v, work, mx, my, L/gamma_0^2; kwargs...)
   else # Drift for higher-order multipoles
-    runkernel!(BeamTracking.linear_drift!, i, v, work, L, L/gamma_0^2; kwargs...)
+    runkernel!(LinearTracking.linear_drift!, i, v, work, L, L/gamma_0^2; kwargs...)
   end
 
   return v
