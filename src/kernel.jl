@@ -7,24 +7,6 @@ const PYI = 4
 const ZI  = 5
 const PZI = 6
 
-
-@kwdef struct ParallelLaunchConfig
-  groupsize::Int             = -1 # backend isa CPU ? floor(Int,REGISTER_SIZE/sizeof(eltype(v))) : 256 
-  multithread_threshold::Int = 0
-  use_KA::Bool               # !(get_backend(v) isa CPU && isnothing(groupsize))
-  use_explicit_SIMD::Bool    = false
-end
-
-function ParallelLaunchConfig(v; kwargs...)
-  if :groupsize in keys(kwargs)
-    use_KA = true
-  else
-    use_KA = !(get_backend(v) isa CPU)
-  end
-  return ParallelLaunchConfig(; use_KA = use_KA, kwargs...)
-end
-
-
 # Generic function to launch a kernel on the bunch coordinates matrix
 # Matrix v should ALWAYS be in SoA whether for real or as a view via tranpose(v)
 
