@@ -8,6 +8,23 @@ const ZI  = 5
 const PZI = 6
 
 
+@kwdef struct ParallelLaunchConfig
+  groupsize::Int             = -1 # backend isa CPU ? floor(Int,REGISTER_SIZE/sizeof(eltype(v))) : 256 
+  multithread_threshold::Int = 0
+  use_KA::Bool               # !(get_backend(v) isa CPU && isnothing(groupsize))
+  use_explicit_SIMD::Bool    = false
+end
+
+function ParallelLaunchConfig(v; kwargs...)
+  if :groupsize in keys(kwargs)
+    use_KA = true
+  else
+    use_KA = !(get_backend(v) isa CPU)
+  end
+  return ParallelLaunchConfig(; use_KA = use_KA, kwargs...)
+end
+
+
 # Generic function to launch a kernel on the bunch coordinates matrix
 # Matrix v should ALWAYS be in SoA whether for real or as a view via tranpose(v)
 
@@ -27,97 +44,83 @@ ALWAYS be the following:
 - `simd_lane_width`       -- The number of SIMD lanes to use. Default is `REGISTER_SIZE/sizeof(eltype(A))`
 - `multithread_threshold` -- Number of particles at which multithreading is used. Default is `1e6``
 """
-@inline @generated function launch!(f!::F, v::V, args...) where {F<:Function,V}
-  #=
-  N_particle = size(v, 1)
-  @simd for i in 1:N_particle
-    @assert last(i) <= N_particle "Out of bounds!"
-    f!(i, v, args...)
-  end
-=#
-  
-  backend = get_backend(similar(V,0,0))
-  if backend isa CPU
-    groupsize = floor(Int,REGISTER_SIZE/sizeof(eltype(V))) # Explicit SIMD
-  else
-    # Then this is CUDA block size
-    groupsize = 256 
-  end
-  kernel! = tgeneric_kernel!(backend, groupsize)
-  return quote
-    N_particle = size(v, 1)
-    $(kernel!)(f!, v, args; ndrange=N_particle)
-    KernelAbstractions.synchronize($backend)
-    return v
-  end
-  #=
-  return quote
+@inline function launch!(
+  f!::F, 
+  v::V, 
+  args...; 
+  groupsize::Union{Nothing,Integer}=nothing, #backend isa CPU ? floor(Int,REGISTER_SIZE/sizeof(eltype(v))) : 256 
+  multithread_threshold::Integer=0,
+  use_KA::Bool=!(get_backend(v) isa CPU && isnothing(groupsize)),
+  use_explicit_SIMD::Bool=false
+) where {F<:Function,V}
 
+  if use_KA && use_explicit_SIMD
+    error("Cannot use both KernelAbstractions (KA) and explicit SIMD")
   end
+
   N_particle = size(v, 1)
   backend = get_backend(v)
-  kernel! = tgeneric_kernel!(backend, groupsize)
-  kernel!(f!, v, args; ndrange = N_particle)
-  
-  return v
-  =#
-  #=
-  if A <: SIMD.FastContiguousArray && eltype(A) <: SIMD.ScalarTypes && simd_lane_width != 0 # do SIMD
-    lane = VecRange{simd_lane_width}(0)
-    rmn = rem(N_particle, simd_lane_width)
-    N_SIMD = N_particle - rmn
-    if N_particle >= multithread_threshold
-      Threads.@threads for i in 1:simd_lane_width:N_SIMD
-        @assert last(i) <= N_particle "Out of bounds!"  # Use last because VecRange SIMD
-        f!(lane+i, v, work, args...)
+  if !use_KA && backend isa GPU
+    error("For GPU parallelized kernel launching, KernelAbstractions (KA) must be used")
+  end
+
+  if !use_KA
+    if use_explicit_SIMD && A <: SIMD.FastContiguousArray && eltype(A) <: SIMD.ScalarTypes && VectorizationBase.pick_vector_width(eltype(A)) > 1 # do SIMD
+      simd_lane_width = VectorizationBase.pick_vector_width(eltype(A))
+      lane = VecRange{simd_lane_width}(0)
+      rmn = rem(N_particle, simd_lane_width)
+      N_SIMD = N_particle - rmn
+      if N_particle >= multithread_threshold
+        Threads.@threads for i in 1:simd_lane_width:N_SIMD
+          @assert last(i) <= N_particle "Out of bounds!"  # Use last because VecRange SIMD
+          f!(lane+i, v, args...)
+        end
+      else
+        for i in 1:simd_lane_width:N_SIMD
+          @assert last(i) <= N_particle "Out of bounds!"  # Use last because VecRange SIMD
+          f!(lane+i, v, args...)
+        end
+      end
+      # Do the remainder
+      for i in N_SIMD+1:N_particle
+        @assert last(i) <= N_particle "Out of bounds!"
+        f!(i, v, args...)
       end
     else
-      for i in 1:simd_lane_width:N_SIMD
-        @assert last(i) <= N_particle "Out of bounds!"  # Use last because VecRange SIMD
-        f!(lane+i, v, work, args...)
+      if N_particle >= multithread_threshold
+        Threads.@threads for i in 1:N_particle
+          @assert last(i) <= N_particle "Out of bounds!"
+          f!(i, v, args...)
+        end
+      else
+        @simd for i in 1:N_particle
+          @assert last(i) <= N_particle "Out of bounds!"
+          f!(i, v, args...)
+        end
       end
-    end
-    # Do the remainder
-    for i in N_SIMD+1:N_particle
-      @assert last(i) <= N_particle "Out of bounds!"
-      f!(i, v, work, args...)
     end
   else
-    if N_particle >= multithread_threshold
-      Threads.@threads for i in 1:N_particle
-        @assert last(i) <= N_particle "Out of bounds!"
-        f!(i, v, work, args...)
-      end
+    if isnothing(groupsize)
+      kernel! = f!(backend)
     else
-      @simd for i in 1:N_particle
-        @assert last(i) <= N_particle "Out of bounds!"
-        f!(i, v, work, args...)
-      end
+      kernel! = f!(backend, groupsize)
     end
+    kernel!(v, args...; ndrange=N_particle)
+    KernelAbstractions.synchronize(backend)
   end
   return v
-  =#
-end
-@kernel function tgeneric_kernel!(f!, v, args)
-  i = @index(Global, Linear)
-  f!(i, v, args...)
 end
 
-@kernel function tlindrft!(v, args)
-  i = @index(Global, Linear)
-  LinearTracking.linear_drift!(i, v, args...)
-end
 # collective effects
 # each threads corresponds to many particles
 # go through each element, each thread loops through each 
 # particle and does stuff with it
 
 # Call launch!
-@inline runkernel!(f!::F, i::Nothing, v, work, args...) where {F} =launch!(f!, v, work, args...)
+@inline runkernel!(f!::F, i::Nothing, v, work, args...; kwargs...) where {F} =launch!(f!, v, work, args...; kwargs...)
 
 # Call kernel directly
-@inline runkernel!(f!::F, i, v, work, args...) where {F} = f!(i, v, work, args...)
-
+@inline runkernel!(f!::F, i, v, work, args...; kwargs...) where {F} = f!(i, v, work, args...)
 
 #=
 

@@ -1,5 +1,5 @@
 module BeamTrackingBeamlinesExt
-using Beamlines, BeamTracking, GTPSA, StaticArrays
+using Beamlines, BeamTracking, GTPSA, StaticArrays, KernelAbstractions
 using Beamlines: isactive, BitsLineElement
 using BeamTracking: soaview, get_N_particle, calc_gamma, launch!, runkernel!
 import BeamTracking: track!, MAX_TEMPS
@@ -13,8 +13,9 @@ function track!(
   bunch::Bunch, 
   ele::LineElement; 
   work=zeros(eltype(bunch.v), get_N_particle(bunch), MAX_TEMPS(ele.tracking_method)),
+  kwargs...
 )
-  @noinline _track!(nothing, soaview(bunch), work, bunch, ele, ele.tracking_method)
+  @noinline _track!(nothing, soaview(bunch), work, bunch, ele, ele.tracking_method; kwargs...)
   return bunch
 end
 
@@ -34,7 +35,8 @@ function track!(
   bunch::Bunch, 
   bl::Beamline; 
   work=get_work(bunch, bl), 
-  outer_particle_loop::Bool=false
+  outer_particle_loop::Bool=false,
+  kwargs...
 )
   if length(bl.line) == 0
     return bunch
@@ -44,10 +46,10 @@ function track!(
 
   if !outer_particle_loop
     for ele in bl.line
-      track!(bunch, ele; work=work)
+      track!(bunch, ele; work=work, kwargs...)
     end
   else
-    launch!(outer_track!, soaview(bunch), work, bunch, bl)
+    launch!(outer_track!, soaview(bunch), work, bunch, bl; kwargs...)
   end
 
   return bunch

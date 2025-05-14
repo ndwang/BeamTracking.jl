@@ -9,14 +9,13 @@ struct Linear end
 
 MAX_TEMPS(::Linear) = 5
 
-module LinearTracking
-using ..GTPSA, ..BeamTracking, ..StaticArrays
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI
-
-const TRACKING_METHOD = Linear
-
 # Maybe get rid of inline here and put in function-wise launch! ?
 # Drift kernel
+@kernel function linear_drift!(v, work, L, r56)
+  i = @index(Global, Linear)
+  linear_drift!(i, v, work, r56)
+end
+
 @inline function linear_drift!(i, v, work, L, r56)
   @inbounds begin @FastGTPSA! begin
     v[i,XI] += v[i,PXI] * L
@@ -35,6 +34,11 @@ end
 [ t[1:2]  t[3:4]  1   r56   ]
 
 =#
+@kernel function linear_coast_uncoupled!(v, work, mx::AbstractMatrix, my::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
+  i = @index(Global, Linear)
+  linear_coast_uncoupled!(i, v, work, mx, my, r56, d, t)
+end
+
 @inline function linear_coast_uncoupled!(i, v, work, mx::AbstractMatrix, my::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
   @assert size(work, 2) >= 1 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 1) for linear_coast_uncoupled!"
   @assert size(mx) == (2,2) "Size of matrix mx must be (2,2) for linear_coast_uncoupled!. Received $(size(mx))"
@@ -63,6 +67,11 @@ end
     end end
   end
   return v
+end
+
+@kernel function linear_coast!(v, work, mxy::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
+  i = @index(Global, Linear)
+  linear_coast!(i, v, work, mxy, r56, d, t)
 end
 
 @inline function linear_coast!(i, v, work, mxy::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
@@ -95,9 +104,10 @@ end
   return v
 end
 
-@inline function linear_6D!(i, v, work, m::AbstractMatrix)
+@kernel function linear_6D!(v, work, m::AbstractMatrix)
   @assert size(work, 2) >= 5 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 5) for linear_6D!"
   @assert size(m) == (6,6) "Size of matrix m must be (6,6) for linear_6D!. Received $(size(m))"
+   i = @index(Global, Linear)
   @inbounds begin @FastGTPSA! begin
     work[i,1]= v[i,XI]
     work[i,2]= v[i,PXI]
@@ -111,7 +121,6 @@ end
     v[i,ZI]  = m[ZI, XI] * work[i,1] + m[ZI, PXI] * work[i,2] + m[ZI, YI] * work[i,3] + m[ZI, PYI] * work[i,4] + m[ZI, ZI] * v[i,ZI]   + m[ZI, PZI] * v[i,PZI]
     v[i,PZI] = m[PZI,XI] * work[i,1] + m[PZI,PXI] * work[i,2] + m[PZI,YI] * work[i,3] + m[PZI,PYI] * work[i,4] + m[PZI,ZI] * work[i,5] + m[PZI,PZI] * v[i,PZI]
   end end
-  return v
 end
 
 # Utility functions to create a linear matrix
@@ -178,6 +187,4 @@ function linear_bend_matrices(K0, L, gamma_0, e1=nothing, e2=nothing)
   end
 
   return mx, my, r56, d, t
-end
-
 end

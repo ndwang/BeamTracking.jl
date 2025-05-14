@@ -11,7 +11,7 @@ import GTPSA: sincu, sinhcu
 import Base: setproperty!
 
 export Bunch, Species, ParticleView, ELECTRON, POSITRON, PROTON, ANTIPROTON, sincu, sinhcu, sincuc
-export LinearTracking, Linear
+export Linear
 export ExactTracking, Exact
 export track!
 
