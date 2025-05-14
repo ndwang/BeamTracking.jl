@@ -49,7 +49,7 @@ ALWAYS be the following:
   v::V, 
   args...; 
   groupsize::Union{Nothing,Integer}=nothing, #backend isa CPU ? floor(Int,REGISTER_SIZE/sizeof(eltype(v))) : 256 
-  multithread_threshold::Integer=0,
+  multithread_threshold::Integer=Threads.nthreads() > 1 ? 1750*Threads.nthreads() : typemax(Int),
   use_KA::Bool=!(get_backend(v) isa CPU && isnothing(groupsize)),
   use_explicit_SIMD::Bool=false
 ) where {F<:Function,V}
@@ -65,9 +65,9 @@ ALWAYS be the following:
   end
 
   if !use_KA
-    if use_explicit_SIMD && A <: SIMD.FastContiguousArray && eltype(A) <: SIMD.ScalarTypes && VectorizationBase.pick_vector_width(eltype(A)) > 1 # do SIMD
-      simd_lane_width = VectorizationBase.pick_vector_width(eltype(A))
-      lane = VecRange{simd_lane_width}(0)
+    if use_explicit_SIMD && V <: SIMD.FastContiguousArray && eltype(V) <: SIMD.ScalarTypes && VectorizationBase.pick_vector_width(eltype(V)) > 1 # do SIMD
+      simd_lane_width = VectorizationBase.pick_vector_width(eltype(V))
+      lane = VecRange{Int(simd_lane_width)}(0)
       rmn = rem(N_particle, simd_lane_width)
       N_SIMD = N_particle - rmn
       if N_particle >= multithread_threshold
@@ -117,10 +117,10 @@ end
 # particle and does stuff with it
 
 # Call launch!
-@inline runkernel!(f!::F, i::Nothing, v, work, args...; kwargs...) where {F} =launch!(f!, v, work, args...; kwargs...)
+@inline runkernel!(f!::F, i::Nothing, v, args...; kwargs...) where {F} =launch!(f!, v, args...; kwargs...)
 
 # Call kernel directly
-@inline runkernel!(f!::F, i, v, work, args...; kwargs...) where {F} = f!(i, v, work, args...)
+@inline runkernel!(f!::F, i, v, args...; kwargs...) where {F} = f!(i, v, args...)
 
 #=
 

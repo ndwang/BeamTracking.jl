@@ -13,7 +13,7 @@ MAX_TEMPS(::Linear) = 5
 # Drift kernel
 @kernel function linear_drift!(v, work, L, r56)
   i = @index(Global, Linear)
-  linear_drift!(i, v, work, r56)
+  linear_drift!(i, v, work, L, r56)
 end
 
 @inline function linear_drift!(i, v, work, L, r56)
