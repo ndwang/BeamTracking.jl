@@ -112,7 +112,21 @@ macro makekernel(fcn)
 
   fcn_name = esc(signature[1])
   args = esc.(signature[2:end])
+  i = esc(signature[2])
+  v = esc(signature[3])
+  work = esc(signature[4])
 
+  const_args = map(signature[5:end]) do t
+    if t isa Expr
+      if t.head == :(::)
+        :(@Const($(esc(t))))
+      else
+        error("Default values and keyword arguments are NOT supported by @Const in KernelAbstractions.jl")
+      end
+    else
+      :(@Const($(esc(t))))
+    end
+  end
   stripped_args = map(signature[2:end]) do t
     if t isa Expr
       if t.args[1] isa Expr
@@ -126,7 +140,7 @@ macro makekernel(fcn)
   end
 
   return quote
-    @kernel function $(fcn_name)($(args[2:end]...))
+    @kernel function $(fcn_name)($v, $work, $(const_args...))
       $(stripped_args[1]) = @index(Global, Linear)
       $(fcn_name)($(stripped_args...))
     end
