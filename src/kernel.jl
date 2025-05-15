@@ -110,7 +110,7 @@ macro makekernel(fcn)
   body = esc(fcn.args[2])
   signature = fcn.args[1].args
 
-  fcn_name = esc(signature[1])
+  fcn_name = signature[1]
   args = esc.(signature[2:end])
   i = esc(signature[2])
   v = esc(signature[3])
