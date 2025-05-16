@@ -10,6 +10,8 @@ using GTPSA,
       StaticArrays, 
       SIMD,
       VectorizationBase
+
+using KernelAbstractions
       
 import GTPSA: sincu, sinhcu
 import Base: setproperty!

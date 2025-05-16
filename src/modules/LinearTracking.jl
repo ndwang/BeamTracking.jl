@@ -9,14 +9,12 @@ including drifts, quadrupoles, solenoids, and bends, using first-order approxima
 
 # Define the Linear tracking method
 struct Linear end
-
 # Number of temporaries needed for a single particle (number of columns in work matrix)
 MAX_TEMPS(::Linear) = 5
 
 module LinearTracking
-using ..GTPSA, ..BeamTracking, ..StaticArrays
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI
-
+using ..GTPSA, ..BeamTracking, ..StaticArrays, ..KernelAbstractions
+using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel
 const TRACKING_METHOD = Linear
 
 """
@@ -31,7 +29,7 @@ Track a particle through a drift space using linear approximation.
 - `L`: Drift length
 - `r56`: Longitudinal dispersion
 """
-@inline function linear_drift!(i, v, work, L, r56)
+@makekernel function linear_drift!(i, v, work, L, r56)
   @inbounds begin @FastGTPSA! begin
     v[i,XI] += v[i,PXI] * L
     v[i,YI] += v[i,PYI] * L
@@ -64,11 +62,11 @@ Track a particle through an uncoupled element
 - `d`: Dispersion vector (optional)
 - `t`: Path length terms (optional)
 """
-@inline function linear_coast_uncoupled!(i, v, work, mx::AbstractMatrix, my::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
-  #@assert size(work, 2) >= 1 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 1) for linear_coast_uncoupled!"
-  #@assert size(mx) == (2,2) "Size of matrix mx must be (2,2) for linear_coast_uncoupled!. Received $(size(mx))"
-  #@assert size(my) == (2,2) "Size of matrix my must be (2,2) for linear_coast_uncoupled!. Received $(size(my))"
-  #@assert isnothing(d) || length(d) == 4 "The dispersion vector d must be either `nothing` or of length 4 for linear_coast_uncoupled!. Received $d"
+@makekernel function linear_coast_uncoupled!(i, v, work, mx::AbstractMatrix, my::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}, t::Union{AbstractArray,Nothing})
+  ##@assert size(work, 2) >= 1 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 1) for linear_coast_uncoupled!"
+  ##@assert size(mx) == (2,2) "Size of matrix mx must be (2,2) for linear_coast_uncoupled!. Received $(size(mx))"
+  ##@assert size(my) == (2,2) "Size of matrix my must be (2,2) for linear_coast_uncoupled!. Received $(size(my))"
+  ##@assert isnothing(d) || length(d) == 4 "The dispersion vector d must be either `nothing` or of length 4 for linear_coast_uncoupled!. Received $d"
   if !isnothing(t)
     @inbounds begin @FastGTPSA! begin
       v[i,ZI] += t[XI] * v[i,XI] + t[PXI] * v[i,PXI] + t[YI] * v[i,YI] + t[PYI] * v[i,PYI]
@@ -108,10 +106,10 @@ Track a particle through a coupled element
 - `d`: Dispersion vector (optional)
 - `t`: Path length terms (optional)
 """
-@inline function linear_coast!(i, v, work, mxy::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}=nothing, t::Union{AbstractArray,Nothing}=nothing)
-  @assert size(work, 2) >= 3 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 3) for linear_coast!"
-  @assert size(mxy) == (4,4) "Size of matrix mxy must be (4,4) for linear_coast!. Received $(size(mxy))"
-  @assert isnothing(d) || length(d) == 4 "The dispersion vector d must be either `nothing` or of length 4 for linear_coast!. Received $d"
+@makekernel function linear_coast!(i, v, work, mxy::AbstractMatrix, r56, d::Union{AbstractArray,Nothing}, t::Union{AbstractArray,Nothing})
+  #@assert size(work, 2) >= 3 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 3) for linear_coast!"
+  #@assert size(mxy) == (4,4) "Size of matrix mxy must be (4,4) for linear_coast!. Received $(size(mxy))"
+  #@assert isnothing(d) || length(d) == 4 "The dispersion vector d must be either `nothing` or of length 4 for linear_coast!. Received $d"
   if !isnothing(t)
     @inbounds begin @FastGTPSA! begin
       v[i,ZI] += t[XI] * v[i,XI] + t[PXI] * v[i,PXI] + t[YI] * v[i,YI] + t[PYI] * v[i,PYI]
@@ -153,9 +151,9 @@ Track a particle using a full 6D transfer matrix.
 - Handles full 6D coupled motion
 - Uses work matrix for temporary calculations
 """
-@inline function linear_6D!(i, v, work, m::AbstractMatrix)
-  #@assert size(work, 2) >= 5 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 5) for linear_6D!"
-  #@assert size(m) == (6,6) "Size of matrix m must be (6,6) for linear_6D!. Received $(size(m))"
+@makekernel function linear_6D!(i, v, work, m::AbstractMatrix)
+  ##@assert size(work, 2) >= 5 && size(work, 1) >= size(v, 1) "Size of work matrix must be at least ($(size(v, 1)), 5) for linear_6D!"
+  ##@assert size(m) == (6,6) "Size of matrix m must be (6,6) for linear_6D!. Received $(size(m))"
   @inbounds begin @FastGTPSA! begin
     work[i,1]= v[i,XI]
     work[i,2]= v[i,PXI]
@@ -169,7 +167,6 @@ Track a particle using a full 6D transfer matrix.
     v[i,ZI]  = m[ZI, XI] * work[i,1] + m[ZI, PXI] * work[i,2] + m[ZI, YI] * work[i,3] + m[ZI, PYI] * work[i,4] + m[ZI, ZI] * v[i,ZI]   + m[ZI, PZI] * v[i,PZI]
     v[i,PZI] = m[PZI,XI] * work[i,1] + m[PZI,PXI] * work[i,2] + m[PZI,YI] * work[i,3] + m[PZI,PYI] * work[i,4] + m[PZI,ZI] * work[i,5] + m[PZI,PZI] * v[i,PZI]
   end end
-  return v
 end
 
 # Utility functions to create a linear matrix
