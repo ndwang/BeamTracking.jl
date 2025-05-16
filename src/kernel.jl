@@ -2,7 +2,7 @@
 const REGISTER_SIZE = VectorizationBase.register_size()
 
 """
-    launch!(f!::F, v::A, args...; groupsize, multithread_threshold, use_KA, use_explicit_SIMD)
+    launch!(f!::F, v::V, args...; groupsize, multithread_threshold, use_KA, use_explicit_SIMD)
 
 Launch a kernel function on particle coordinates with automatic optimization for both CPU and GPU backends.
 
@@ -21,7 +21,7 @@ Launch a kernel function on particle coordinates with automatic optimization for
   f!::F, 
   v::V, 
   args...; 
-  groupsize::Union{Nothing,Integer}=nothing, #backend isa CPU ? floor(Int,REGISTER_SIZE/sizeof(eltype(v))) : 256 
+  groupsize::Union{Nothing,Integer}=nothing,
   multithread_threshold::Integer=Threads.nthreads() > 1 ? 1750*Threads.nthreads() : typemax(Int),
   use_KA::Bool=!(get_backend(v) isa CPU && isnothing(groupsize)),
   use_explicit_SIMD::Bool=false
