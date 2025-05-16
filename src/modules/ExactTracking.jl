@@ -53,30 +53,31 @@ end
   return v
 end
 
+function sincu(x)
+  return sinc(x/pi)
+end
+
 @inline function exact_bend!(i, v, work, theta, gtot, g, L, mec2, p0c, beta_ref)
-  #how much space complexity to sacrifice for time complexity?
   @inbounds begin #@FastGTPSA! begin
       work[i,1] = sqrt((1 + v[i,PZI])^2 - v[i,PYI]^2) #pt
-      work[i,2] = asin(v[i,PXI] / work[i,1]) #phi1
+      work[i,2] = theta + asin(v[i,PXI] / work[i,1]) #phi1
       work[i,3] = gtot / work[i,1] #gp
-      work[i,4] = theta + work[i,2] #theta + phi1
-      work[i,5] = cos(work[i,4]) #cos(theta + phi1)
+      work[i,4] = 1+g*v[i,XI] # 1 + g * x
+      work[i,5] = cos(work[i,2]) #cos(theta + phi1)
       work[i,6] = sincu(theta) #sincu(theta)
-      # work[i,13] = 1+g*v[i,XI] # 1 + g * x
-      # work[i,7] = 2*work[i,13]*sin(work[i,4])*L*work[i,6]- work[i,3]*work[i,13]^2*L^2*(work[i,6])^2 #alpha
-      work[i,7] = 2*(1+g*v[i,XI])*sin(work[i,4])*L*work[i,6]- work[i,3]*(1+g*v[i,XI])^2*L^2*(work[i,6])^2 #alpha
-      if abs(theta + work[i,2]) < π/2
+      work[i,7] = 2*work[i,4]*sin(work[i,2])*L*work[i,6]- work[i,3]*work[i,4]^2*L^2*(work[i,6])^2 #alpha
+      if abs(work[i,2]) < π/2
           work[i,8] = work[i,7]/(sqrt(work[i,5]^2 + work[i,3]*work[i,7]) + work[i,5]) #xi
       else
           work[i,8] = (sqrt(work[i,5]^2 + work[i,3]*work[i,7]) - work[i,5]) / work[i,3] #xi
       end
       work[i,9] = -L*work[i,6]-v[i,XI]*sin(theta) #Lcv
-      work[i,10] = 2 * (work[i,4] - atan(work[i,8], -work[i,9])) #theta_p
+      work[i,10] = 2 * (work[i,2] - atan(work[i,8], -work[i,9])) #theta_p
       work[i,11] = sqrt(work[i,9]^2 + work[i,8]^2) / sincu(work[i,10]/2) #Lp
       work[i,12] = (v[i,PZI] * p0c + p0c) #p
 
       v[i,XI] = v[i,XI]*cos(theta) - g/2*L^2*(sincu(theta/2))^2 + work[i,8]
-      v[i,PXI] = work[i,1]*sin(work[i,4] - work[i,10])
+      v[i,PXI] = work[i,1]*sin(work[i,2] - work[i,10])
       v[i,YI] = v[i,YI] + v[i,PYI]*work[i,11]/work[i,1] 
       v[i,ZI] = v[i,ZI] - (1 + v[i,PZI])*work[i,11]/work[i,1] + 
                       L*(work[i,12]/sqrt(mec2^2+work[i,12]^2))/beta_ref
