@@ -14,6 +14,11 @@ using ..GTPSA, ..BeamTracking, ..StaticArrays
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI
 const TRACKING_METHOD = Exact
 
+export exact_drift!
+export mkm_quadrupole!, quadrupole_matrix!, quadrupole_kick!
+export dkd_multipole!, multipole_kick!
+export exact_sbend!
+
 # Update the reference energy of the canonical coordinates
 # BUG: z and pz are not updated correctly
 #=
@@ -58,7 +63,7 @@ tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
 L: element length
 """
 @inline function exact_drift!(i, v, work, beta_0, gamsqr_0, tilde_m, L)
-  @assert size(work, 2) >= 1 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 1) for exact_drift!()."
+  @assert size(work, 2) >= 1 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 1) for exact_drift!()."
   @inbounds begin @FastGTPSA! begin
     work[i,1] = sqrt((1.0 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2))  # P_s
     v[i,XI]   = v[i,XI] + v[i,PXI] * L / work[i,1]
@@ -96,15 +101,15 @@ k2_num:   g / Bρ0 = g / (p0 / q)
 L: element length
 """
 @inline function mkm_quadrupole!(i, v, work, beta_0, gamsqr_0, tilde_m, k2_num, L)
-  @assert size(work, 2) >= 7 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 7) for mkm_quadrupole!()."
-  @inbounds begin @FastGTPSA! begin
+  @assert size(work, 2) >= 7 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 7) for mkm_quadrupole!()."
+  @inbounds begin #@FastGTPSA! begin
     #ds = L / ns
     #for i = 1:ns
     quadrupole_matrix!(i, v, work, k2_num, L / 2)
     quadrupole_kick!(  i, v, work, beta_0, gamsqr_0, tilde_m, L)
     quadrupole_matrix!(i, v, work, k2_num, L / 2)
     #end
-  end end
+  end #end
   return v
 end # function mkm_quadrupole!()
 
@@ -122,8 +127,8 @@ k2_num:  g / Bρ0 = g / (p0 / q)
 s: element length
 """
 @inline function quadrupole_matrix!(i, v, work, k2_num, s)
-  @assert size(work, 2) >= 7 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 7) for quadrupole_matrix!()."
-  @inbounds begin @FastGTPSA! begin
+  @assert size(work, 2) >= 7 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 7) for quadrupole_matrix!()."
+  @inbounds begin #@FastGTPSA! begin
     work[i,1] = v[i,PXI] / (1.0 + v[i,PZI])  # x'
     work[i,2] = v[i,PYI] / (1.0 + v[i,PZI])  # y'
     work[i,3] = sqrt(abs(k2_num)) / (1.0 + v[i,PZI]) * s  # |κ|s for each particle
@@ -151,7 +156,7 @@ s: element length
                )
     v[i,XI]  = v[i,XI] * work[i,4] + s * work[i,1] * work[i,6]
     v[i,YI]  = v[i,YI] * work[i,5] + s * work[i,2] * work[i,7]
-  end end
+  end #end
   return v
 end # function quadrupole_matrix!()
 
@@ -176,21 +181,21 @@ tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
 s: element length
 """
 @inline function quadrupole_kick!(i, v, work, beta_0, gamsqr_0, tilde_m, s)
-  @assert size(work, 2) >= 3 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 3) for quadrupole_kick!"
-  @inbounds begin @FastGTPSA! begin
-  work[i,1] = 1 + v[i,PZI]             # reduced momentum, P/P0 = 1 + δ
+  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for quadrupole_kick!"
+  @inbounds begin #@FastGTPSA! begin
+  work[i,1] = 1.0 + v[i,PZI]             # reduced momentum, P/P0 = 1 + δ
   work[i,2] = v[i,PXI]^2 + v[i,PYI]^2  # P⟂^2
-  work[i,3] = sqrt(p^2 - ptr2)         # Ps
+  work[i,3] = sqrt(work[i,1]^2 - work[i,2])         # Ps
   v[i,XI] = v[i,XI] + s * v[i,PXI] / work[i,1] * work[i,2] / (work[i,3] * (work[i,1] + work[i,3]))
   v[i,YI] = v[i,YI] + s * v[i,PYI] / work[i,1] * work[i,2] / (work[i,3] * (work[i,1] + work[i,3]))
   v[i,ZI] = v[i,ZI] - s * ( (1.0 + v[i,PZI])
-                              * (work[i,2] - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
-                                / ( beta_0 * sqrt((1.0 + v[i,PZI])^2 + tilde_m^2) * work[i,3]
-                                    * (beta_0 * sqrt((1.0 + v[i,PZI])^2 + tilde_m^2) + work[i,3])
+                              * (work[i,2] - v[i,PZI] * (1.0 + work[i,1]) / gamsqr_0)
+                                / ( beta_0 * sqrt(work[i,1]^2 + tilde_m^2) * work[i,3]
+                                    * (beta_0 * sqrt(work[i,1]^2 + tilde_m^2) + work[i,3])
                                   )
-                            - work[i,2] / (2 * (1 + v[i,PZI])^2)
+                            - work[i,2] / (2 * work[i,1]^2)
                           )
-  end end
+  end #end
   return v
 end # function quadrupole_kick!()
 
@@ -220,7 +225,7 @@ ks: vector of skew multipole strengths scaled by Bρ0
 L:  element length
 """
 @inline function dkd_multipole!(i, v, work, beta_0, gamsqr_0, tilde_m, mm, kn, ks, L)
-  @assert size(work, 2) >= 3 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 3) for dkd_multipole!()."
+  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for dkd_multipole!()."
   @inbounds begin @FastGTPSA! begin
     #ds = L / ns
     #for i = 1:ns
@@ -234,8 +239,10 @@ end # function dkd_multipole!()
 
 
 """
-This function tracks a beam of particles through a thin-lens
-multipole having integrated normal and skew strengths in the
+    multipole_kick!(i, v, work, mm, knl, ksl)
+
+Track a beam of particles through a thin-lens multipole
+having integrated normal and skew strengths listed in the
 coefficient vectors knl and ksl respectively. The vector mm
 lists the order of the corresponding entries in knl and ksl.
 
@@ -246,17 +253,21 @@ thin-lens (zero-length) element.
 
 The algorithm used in this function takes advantage of the
 complex representation of the vector potential Az,
-  - Re{ Σ_m (bm + i am) (x + i y)^m / m },
+  - ``-Re{ sum_m (b_m + i a_m) (x + i y)^m / m }``,
 and uses a Horner-like scheme (see Shachinger and Talman
 [SSC-52]) to compute the transverse kicks induced by a pure
 multipole magnet.  This method supposedly has good numerical
 properties, though I've not seen a proof of that.
 
-Arguments
-—————————
-mm:  vector of m values for non-zero multipole coefficients
-knl: vector of normal integrated multipole strengths
-ksl: vector of skew integrated multipole strengths
+DTA: Ordering matters!
+DTA: Add thin dipole kick.
+
+### Arguments
+ - mm:  vector of m values for non-zero multipole coefficients </br>
+ - knl: vector of normal integrated multipole strengths </br>
+ - ksl: vector of skew integrated multipole strengths </br>
+
+
      NB: Here the j-th component of knl (ksl) denotes the
        normal (skew) component of the multipole strength of
        order mm[j] (after scaling by the reference Bρ).
@@ -264,8 +275,8 @@ ksl: vector of skew integrated multipole strengths
        normal integrated sextupole strength scaled by Bρo.
 """
 @inline function multipole_kick!(i, v, work, mm, knl, ksl)
-  @assert size(work, 2) >= 3 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 3) for multipole_kick!()."
-  @inbounds begin @FastGTPSA! begin
+  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for multipole_kick!()."
+  @inbounds begin #@FastGTPSA! begin
   jm = length(mm)
   m = mm[jm]
   if m == 1 return v end
@@ -285,7 +296,7 @@ ksl: vector of skew integrated multipole strengths
   end
   v[i,PXI] -= work[i,1]
   v[i,PYI] += work[i,2]
-  end end
+  end #end
   return v
 end # function multipole_kick!()
 
@@ -313,6 +324,9 @@ end # function multipole_kick!()
 #end # function binom()
 
 
+#
+# ===============  E X A C T   S E C T O R   B E N D  ===============
+#
 """
 This function implements exact symplectic tracking through a
 sector bend, derived using the Hamiltonian (25.9) given in the
@@ -332,7 +346,7 @@ e2: exit face angle (+ve angle <=> toward rbend)
 Lr: element arc length
 """
 @inline function exact_sbend!(i, v, work, beta_0, brho_0, hc, b0, e1, e2, Lr)
-  @assert size(work, 2) >= 5 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 5) for multipole_kick!()."
+  @assert size(work, 2) >= 5 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 5) for multipole_kick!()."
   @inbounds begin @FastGTPSA! begin
   rho = brho0 / b0
   ang = hc * Lr
