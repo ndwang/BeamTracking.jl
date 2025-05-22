@@ -10,7 +10,7 @@ struct Exact end
 MAX_TEMPS(::Exact) = 9
 
 module ExactTracking
-using ..GTPSA, ..BeamTracking, ..StaticArrays, ..ReferenceFrameRotations
+using ..GTPSA, ..BeamTracking, ..StaticArrays, ..ReferenceFrameRotations, ..KernelAbstractions
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel
 const TRACKING_METHOD = Exact
 
@@ -37,29 +37,48 @@ end
   return v
 end
 
-@makekernel function exact_drift!(i, v, work, L, tilde_m, gamsqr_0, beta_0)
-  #@assert size(work, 2) >= 1 && size(work, 1) == N_particle "Size of work matrix must be at least ($N_particle, 1) for exact_drift!"
+@makekernel function exact_drift!(i, v, work, L, p0c, mc2)
+  @assert size(work, 2) >= 2 && size(work, 1) >= size(v,1) "Size of work matrix must be at least ($(size(v,1)), 2) for exact_drift!"
   @inbounds begin @FastGTPSA! begin
-    work[i,1] = sqrt((1.0 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2))  # P_s
-    v[i,XI]   = v[i,XI] + v[i,PXI] * L / work[i,1]
-    v[i,YI]   = v[i,YI] + v[i,PYI] * L / work[i,1]
-    v[i,ZI]   = v[i,ZI] - ( (1.0 + v[i,PZI]) * L
-                  * ((v[i,PXI]^2 + v[i,PYI]^2) - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
-                  / ( beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) * work[i,1]
-                      * (beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) + work[i,1])
-                    )
-                )
+    work[i,1] = 1 + v[i,PZI]                                 # 1+δp
+    work[i,2] = sqrt(work[i,1]^2 - v[i,PXI]^2 - v[i,PYI]^2)  # P_s
+    v[i,XI]   += v[i,PXI] * L / work[i,2]
+    v[i,YI]   += v[i,PYI] * L / work[i,2]
+    v[i,ZI]   -= work[i,1] * L * ( 1 / work[i,2] - sqrt( (p0c^2 + mc2^2) / ((p0c * work[i,1])^2 + mc2^2) ) )
   end end
   return v
 end
 
-@inline function patch!(i, v, work, p0c, mc2, dx, dy, dz, winv::Union{AbstractArray,Nothing})
+@makekernel function exact_solenoid!(i, v, work, L, ks, p0c, mc2)
+  @assert size(work, 2) >= 8 && size(work, 1) >= size(v,1) "Size of work matrix must be at least ($(size(v,1)), 8) for exact_solenoid!"
+  @inbounds begin @FastGTPSA! begin
+    # Recurring variables
+    work[i,1] = 1 + v[i,PZI]
+    work[i,2] = sqrt(work[i,1]^2 - (v[i,PXI] + v[i,YI] * ks / 2)^2 - (v[i,PYI] - v[i,XI] * ks / 2)^2)
+    work[i,3] = sin(ks * L / work[i,2])
+    work[i,4] = 1 + cos(ks * L / work[i,2])
+    work[i,5] = 1 - cos(ks * L / work[i,2])
+    # Temporaries
+    work[i,6] = work[i,4] * v[i,XI] / 2 + work[i,3] * (v[i,PXI] / ks + v[i,YI] / 2) + work[i,5] * v[i,PYI] / ks
+    work[i,7] = work[i,3] * (v[i,PYI] / 2 - ks * v[i,XI] / 4) + work[i,4] * v[i,PXI] / 2 - ks * work[i,5] * v[i,YI] / 4
+    work[i,8] = work[i,3] * (v[i,PYI] / ks - v[i,XI] / 2) + (work[i,4] * v[i,YI] - work[i,5] * v[i,PXI]) / ks
+    # Update
+    v[i,PYI]  = ks * work[i,5] * v[i,XI] / 4 - work[i,3] * (v[i,PXI] / 2 + ks * v[i,YI] / 4) + work[i,4] * v[i,PYI] / 2
+    v[i,XI]   = work[i,6]
+    v[i,PXI]  = work[i,7]
+    v[i,YI]   = work[i,8]
+    v[i,ZI]  += work[i,1] * L * ( sqrt(p0c^2 + mc2^2) / sqrt((p0c*work[i,1])^2 + mc2^2) - 1 / work[i,2] )
+  end end
+  return v
+end
+
+@makekernel function patch!(i, v, work, p0c, mc2, dx, dy, dz, winv::Union{AbstractArray,Nothing})
   @assert size(work,2) >= 9 && size(work, 1) >= size(v, 1) "Size of work array must be at least ($(size(v, 1)), 9) for patch transformations. Received $work"
   @assert isnothing(winv) || (size(winv,1) == 3 && size(winv,2) == 3) "The inverse rotation matrix must be either `nothing` or 3x3 for patch!. Received $winv"
   @inbounds begin @FastGTPSA! begin
     # Temporary momentum [δp, pz]
-    work[i,1] = 1 + v[i,PZI]                                 # δp
-    work[i,2] = sqrt(work[i,1]^2 - v[i,PXI]^2 - v[i,PYI]^2)  # pz
+    work[i,1] = 1 + v[i,PZI]                                 # 1+δp
+    work[i,2] = sqrt(work[i,1]^2 - v[i,PXI]^2 - v[i,PYI]^2)  # p_s
   end end
     # Only apply rotations if needed
     if isnothing(winv)

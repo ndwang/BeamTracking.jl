@@ -19,6 +19,17 @@ function test_matrix(kernel, M_expected, args...; type_stable=VERSION >= v"1.11"
 
   # 1) Correctness
   @test norm(GTPSA.jacobian(v)[1:6,1:6] - scalar.(M_expected)) < tol 
+  if norm(GTPSA.jacobian(v)[1:6,1:6] - scalar.(M_expected)) >= tol
+    println("Kernel $(kernel) failed with norm $(norm(GTPSA.jacobian(v)[1:6,1:6] - scalar.(M_expected)))")
+    println("Expected: ")
+    for i in 1:6
+      println(scalar.(M_expected)[i,:])
+    end
+    println("Received: ")
+    for i in 1:6
+      println(GTPSA.jacobian(v)[i,:])
+    end
+  end
   # 2) Type stability
   if type_stable
     @test_opt BeamTracking.launch!(kernel, v, work, args...)
@@ -30,4 +41,5 @@ function test_matrix(kernel, M_expected, args...; type_stable=VERSION >= v"1.11"
 end
 
 include("LinearTracking.jl")
+include("ExactTracking.jl")
 include("BeamlinesExt.jl")
