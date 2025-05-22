@@ -12,6 +12,7 @@ MAX_TEMPS(::Exact) = 9
 module ExactTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays, ..ReferenceFrameRotations, ..KernelAbstractions
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel
+using ..BeamTracking: C_LIGHT
 const TRACKING_METHOD = Exact
 
 # Update the reference energy of the canonical coordinates
@@ -72,7 +73,7 @@ end
   return v
 end
 
-@makekernel function patch!(i, v, work, p0c, mc2, dx, dy, dz, winv::Union{AbstractArray,Nothing})
+@makekernel function patch!(i, v, work, p0c, mc2, dt, dx, dy, dz, winv::Union{AbstractArray,Nothing})
   @assert size(work,2) >= 9 && size(work, 1) >= size(v, 1) "Size of work array must be at least ($(size(v, 1)), 9) for patch transformations. Received $work"
   @assert isnothing(winv) || (size(winv,1) == 3 && size(winv,2) == 3) "The inverse rotation matrix must be either `nothing` or 3x3 for patch!. Received $winv"
   @inbounds begin @FastGTPSA! begin
@@ -87,10 +88,11 @@ end
       v[i,XI] -= dx
       v[i,YI] -= dy
       
+      # Apply t_offset
+      v[i,ZI] += work[i,1]*sqrt(p0c*work[i,1]/((p0c*work[i,1])^2+mc2^2))*C_LIGHT*dt
+
       # Drift to face
-      v[i,XI] -= dz * v[i,PXI] / work[i,2]
-      v[i,YI] -= dz * v[i,PYI] / work[i,2]
-      v[i,ZI] += dz * work[i,1] / work[i,2] + dz*work[i,1]*sqrt((p0c^2+mc2^2)/((p0c*work[i,1])^2+mc2^2))
+      v = exact_drift!(i, v, work, -dz, p0c, mc2)
       end end
     else
       @inbounds begin @FastGTPSA! begin
@@ -111,7 +113,10 @@ end
       v[i,PXI]  = winv[1,1]*work[i,5] + winv[1,2]*work[i,6] + winv[1,3]*work[i,2]
       v[i,PYI]  = winv[2,1]*work[i,5] + winv[2,2]*work[i,6] + winv[2,3]*work[i,2]
       work[i,8] = winv[3,1]*work[i,5] + winv[3,2]*work[i,6] + winv[3,3]*work[i,2]
-      
+
+      # Apply t_offset
+      v[i,ZI] += p0c*work[i,1]/sqrt((p0c*work[i,1])^2+mc2^2)*C_LIGHT*dt
+
       # Drift length
       work[i,9] = winv[3,1]*dx + winv[3,2]*dy + winv[3,3]*dz
 
@@ -128,6 +133,26 @@ end
 # Utility functions ============================================================
 
 # Rotation matrix
+"""
+  w_matrix(x_rot, y_rot, z_rot)
+
+Constructs a rotation matrix based on the given Bryan-Tait angles.
+
+Bmad/SciBmad follows the MAD convention of applying z, x, y rotations in that order.
+Furthermore, in ReferenceFrameRotations, the rotation angles around Y and Z axes 
+are defined as negative of the SciBmad `y_rot` and `z_rot`.
+
+The inverse matrix reverses the order of operations and their signs.
+
+
+Arguments:
+- `x_rot::Real`: Rotation angle around the x-axis.
+- `y_rot::Real`: Rotation angle around the y-axis.
+- `z_rot::Real`: Rotation angle around the z-axis.
+
+Returns:
+- `Matrix{Float64}`: Rotation matrix.
+"""
 function w_matrix(x_rot, y_rot, z_rot)
   return ReferenceFrameRotations.angle_to_rot(-z_rot, x_rot, -y_rot, :ZXY)
 end
