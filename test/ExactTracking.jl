@@ -43,8 +43,9 @@
         # GTPSA patch map comparison
         include("bmad_maps/patch.jl")
         dt, dx, dy, dz, winv = patch(TPS64{d_z})
+        L = winv[3,1]*dx + winv[3,2]*dy + winv[3,3]*dz
         v = transpose(@vars(d_z))
-        v = ExactTracking.patch!(1, v, zeros(eltype(v),1,9), 10e6, 510998.95,dt,dx,dy,dz,winv)
+        v = ExactTracking.patch!(1, v, zeros(eltype(v),1,9), L, 10e6, 510998.95,dt,dx,dy,dz,winv)
 
         coeffs_approx_equal(v_z, v, 5e-8)
 
@@ -52,7 +53,13 @@
         include("bmad_maps/drift.jl")
         L = TPS64{d_z}(1)
         v = transpose(@vars(d_z))
-        v = ExactTracking.exact_drift!(1, v, zeros(eltype(v),1,2), L, 10e6, 510998.95)
+        p0c = 10e6
+        mc2 = 510998.95
+        tilde_m = mc2/p0c
+        beta_0 = p0c/sqrt(p0c^2 + mc2^2)
+        gamsqr_0 = 1/(1 - beta_0^2)
+
+        v = ExactTracking.exact_drift!(1, v, zeros(eltype(v),1,2), L, tilde_m, gamsqr_0, beta_0)
 
         coeffs_approx_equal(v_z, v, 1e-8)
         

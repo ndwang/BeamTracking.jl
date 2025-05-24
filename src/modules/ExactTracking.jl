@@ -38,14 +38,18 @@ end
   return v
 end
 
-@makekernel function exact_drift!(i, v, work, L, p0c, mc2)
+@makekernel function exact_drift!(i, v, work, L, tilde_m, gamsqr_0, beta_0)
   @assert size(work, 2) >= 2 && size(work, 1) >= size(v,1) "Size of work matrix must be at least ($(size(v,1)), 2) for exact_drift!"
   @inbounds begin @FastGTPSA! begin
     work[i,1] = 1 + v[i,PZI]                                 # 1+δp
     work[i,2] = sqrt(work[i,1]^2 - v[i,PXI]^2 - v[i,PYI]^2)  # P_s
     v[i,XI]   += v[i,PXI] * L / work[i,2]
     v[i,YI]   += v[i,PYI] * L / work[i,2]
-    v[i,ZI]   -= work[i,1] * L * ( 1 / work[i,2] - sqrt( (p0c^2 + mc2^2) / ((p0c * work[i,1])^2 + mc2^2) ) )
+    v[i,ZI]   -=  work[i,1] * L *
+                    ((v[i,PXI]^2 + v[i,PYI]^2) - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0) / 
+                    ( beta_0 * sqrt(work[i,1]^2 + tilde_m^2) * work[i,2] * 
+                      (beta_0 * sqrt(work[i,1]^2 + tilde_m^2) + work[i,2])
+                    )
   end end
   return v
 end
@@ -73,7 +77,7 @@ end
   return v
 end
 
-@makekernel function patch!(i, v, work, p0c, mc2, dt, dx, dy, dz, winv::Union{AbstractArray,Nothing})
+@makekernel function patch!(i, v, work, L, p0c, mc2, dt, dx, dy, dz, winv::Union{AbstractArray,Nothing})
   @assert size(work,2) >= 9 && size(work, 1) >= size(v, 1) "Size of work array must be at least ($(size(v, 1)), 9) for patch transformations. Received $work"
   @assert isnothing(winv) || (size(winv,1) == 3 && size(winv,2) == 3) "The inverse rotation matrix must be either `nothing` or 3x3 for patch!. Received $winv"
   @inbounds begin @FastGTPSA! begin
@@ -123,7 +127,7 @@ end
       # Drift to face
       v[i,XI] -= work[i,7] * v[i,PXI] / work[i,8]
       v[i,YI] -= work[i,7] * v[i,PYI] / work[i,8]
-      v[i,ZI] += work[i,7] * work[i,1] / work[i,8] + work[i,9]*work[i,1]*sqrt((p0c^2+mc2^2)/((p0c*work[i,1])^2+mc2^2))
+      v[i,ZI] += work[i,7] * work[i,1] / work[i,8] + L*work[i,1]*sqrt((p0c^2+mc2^2)/((p0c*work[i,1])^2+mc2^2))
       end end
     end
   return v

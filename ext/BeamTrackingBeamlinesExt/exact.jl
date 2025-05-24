@@ -39,10 +39,7 @@
       else
         p0c = bunch.Brho_ref*C_LIGHT*bunch.charge/Q
         winv = w_inv_matrix(patchparams.dx_rot, patchparams.dy_rot, patchparams.dz_rot)
-        runkernel!(ExactTracking.patch!, i, v, work, p0c, species.mass, patchparams.dt, patchparams.dx, patchparams.dy, patchparams.dz, winv)
-        if L != 0
-          runkernel!(ExactTracking.exact_drift!, i, v, work, L, p0c, species.mass)
-        end
+        runkernel!(ExactTracking.patch!, i, v, work, L, p0c, species.mass, patchparams.dt, patchparams.dx, patchparams.dy, patchparams.dz, winv)
       end
     elseif isactive(bendparams) # Bend
       if isactive(bmultipoleparams) # Combined function bend
@@ -65,7 +62,10 @@
       end
     elseif L != 0 # Drift
       p0c = bunch.Brho_ref*C_LIGHT*species.charge/Q
-      runkernel!(ExactTracking.exact_drift!, i, v, work, L, p0c, species.mass)
+      tilde_m = species.mass/p0c
+      beta_0 = p0c/sqrt(p0c^2 + mc2^2)
+      gamsqr_0 = 1/(1 - beta_0^2)
+      runkernel!(ExactTracking.exact_drift!, i, v, work, L, tilde_m, gamsqr_0, beta_0)
     end
   
     return v
