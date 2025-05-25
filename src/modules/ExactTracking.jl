@@ -57,7 +57,18 @@ function sincu(x)
   return sinc(x/pi)
 end
 
-@inline function exact_bend!(i, v, work, theta, gtot, g, L, mec2, p0c, beta_ref)
+"""
+    exact_bend!(i, v, work, theta, gtot, g, L, mc2, p0c, beta_ref) 
+
+Tracks a particle through a sector bend via exact tracking. (no edge angles)
+
+#Arguments
+- 'theta'    -- 'g' * 'L'
+- 'gtot'     -- 'g' + 'dg'
+- 'p0c'      -- reference momentum in eV
+- 'beta_ref' -- 'p0c' / sqrt('mc2'^2 + 'p0c'^2)
+"""
+@inline function exact_bend!(i, v, work, theta, gtot, g, L, mc2, p0c, beta_ref)
   @inbounds begin #@FastGTPSA! begin
       work[i,1] = sqrt((1 + v[i,PZI])^2 - v[i,PYI]^2) #pt
       work[i,2] = theta + asin(v[i,PXI] / work[i,1]) #phi1
@@ -80,7 +91,7 @@ end
       v[i,PXI] = work[i,1]*sin(work[i,2] - work[i,10])
       v[i,YI] = v[i,YI] + v[i,PYI]*work[i,11]/work[i,1] 
       v[i,ZI] = v[i,ZI] - (1 + v[i,PZI])*work[i,11]/work[i,1] + 
-                      L*(work[i,12]/sqrt(mec2^2+work[i,12]^2))/beta_ref
+                      L*(work[i,12]/sqrt(mc2^2+work[i,12]^2))/beta_ref
   end #end
   return v
 end
