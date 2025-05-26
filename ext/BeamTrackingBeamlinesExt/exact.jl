@@ -48,7 +48,7 @@
       end
     elseif isactive(bmultipoleparams) # Straight multipole
       if haskey(bmultipoleparams.bdict, 0) # Solenoid
-        if L == 0
+        if L < 1e-10
           error("Exact thin-lens solenoid not yet implemented (L = 0)")
         else
           Ks = get_thick_strength(bmultipole.bdict[0], L, bunch.Brho_ref)*species.charge/Q
@@ -56,7 +56,7 @@
           tilde_m = species.mass/p0c
           gamsqr_0 = 1 + 1/tilde_m^2
           beta_0 = sqrt(1 - 1/gamsqr_0)
-          runkernel!(ExactTracking.exact_solenoid!, i, v, work, L, bmultipoleparams.Ks, tilde_m, gamsqr_0, beta_0)
+          runkernel!(ExactTracking.exact_solenoid!, i, v, work, L, Ks, tilde_m, gamsqr_0, beta_0)
         end
       elseif haskey(bmultipoleparams.bdict, 1) # Kick
         error("Exact kick not yet implemented")
