@@ -53,7 +53,10 @@
         else
           Ks = get_thick_strength(bmultipole.bdict[0], L, bunch.Brho_ref)*species.charge/Q
           p0c = bunch.Brho_ref*C_LIGHT*species.charge/Q
-          runkernel!(ExactTracking.exact_solenoid!, i, v, work, L, bmultipoleparams.Ks, p0c, species.mass)
+          tilde_m = species.mass/p0c
+          gamsqr_0 = 1 + 1/tilde_m^2
+          beta_0 = sqrt(1 - 1/gamsqr_0)
+          runkernel!(ExactTracking.exact_solenoid!, i, v, work, L, bmultipoleparams.Ks, tilde_m, gamsqr_0, beta_0)
         end
       elseif haskey(bmultipoleparams.bdict, 1) # Kick
         error("Exact kick not yet implemented")
@@ -63,8 +66,8 @@
     elseif L != 0 # Drift
       p0c = bunch.Brho_ref*C_LIGHT*species.charge/Q
       tilde_m = species.mass/p0c
-      beta_0 = p0c/sqrt(p0c^2 + mc2^2)
-      gamsqr_0 = 1/(1 - beta_0^2)
+      gamsqr_0 = 1 + 1/tilde_m^2
+      beta_0 = sqrt(1 - 1/gamsqr_0)
       runkernel!(ExactTracking.exact_drift!, i, v, work, L, tilde_m, gamsqr_0, beta_0)
     end
   

@@ -1,3 +1,13 @@
+#= Taylor map from a Bmad drift:
+    parameter[geometry] = Open
+    parameter[particle] = Electron
+    parameter[taylor_order] = 10
+    beginning[p0c] = 10e6
+    s: solenoid, L = 1, ks = 2
+    lat: line = (s)
+    use, lat
+=#
+using GTPSA
 d_z = Descriptor(6, 10)
 v_z = zeros(TPS64{d_z}, 6)
 

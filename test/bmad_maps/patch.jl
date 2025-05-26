@@ -7,6 +7,7 @@
     lat: line = (p)
     use, lat
 =#
+using GTPSA
 d_z = Descriptor(6, 10)
 v_z = zeros(TPS64{d_z}, 6)
 
