@@ -22,15 +22,18 @@
     @testset "Kernels" begin
         # GTPSA patch map comparison
         function patch_args(::Type{T}) where {T}
-            p0c = 10e6
-            mc2 = 510998.95
+            p0c = T(10e6)
+            mc2 = T(ELECTRON.mass)
+            tilde_m = mc2/p0c
+            gamsqr_0 = 1 + 1/tilde_m^2
+            beta_0 = 1/sqrt(1 + tilde_m^2)
             dt = T(1e-9)
             dx = T(2)
             dy = T(3)
             dz = T(4)
             winv = ExactTracking.w_inv_matrix(T(5),T(6),T(7))
             L = winv[3,1]*dx + winv[3,2]*dy + winv[3,3]*dz
-            return L, p0c, mc2, dt, dx, dy, dz, winv
+            return L, tilde_m, gamsqr_0, beta_0, dt, dx, dy, dz, winv
         end
 
         test_map(ExactTracking.patch!, "bmad_maps/patch.jl", patch_args(Float64)...; tol=5e-10)
@@ -42,7 +45,7 @@
             mc2 = T(ELECTRON.mass)
             tilde_m = mc2/p0c
             gamsqr_0 = 1 + 1/tilde_m^2
-            beta_0 = sqrt(1 - 1/gamsqr_0)
+            beta_0 = 1/sqrt(1 + tilde_m^2)
             return L, tilde_m, gamsqr_0, beta_0
         end
 
@@ -56,7 +59,7 @@
             mc2 = T(ELECTRON.mass)
             tilde_m = mc2/p0c
             gamsqr_0 = 1 + 1/tilde_m^2
-            beta_0 = sqrt(1 - 1/gamsqr_0)
+            beta_0 = 1/sqrt(1 + tilde_m^2)
             return L, ks, tilde_m, gamsqr_0, beta_0
         end
 
