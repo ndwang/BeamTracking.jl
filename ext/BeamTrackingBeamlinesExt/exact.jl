@@ -39,7 +39,7 @@
       else
         p0c = bunch.Brho_ref*C_LIGHT*bunch.charge/Q
         winv = w_inv_matrix(patchparams.dx_rot, patchparams.dy_rot, patchparams.dz_rot)
-        runkernel!(ExactTracking.patch!, i, v, work, L, p0c, species.mass, patchparams.dt, patchparams.dx, patchparams.dy, patchparams.dz, winv)
+        runkernel!(ExactTracking.patch!, i, v, work, L, p0c, massof(bunch.species), patchparams.dt, patchparams.dx, patchparams.dy, patchparams.dz, winv)
       end
     elseif isactive(bendparams) # Bend
       if isactive(bmultipoleparams) # Combined function bend
@@ -48,12 +48,12 @@
       end
     elseif isactive(bmultipoleparams) # Straight multipole
       if haskey(bmultipoleparams.bdict, 0) # Solenoid
-        if L < 1e-10
+        if L < 1e-6
           error("Exact thin-lens solenoid not yet implemented (L = 0)")
         else
-          Ks = get_thick_strength(bmultipole.bdict[0], L, bunch.Brho_ref)*species.charge/Q
-          p0c = bunch.Brho_ref*C_LIGHT*species.charge/Q
-          tilde_m = species.mass/p0c
+          Ks = get_thick_strength(bmultipole.bdict[0], L, bunch.Brho_ref)*chargeof(bunch.species)
+          p0c = bunch.Brho_ref*C_LIGHT*chargeof(bunch.species)
+          tilde_m = massof(bunch.species)/p0c
           gamsqr_0 = 1 + 1/tilde_m^2
           beta_0 = sqrt(1 - 1/gamsqr_0)
           runkernel!(ExactTracking.exact_solenoid!, i, v, work, L, Ks, tilde_m, gamsqr_0, beta_0)
@@ -64,8 +64,8 @@
         error("Exact solution does not exist for multipole elements")
       end
     elseif L != 0 # Drift
-      p0c = bunch.Brho_ref*C_LIGHT*species.charge/Q
-      tilde_m = species.mass/p0c
+      p0c = bunch.Brho_ref*C_LIGHT*chargeof(bunch.species)
+      tilde_m = massof(bunch.species)/p0c
       gamsqr_0 = 1 + 1/tilde_m^2
       beta_0 = sqrt(1 - 1/gamsqr_0)
       runkernel!(ExactTracking.exact_drift!, i, v, work, L, tilde_m, gamsqr_0, beta_0)
