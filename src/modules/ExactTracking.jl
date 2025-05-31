@@ -7,7 +7,7 @@ Exact tracking methods
 # (equal to number of temporaries needed for a single particle)
 struct Exact end
 
-MAX_TEMPS(::Exact) = 11
+MAX_TEMPS(::Exact) = 9
 
 module ExactTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays
@@ -127,35 +127,34 @@ k2_num:  g / Bρ0 = g / (p0 / q)
 s: element length
 """
 @inline function quadrupole_matrix!(i, v, work, k2_num, s)
-  @assert size(work, 2) >= 11 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 11) for quadrupole_matrix!()."
+  @assert size(work, 2) >= 9 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 9) for quadrupole_matrix!()."
   @inbounds begin #@FastGTPSA! begin
-    work[i,1] = 1.0 + v[i,PZI]            # reduced momentum, P/P0 = 1 + δ
-    work[i,2] = k2_num / work[i,1]        # κ^2 for each particle
-    work[i,3] = sqrt(abs(work[i,2])) * s  # |κ|s
-    work[i,4] = v[i,PXI] / work[i,1]      # x'
-    work[i,5] = v[i,PYI] / work[i,1]      # y'
+    work[i,1] = v[i,PXI] / (1.0 + v[i,PZI])      # x'
+    work[i,2] = v[i,PYI] / (1.0 + v[i,PZI])      # y'
+    work[i,3] = sqrt(abs(k2_num / (1.0 + v[i,PZI]))) * s  # |κ|s
 
     focus   = k2_num >= 0  # horizontally focusing (for positive particles)
     defocus = k2_num <  0  # horizontally defocusing (for positive particles)
-    work[i,6]  = focus * cos(work[i,3])     + defocus * cosh(work[i,3])
-    work[i,7]  = focus * cosh(work[i,3])    + defocus * cos(work[i,3])
-    work[i,8]  = focus * sincu(work[i,3])   + defocus * sinhcu(work[i,3])
-    work[i,9]  = focus * sinhcu(work[i,3])  + defocus * sincu(work[i,3])
-    work[i,10] = focus * sin(work[i,3])^2   - defocus * sinh(work[i,3])^2
-    work[i,11] = focus * sinh(work[i,3])^2  - defocus * sin(work[i,3])^2
+    work[i,4]  = focus * cos(work[i,3])     + defocus * cosh(work[i,3])
+    work[i,5]  = focus * cosh(work[i,3])    + defocus * cos(work[i,3])
+    work[i,6]  = focus * sincu(work[i,3])   + defocus * sinhcu(work[i,3])
+    work[i,7]  = focus * sinhcu(work[i,3])  + defocus * sincu(work[i,3])
+    work[i,8] = focus * sin(work[i,3])^2   - defocus * sinh(work[i,3])^2
+    work[i,9] = focus * sinh(work[i,3])^2  - defocus * sin(work[i,3])^2
 
-    v[i,PXI] = v[i,PXI] * work[i,6] - k2_num * s * v[i,XI] * work[i,8]
-    v[i,PYI] = v[i,PYI] * work[i,7] + k2_num * s * v[i,YI] * work[i,9]
-    v[i,ZI]  = (v[i,ZI] - (s / 4) * (  work[i,4]^2 * (1.0 + work[i,8] * work[i,6])
-                                     + work[i,5]^2 * (1.0 + work[i,9] * work[i,7])
-                                     + work[i,2] * ( v[i,XI]^2 * (1.0 - work[i,8] * work[i,6])
-                                                   - v[i,YI]^2 * (1.0 - work[i,9] * work[i,7]) )
+    v[i,PXI] = v[i,PXI] * work[i,4] - k2_num * s * v[i,XI] * work[i,6]
+    v[i,PYI] = v[i,PYI] * work[i,5] + k2_num * s * v[i,YI] * work[i,7]
+    v[i,ZI]  = (v[i,ZI] - (s / 4) * (  work[i,1]^2 * (1.0 + work[i,6] * work[i,4])
+                                     + work[i,2]^2 * (1.0 + work[i,7] * work[i,5])
+                                     + k2_num / (1.0 + v[i,PZI])
+                                         * ( v[i,XI]^2 * (1.0 - work[i,6] * work[i,4])
+                                           - v[i,YI]^2 * (1.0 - work[i,7] * work[i,5]) )
                                     )
-                        + ( v[i,XI] * work[i,4] * work[i,10]
-                          - v[i,YI] * work[i,5] * work[i,11] ) / 2.0
+                        + ( v[i,XI] * work[i,1] * work[i,8]
+                          - v[i,YI] * work[i,2] * work[i,9] ) / 2.0
                )
-    v[i,XI]  = v[i,XI] * work[i,6] + work[i,4] * s * work[i,8]
-    v[i,YI]  = v[i,YI] * work[i,7] + work[i,5] * s * work[i,9]
+    v[i,XI]  = v[i,XI] * work[i,4] + work[i,1] * s * work[i,6]
+    v[i,YI]  = v[i,YI] * work[i,5] + work[i,2] * s * work[i,7]
   end #end
   return v
 end # function quadrupole_matrix!()
