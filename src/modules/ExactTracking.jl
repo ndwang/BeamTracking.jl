@@ -7,7 +7,7 @@ Exact tracking methods
 # (equal to number of temporaries needed for a single particle)
 struct Exact end
 
-MAX_TEMPS(::Exact) = 7
+MAX_TEMPS(::Exact) = 13
 
 module ExactTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays
@@ -127,38 +127,79 @@ k2_num:  g / Bρ0 = g / (p0 / q)
 s: element length
 """
 @inline function quadrupole_matrix!(i, v, work, k2_num, s)
-  @assert size(work, 2) >= 7 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 7) for quadrupole_matrix!()."
+  @assert size(work, 2) >= 13 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 13) for quadrupole_matrix!()."
   @inbounds begin #@FastGTPSA! begin
-    work[i,1] = v[i,PXI] / (1.0 + v[i,PZI])  # x'
-    work[i,2] = v[i,PYI] / (1.0 + v[i,PZI])  # y'
-    work[i,3] = sqrt(abs(k2_num)) / (1.0 + v[i,PZI]) * s  # |κ|s for each particle
-    if k2_num >= 0
-      work[i,4] = cos(work[i,3])
-      work[i,5] = cosh(work[i,3])
-      work[i,6] = sincu(work[i,3])
-      work[i,7] = sinhcu(work[i,3])
-    else
-      work[i,4] = cosh(work[i,3])
-      work[i,5] = cos(work[i,3])
-      work[i,6] = sinhcu(work[i,3])
-      work[i,7] = sincu(work[i,3])
-    end
-    v[i,PXI] = v[i,PXI] * work[i,4] - k2_num * s * v[i,XI] * work[i,6]
-    v[i,PYI] = v[i,PYI] * work[i,5] + k2_num * s * v[i,YI] * work[i,7]
-    v[i,ZI]  = (v[i,ZI] - (s / 4) * (  work[i,1]^2 * (1.0 + work[i,4] * work[i,6])
-                                     + work[i,2]^2 * (1.0 + work[i,5] * work[i,7])
-                                     + k2_num / (1.0 + v[i,PZI])^2
-                                         * ( v[i,XI]^2 * (1.0 - work[i,4] * work[i,6])
-                                           + v[i,YI]^2 * (1.0 - work[i,5] * work[i,7]) )  )
-                        + (k2_num / (1.0 + v[i,PZI])^2 * s^2 / 4)
-                          * ( v[i,XI] * work[i,1] * work[i,6]^2
-                            - v[i,YI] * work[i,2] * work[i,7]^2 )
+    work[i,1] = 1.0 + v[i,PZI]            # reduced momentum, P/P0 = 1 + δ
+    work[i,2] = k2_num / work[i,1]        # κ^2 for each particle
+    work[i,3] = sqrt(abs(work[i,2])) * s  # |κ|s
+    work[i,4] = v[i,PXI] / work[i,1]      # x'
+    work[i,5] = v[i,PYI] / work[i,1]      # y'
+
+    focus   = k2_num >= 0  # horizontally focusing (for positive particles)
+    defocus = k2_num <  0  # horizontally defocusing (for positive particles)
+    work[i,6]  = focus * cos(work[i,3])     + defocus * cosh(work[i,3])
+    work[i,7]  = focus * cosh(work[i,3])    + defocus * cos(work[i,3])
+    work[i,8]  = focus * sincu(work[i,3])   + defocus * sinhcu(work[i,3])
+    work[i,9]  = focus * sinhcu(work[i,3])  + defocus * sincu(work[i,3])
+    work[i,10] = focus * sincu(2work[i,3])  + defocus * sinhcu(2work[i,3])
+    work[i,11] = focus * sinhcu(2work[i,3]) + defocus * sincu(2work[i,3])
+    work[i,12] = focus * sin(work[i,3])^2   - defocus * sinh(work[i,3])^2
+    work[i,13] = focus * sinh(work[i,3])^2  - defocus * sin(work[i,3])^2
+
+    v[i,PXI] = v[i,PXI] * work[i,6] - work[i,2] * work[i,1] * s * v[i,XI] * work[i,8]
+    v[i,PYI] = v[i,PYI] * work[i,7] + work[i,2] * work[i,1] * s * v[i,YI] * work[i,9]
+    v[i,ZI]  = (v[i,ZI] - (s / 4) * (  work[i,4]^2 * (1.0 + work[i,10])
+                                     + work[i,5]^2 * (1.0 + work[i,11])
+                                     + work[i,2] * v[i,XI]^2 * (1.0 - work[i,10])
+                                     - work[i,2] * v[i,YI]^2 * (1.0 - work[i,11]) )
+                        + ( v[i,XI] * work[i,4] * work[i,12]
+                          - v[i,YI] * work[i,5] * work[i,13] ) / 2.0
                )
-    v[i,XI]  = v[i,XI] * work[i,4] + s * work[i,1] * work[i,6]
-    v[i,YI]  = v[i,YI] * work[i,5] + s * work[i,2] * work[i,7]
+    v[i,XI]  = v[i,XI] * work[i,6] + work[i,4] * s * work[i,8]
+    v[i,YI]  = v[i,YI] * work[i,7] + work[i,5] * s * work[i,9]
   end #end
   return v
 end # function quadrupole_matrix!()
+
+#@inline function quadrupole_matrix!(i, v, work, k2_num, s)
+#  @assert size(work, 2) >= 7 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 7) for quadrupole_matrix!()."
+#  @inbounds begin #@FastGTPSA! begin
+#    focus   = k2_num >= 0  # horizontally focusing (for positive particles)
+#    defocus = k2_num <  0  # horizontally defocusing (for positive particles)
+#    work[i,1] = v[i,PXI] / (1.0 + v[i,PZI])  # x'
+#    work[i,2] = v[i,PYI] / (1.0 + v[i,PZI])  # y'
+#    work[i,3] = sqrt(abs(k2_num)) / (1.0 + v[i,PZI]) * s  # |κ|s for each particle
+#    work[i,4] = focus * cos(work[i,3])    + defocus * cosh(work[i,3])
+#    work[i,5] = focus * cosh(work[i,3])   + defocus * cos(work[i,3])
+#    work[i,6] = focus * sincu(work[i,3])  + defocus * sinhcu(work[i,3])
+#    work[i,7] = focus * sinhcu(work[i,3]) + defocus * sincu(work[i,3])
+##    if k2_num >= 0
+##      work[i,4] = cos(work[i,3])
+##      work[i,5] = cosh(work[i,3])
+##      work[i,6] = sincu(work[i,3])
+##      work[i,7] = sinhcu(work[i,3])
+##    else
+##      work[i,4] = cosh(work[i,3])
+##      work[i,5] = cos(work[i,3])
+##      work[i,6] = sinhcu(work[i,3])
+##      work[i,7] = sincu(work[i,3])
+##    end
+#    v[i,PXI] = v[i,PXI] * work[i,4] - k2_num * s * v[i,XI] * work[i,6]
+#    v[i,PYI] = v[i,PYI] * work[i,5] + k2_num * s * v[i,YI] * work[i,7]
+#    v[i,ZI]  = (v[i,ZI] - (s / 4) * (  work[i,1]^2 * (1.0 + work[i,4] * work[i,6])
+#                                     + work[i,2]^2 * (1.0 + work[i,5] * work[i,7])
+#                                     + k2_num / (1.0 + v[i,PZI])
+#                                         * ( v[i,XI]^2 * (1.0 - work[i,4] * work[i,6])
+#                                           + v[i,YI]^2 * (1.0 - work[i,5] * work[i,7]) )  )
+#                        + k2_num * s^2 / (2.0 * (1.0 + v[i,PZI])^2)
+#                          * ( v[i,XI] * work[i,1] * work[i,6]^2
+#                            - v[i,YI] * work[i,2] * work[i,7]^2 )
+#               )
+#    v[i,XI]  = v[i,XI] * work[i,4] + s * work[i,1] * work[i,6]
+#    v[i,YI]  = v[i,YI] * work[i,5] + s * work[i,2] * work[i,7]
+#  end #end
+#  return v
+#end # function quadrupole_matrix!()
 
 
 """
@@ -183,13 +224,13 @@ s: element length
 @inline function quadrupole_kick!(i, v, work, beta_0, gamsqr_0, tilde_m, s)
   @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for quadrupole_kick!"
   @inbounds begin #@FastGTPSA! begin
-  work[i,1] = 1.0 + v[i,PZI]             # reduced momentum, P/P0 = 1 + δ
-  work[i,2] = v[i,PXI]^2 + v[i,PYI]^2  # P⟂^2
-  work[i,3] = sqrt(work[i,1]^2 - work[i,2])         # Ps
+  work[i,1] = 1.0 + v[i,PZI]                 # reduced total momentum,  P/P0 = 1 + δ
+  work[i,2] = v[i,PXI]^2 + v[i,PYI]^2        # (transverse momentum)^2, P⟂^2 = (Px^2 + Py^2) / P0^2
+  work[i,3] = sqrt(work[i,1]^2 - work[i,2])  # longitudinal momentum,   Ps = √[(1 + δ)^2 - P⟂^2]
   v[i,XI] = v[i,XI] + s * v[i,PXI] / work[i,1] * work[i,2] / (work[i,3] * (work[i,1] + work[i,3]))
   v[i,YI] = v[i,YI] + s * v[i,PYI] / work[i,1] * work[i,2] / (work[i,3] * (work[i,1] + work[i,3]))
-  v[i,ZI] = v[i,ZI] - s * ( (1.0 + v[i,PZI])
-                              * (work[i,2] - v[i,PZI] * (1.0 + work[i,1]) / gamsqr_0)
+  v[i,ZI] = v[i,ZI] - s * ( work[i,1]
+                              * (work[i,2] - v[i,PZI] * (2.0 + v[i,PZI]) / gamsqr_0)
                                 / ( beta_0 * sqrt(work[i,1]^2 + tilde_m^2) * work[i,3]
                                     * (beta_0 * sqrt(work[i,1]^2 + tilde_m^2) + work[i,3])
                                   )

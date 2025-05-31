@@ -216,64 +216,79 @@ pzf_qd4 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,        
   @test v[:,BeamTracking.PYI] == pyf_dr4
   @test v[:,BeamTracking.PZI] == pzf_dr4
 
-#  # === quadrupoles ===
-#  #
-#  # 5 keV electron
-#  v = [ xi pxi yi pyi zi pzi ]
-#  work = zeros(size(v, 1), max_temps)
-#  BeamTracking.launch!(mkm_quadrupole!, v, work, β1, γsq1, 1/βγ1,  gr1 / Bρ1, lq1)
-#  @test v[:,BeamTracking.XI]  ≈  xf_qf1  (rtol=5.e-13)
-#  @test v[:,BeamTracking.YI]  ≈  yf_qf1  (rtol=5.e-13)
-#  @test v[:,BeamTracking.ZI]  ≈  zf_qf1  (rtol=5.e-13)
-#  @test v[:,BeamTracking.PXI] ≈  pxf_qf1 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PYI] ≈  pyf_qf1 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PZI] == pzf_qf1
-#  v = [ xi pxi yi pyi zi pzi ]
-#  BeamTracking.launch!(mkm_quadrupole!, v, work, β1, γsq1, 1/βγ1, -gr1 / Bρ1, lq1)
-#  @test v[:,BeamTracking.XI]  ≈  xf_qd1  (rtol=5.e-13)
-#  @test v[:,BeamTracking.YI]  ≈  yf_qd1  (rtol=5.e-13)
-#  @test v[:,BeamTracking.ZI]  ≈  zf_qd1  (rtol=5.e-13)
-#  @test v[:,BeamTracking.PXI] ≈  pxf_qd1 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PYI] ≈  pyf_qd1 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PZI] == pzf_qd1
-#  #
-#  # 1 MeV electron
-#  v = [ xi pxi yi pyi zi pzi ]
-#  BeamTracking.launch!(mkm_quadrupole!, v, work, β2, γsq2, 1/βγ2,  gr2 / Bρ2, lq2)
-#  @test v[:,BeamTracking.XI]  ≈  xf_qf2  (rtol=5.e-13)
-#  @test v[:,BeamTracking.YI]  ≈  yf_qf2  (rtol=5.e-13)
-#  @test v[:,BeamTracking.ZI]  ≈  zf_qf2  (rtol=5.e-13)
-#  @test v[:,BeamTracking.PXI] ≈  pxf_qf2 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PYI] ≈  pyf_qf2 (rtol=5.e-13)
-#  @tdst v[:,BeamTracking.PZI] == pzf_qf2
-#  #
-#  # 1 GeV electron
-#  v = [ xi pxi yi pyi zi pzi ]
-#  BeamTracking.launch!(mkm_quadrupole!, v, work, β3, γsq3, 1/βγ3, -gr3 / Bρ3, lq3)
-#  @test v[:,BeamTracking.XI]  ≈  xf_qd3  (rtol=5.e-13)
-#  @test v[:,BeamTracking.YI]  ≈  yf_qd3  (rtol=5.e-13)
-#  @test v[:,BeamTracking.ZI]  ≈  zf_qd3  (rtol=5.e-13)
-#  @test v[:,BeamTracking.PXI] ≈  pxf_qd3 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PYI] ≈  pyf_qd3 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PZI] == pzf_qd3
-#  #
-#  # 250 GeV electron
-#  v = [ xi pxi yi pyi zi pzi ]
-#  BeamTracking.launch!(mkm_quadrupole!, v, work, β4, γsq4, 1/βγ4,  gr4 / Bρ4, lq4)
-#  @test v[:,BeamTracking.XI]  ≈  xf_qf4  (rtol=5.e-13)
-#  @test v[:,BeamTracking.YI]  ≈  yf_qf4  (rtol=5.e-13)
-#  @test v[:,BeamTracking.ZI]  ≈  zf_qf4  (rtol=5.e-13)
-#  @test v[:,BeamTracking.PXI] ≈  pxf_qf4 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PYI] ≈  pyf_qf4 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PZI] == pzf_qf4
-#  v = [ xi pxi yi pyi zi pzi ]
-#  BeamTracking.launch!(mkm_quadrupole!, v, work, β4, γsq4, 1/βγ4, -gr4 / Bρ4, lq4)
-#  @test v[:,BeamTracking.XI]  ≈  xf_qd4  (rtol=5.e-13)
-#  @test v[:,BeamTracking.YI]  ≈  yf_qd4  (rtol=5.e-13)
-#  @test v[:,BeamTracking.ZI]  ≈  zf_qd4  (rtol=5.e-13)
-#  @test v[:,BeamTracking.PXI] ≈  pxf_qd4 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PYI] ≈  pyf_qd4 (rtol=5.e-13)
-#  @test v[:,BeamTracking.PZI] == pzf_qd4
+  # === quadrupoles ===
+  #
+  # 5 keV electron
+  v = [ xi pxi yi pyi zi pzi ]
+  BeamTracking.launch!(mkm_quadrupole!, v, work, β1, γsq1, 1/βγ1,  gr1 / Bρ1, lq1)
+  @test v[:,BeamTracking.XI]  ≈  xf_qf1  (rtol=5.e-13)
+  @test v[:,BeamTracking.YI]  ≈  yf_qf1  (rtol=5.e-13)
+  @test v[:,BeamTracking.ZI]  ≈  zf_qf1  (rtol=5.e-13)
+  @test v[:,BeamTracking.PXI] ≈  pxf_qf1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_qf1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_qf1
+  v = [ xi pxi yi pyi zi pzi ]
+  BeamTracking.launch!(mkm_quadrupole!, v, work, β1, γsq1, 1/βγ1, -gr1 / Bρ1, lq1)
+  @test v[:,BeamTracking.XI]  ≈  xf_qd1  (rtol=5.e-13)
+  @test v[:,BeamTracking.YI]  ≈  yf_qd1  (rtol=5.e-13)
+  @test v[:,BeamTracking.ZI]  ≈  zf_qd1  (rtol=5.e-13)
+  @test v[:,BeamTracking.PXI] ≈  pxf_qd1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_qd1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_qd1
+  #
+  # 1 MeV electron
+  v = [ xi pxi yi pyi zi pzi ]
+  BeamTracking.launch!(mkm_quadrupole!, v, work, β2, γsq2, 1/βγ2,  gr2 / Bρ2, lq2)
+  @test v[:,BeamTracking.XI]  ≈  xf_qf2  (rtol=5.e-13)
+  @test v[:,BeamTracking.YI]  ≈  yf_qf2  (rtol=5.e-13)
+  @test v[:,BeamTracking.ZI]  ≈  zf_qf2  (rtol=5.e-13)
+  @test v[:,BeamTracking.PXI] ≈  pxf_qf2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_qf2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_qf2
+  v = [ xi pxi yi pyi zi pzi ]
+  BeamTracking.launch!(mkm_quadrupole!, v, work, β2, γsq2, 1/βγ2, -gr2 / Bρ2, lq2)
+  @test v[:,BeamTracking.XI]  ≈  xf_qd2  (rtol=5.e-13)
+  @test v[:,BeamTracking.YI]  ≈  yf_qd2  (rtol=5.e-13)
+  @test v[:,BeamTracking.ZI]  ≈  zf_qd2  (rtol=5.e-13)
+  @test v[:,BeamTracking.PXI] ≈  pxf_qd2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_qd2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_qd2
+  #
+  # 1 GeV electron
+  v = [ xi pxi yi pyi zi pzi ]
+  BeamTracking.launch!(mkm_quadrupole!, v, work, β3, γsq3, 1/βγ3,  gr3 / Bρ3, lq3)
+  @test v[:,BeamTracking.XI]  ≈  xf_qf3  (rtol=5.e-13)
+  @test v[:,BeamTracking.YI]  ≈  yf_qf3  (rtol=5.e-13)
+  @test v[:,BeamTracking.ZI]  ≈  zf_qf3  (rtol=5.e-13)
+  @test v[:,BeamTracking.PXI] ≈  pxf_qf3 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_qf3 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_qf3
+  v = [ xi pxi yi pyi zi pzi ]
+  BeamTracking.launch!(mkm_quadrupole!, v, work, β3, γsq3, 1/βγ3, -gr3 / Bρ3, lq3)
+  @test v[:,BeamTracking.XI]  ≈  xf_qd3  (rtol=5.e-13)
+  @test v[:,BeamTracking.YI]  ≈  yf_qd3  (rtol=5.e-13)
+  @test v[:,BeamTracking.ZI]  ≈  zf_qd3  (rtol=5.e-13)
+  @test v[:,BeamTracking.PXI] ≈  pxf_qd3 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_qd3 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_qd3
+  #
+  # 250 GeV electron
+  v = [ xi pxi yi pyi zi pzi ]
+  BeamTracking.launch!(mkm_quadrupole!, v, work, β4, γsq4, 1/βγ4,  gr4 / Bρ4, lq4)
+  @test v[:,BeamTracking.XI]  ≈  xf_qf4  (rtol=5.e-13)
+  @test v[:,BeamTracking.YI]  ≈  yf_qf4  (rtol=5.e-13)
+  @test v[:,BeamTracking.ZI]  ≈  zf_qf4  (rtol=5.e-13)
+  @test v[:,BeamTracking.PXI] ≈  pxf_qf4 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_qf4 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_qf4
+  v = [ xi pxi yi pyi zi pzi ]
+  BeamTracking.launch!(mkm_quadrupole!, v, work, β4, γsq4, 1/βγ4, -gr4 / Bρ4, lq4)
+  @test v[:,BeamTracking.XI]  ≈  xf_qd4  (rtol=5.e-13)
+  @test v[:,BeamTracking.YI]  ≈  yf_qd4  (rtol=5.e-13)
+  @test v[:,BeamTracking.ZI]  ≈  zf_qd4  (rtol=5.e-13)
+  @test v[:,BeamTracking.PXI] ≈  pxf_qd4 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_qd4 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_qd4
 
 
 end
