@@ -144,12 +144,13 @@ s: element length
     work[i,10] = focus * sin(work[i,3])^2   - defocus * sinh(work[i,3])^2
     work[i,11] = focus * sinh(work[i,3])^2  - defocus * sin(work[i,3])^2
 
-    v[i,PXI] = v[i,PXI] * work[i,6] - work[i,2] * work[i,1] * s * v[i,XI] * work[i,8]
-    v[i,PYI] = v[i,PYI] * work[i,7] + work[i,2] * work[i,1] * s * v[i,YI] * work[i,9]
+    v[i,PXI] = v[i,PXI] * work[i,6] - k2_num * s * v[i,XI] * work[i,8]
+    v[i,PYI] = v[i,PYI] * work[i,7] + k2_num * s * v[i,YI] * work[i,9]
     v[i,ZI]  = (v[i,ZI] - (s / 4) * (  work[i,4]^2 * (1.0 + work[i,8] * work[i,6])
                                      + work[i,5]^2 * (1.0 + work[i,9] * work[i,7])
-                                     + work[i,2] * v[i,XI]^2 * (1.0 - work[i,8] * work[i,6])
-                                     - work[i,2] * v[i,YI]^2 * (1.0 - work[i,9] * work[i,7]) )
+                                     + work[i,2] * ( v[i,XI]^2 * (1.0 - work[i,8] * work[i,6])
+                                                   - v[i,YI]^2 * (1.0 - work[i,9] * work[i,7]) )
+                                    )
                         + ( v[i,XI] * work[i,4] * work[i,10]
                           - v[i,YI] * work[i,5] * work[i,11] ) / 2.0
                )
@@ -166,7 +167,7 @@ end # function quadrupole_matrix!()
 #    defocus = k2_num <  0  # horizontally defocusing (for positive particles)
 #    work[i,1] = v[i,PXI] / (1.0 + v[i,PZI])  # x'
 #    work[i,2] = v[i,PYI] / (1.0 + v[i,PZI])  # y'
-#    work[i,3] = sqrt(abs(k2_num)) / (1.0 + v[i,PZI]) * s  # |κ|s for each particle
+#    work[i,3] = sqrt(abs(k2_num / (1.0 + v[i,PZI]))) * s  # |κ|s for each particle
 #    work[i,4] = focus * cos(work[i,3])    + defocus * cosh(work[i,3])
 #    work[i,5] = focus * cosh(work[i,3])   + defocus * cos(work[i,3])
 #    work[i,6] = focus * sincu(work[i,3])  + defocus * sinhcu(work[i,3])
