@@ -7,7 +7,7 @@ Exact tracking methods
 # (equal to number of temporaries needed for a single particle)
 struct Exact end
 
-MAX_TEMPS(::Exact) = 13
+MAX_TEMPS(::Exact) = 11
 
 module ExactTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays
@@ -127,7 +127,7 @@ k2_num:  g / Bρ0 = g / (p0 / q)
 s: element length
 """
 @inline function quadrupole_matrix!(i, v, work, k2_num, s)
-  @assert size(work, 2) >= 13 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 13) for quadrupole_matrix!()."
+  @assert size(work, 2) >= 11 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 11) for quadrupole_matrix!()."
   @inbounds begin #@FastGTPSA! begin
     work[i,1] = 1.0 + v[i,PZI]            # reduced momentum, P/P0 = 1 + δ
     work[i,2] = k2_num / work[i,1]        # κ^2 for each particle
@@ -141,19 +141,17 @@ s: element length
     work[i,7]  = focus * cosh(work[i,3])    + defocus * cos(work[i,3])
     work[i,8]  = focus * sincu(work[i,3])   + defocus * sinhcu(work[i,3])
     work[i,9]  = focus * sinhcu(work[i,3])  + defocus * sincu(work[i,3])
-    work[i,10] = focus * sincu(2work[i,3])  + defocus * sinhcu(2work[i,3])
-    work[i,11] = focus * sinhcu(2work[i,3]) + defocus * sincu(2work[i,3])
-    work[i,12] = focus * sin(work[i,3])^2   - defocus * sinh(work[i,3])^2
-    work[i,13] = focus * sinh(work[i,3])^2  - defocus * sin(work[i,3])^2
+    work[i,10] = focus * sin(work[i,3])^2   - defocus * sinh(work[i,3])^2
+    work[i,11] = focus * sinh(work[i,3])^2  - defocus * sin(work[i,3])^2
 
     v[i,PXI] = v[i,PXI] * work[i,6] - work[i,2] * work[i,1] * s * v[i,XI] * work[i,8]
     v[i,PYI] = v[i,PYI] * work[i,7] + work[i,2] * work[i,1] * s * v[i,YI] * work[i,9]
-    v[i,ZI]  = (v[i,ZI] - (s / 4) * (  work[i,4]^2 * (1.0 + work[i,10])
-                                     + work[i,5]^2 * (1.0 + work[i,11])
-                                     + work[i,2] * v[i,XI]^2 * (1.0 - work[i,10])
-                                     - work[i,2] * v[i,YI]^2 * (1.0 - work[i,11]) )
-                        + ( v[i,XI] * work[i,4] * work[i,12]
-                          - v[i,YI] * work[i,5] * work[i,13] ) / 2.0
+    v[i,ZI]  = (v[i,ZI] - (s / 4) * (  work[i,4]^2 * (1.0 + work[i,8] * work[i,6])
+                                     + work[i,5]^2 * (1.0 + work[i,9] * work[i,7])
+                                     + work[i,2] * v[i,XI]^2 * (1.0 - work[i,8] * work[i,6])
+                                     - work[i,2] * v[i,YI]^2 * (1.0 - work[i,9] * work[i,7]) )
+                        + ( v[i,XI] * work[i,4] * work[i,10]
+                          - v[i,YI] * work[i,5] * work[i,11] ) / 2.0
                )
     v[i,XI]  = v[i,XI] * work[i,6] + work[i,4] * s * work[i,8]
     v[i,YI]  = v[i,YI] * work[i,7] + work[i,5] * s * work[i,9]
