@@ -51,7 +51,7 @@ function exact_universal!(
       if L == 0
         error("Exact thin-lens solenoid not yet implemented (L = 0)")
       else
-        Ks = get_thick_strength(bmultipole.bdict[0], L, bunch.Brho_ref)*chargeof(bunch.species)
+        Ks = get_thick_strength(bmultipole.bdict[0], L, bunch.Brho_ref)
         tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
         runkernel!(ExactTracking.exact_solenoid!, i, v, work, L, Ks, tilde_m, gamsqr_0, beta_0)
       end
