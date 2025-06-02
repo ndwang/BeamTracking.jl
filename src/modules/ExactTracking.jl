@@ -148,9 +148,9 @@ The inverse matrix reverses the order of operations and their signs.
 
 
 Arguments:
-- `x_rot::Real`: Rotation angle around the x-axis.
-- `y_rot::Real`: Rotation angle around the y-axis.
-- `z_rot::Real`: Rotation angle around the z-axis.
+- `x_rot::Number`: Rotation angle around the x-axis.
+- `y_rot::Number`: Rotation angle around the y-axis.
+- `z_rot::Number`: Rotation angle around the z-axis.
 
 Returns:
 - `SMatrix{Float64}`: Rotation matrix.
