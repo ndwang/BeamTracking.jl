@@ -153,7 +153,7 @@ Arguments:
 - `z_rot::Number`: Rotation angle around the z-axis.
 
 Returns:
-- `SMatrix{Float64}`: Rotation matrix.
+- `DCM{Float64}`: ReferenceFrameRotations.DCM (direct cosine matrix), rotation matrix.
 """
 function w_matrix(x_rot, y_rot, z_rot)
   return ReferenceFrameRotations.angle_to_rot(-z_rot, x_rot, -y_rot, :ZXY)
@@ -163,4 +163,14 @@ end
 function w_inv_matrix(x_rot, y_rot, z_rot)
   return ReferenceFrameRotations.angle_to_rot(y_rot, -x_rot, z_rot, :YXZ)
 end
+
+function drift_params(species::Species, Brho)
+  beta_gamma_0 = BeamTracking.calc_beta_gammma(species, Brho) 
+  tilde_m = 1/beta_gamma_0
+  gamsqr_0 = @FastGTPSA 1+beta_gamma_0^2
+  beta_0 = @FastGTPSA beta_gamma_0/sqrt(gamsqr_0)
+  return tilde_m, gamsqr_0, beta_0
+end
+
+
 end
