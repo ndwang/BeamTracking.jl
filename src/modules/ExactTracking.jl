@@ -153,7 +153,7 @@ Arguments:
 - `z_rot::Real`: Rotation angle around the z-axis.
 
 Returns:
-- `Matrix{Float64}`: Rotation matrix.
+- `SMatrix{Float64}`: Rotation matrix.
 """
 function w_matrix(x_rot, y_rot, z_rot)
   return ReferenceFrameRotations.angle_to_rot(-z_rot, x_rot, -y_rot, :ZXY)
