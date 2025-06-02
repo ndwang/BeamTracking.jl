@@ -3,20 +3,7 @@
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://bmad-sim.github.io/BeamTracking.jl/stable/)
 [![Build Status](https://github.com/bmad-sim/BeamTracking.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/bmad-sim/BeamTracking.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-A high-performance particle beam tracking package written in Julia, designed for accelerator physics simulations.
-
-## Overview
-
-BeamTracking is a specialized package for tracking particle beams through accelerator elements. It provides various tracking methods and memory layouts optimized for performance.
-
-## Installation
-
-To install the package:
-
-```julia
-using Pkg
-Pkg.add("BeamTracking")
-```
+This package provides universally polymorphic and fully portable, parallelizable routines for simulating charged particle beams both on the CPU and, using [`KernelAbstractions.jl`](https://github.com/JuliaGPU/KernelAbstractions.jl), various GPU backends including NVIDIA CUDA, Apple Metal, Intel oneAPI, and AMD ROCm.
 
 To develop this package:
 
