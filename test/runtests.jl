@@ -29,7 +29,7 @@ function test_matrix(kernel, M_expected, args...; type_stable=VERSION >= v"1.11"
   end
 end
 
-function test_map(kernel, bmad_map_file::AbstractString, args...; type_stable=VERSION >= v"1.11", no_allocs=true, tol=1e-8)
+function test_map(kernel, bmad_map_file::AbstractString, args...; type_stable=VERSION >= v"1.11", TPS_params=false, no_allocs=true, tol=1e-8)
   # Load reference data from file in isolated module to avoid polluting global namespace
   mod = Module()
   Base.include(mod, bmad_map_file)
@@ -40,7 +40,9 @@ function test_map(kernel, bmad_map_file::AbstractString, args...; type_stable=VE
   n_temps = BeamTracking.MAX_TEMPS(parentmodule(kernel).TRACKING_METHOD())
   v = transpose(@vars(D))
   work = zeros(eltype(v), 1, n_temps)
-  args = to_type.(args, TPS64{D})
+  if TPS_params
+    args = map(el -> el === nothing ? nothing : convert.(TPS64{D}, el), args)
+  end
 
   # Run kernel
   v = BeamTracking.launch!(kernel, v, work, args...)
@@ -77,14 +79,6 @@ function coeffs_approx_equal(v_expected, v_calculated, ϵ)
       end
   end
   return all_ok
-end
-
-function to_type(x, T)
-  if isa(x, AbstractArray)
-      return map(el -> convert(T, el), x)
-  else
-      return convert(T, x)
-  end
 end
 
 

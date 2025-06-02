@@ -82,7 +82,7 @@ end
   @assert size(work,2) >= 8 && size(work, 1) >= size(v, 1) "Size of work array must be at least ($(size(v, 1)), 9) for patch transformations. Received $work"
   @assert isnothing(winv) || (size(winv,1) == 3 && size(winv,2) == 3) "The inverse rotation matrix must be either `nothing` or 3x3 for patch!. Received $winv"
   @inbounds begin @FastGTPSA! begin
-    # Temporary momentum [δp, pz]
+    # Temporary momentum [1+δp, ps_0]
     work[i,1] = 1 + v[i,PZI]                                 # rel_p
     work[i,2] = sqrt(work[i,1]^2 - v[i,PXI]^2 - v[i,PYI]^2)  # ps_0
   end end
@@ -94,10 +94,15 @@ end
       v[i,YI] -= dy
       
       # Apply t_offset
-      v[i,ZI] += work[i,1]*sqrt(work[i,1]/(work[i,1]^2+tilde_m^2))*C_LIGHT*dt
+      v[i,ZI] += work[i,1]/sqrt(work[i,1]^2+tilde_m^2)*C_LIGHT*dt
 
       # Drift to face
-      v = exact_drift!(i, v, work, -dz, tilde_m, gamsqr_0, beta_0)
+      v[i,XI]   += v[i,PXI] * L / work[i,2]
+      v[i,YI]   += v[i,PYI] * L / work[i,2]
+      v[i,ZI]   -=  work[i,1] * L *
+                      ((v[i,PXI]^2 + v[i,PYI]^2) - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0) / 
+                      ( beta_0 * sqrt(work[i,1]^2 + tilde_m^2) * work[i,2] * 
+                        (beta_0 * sqrt(work[i,1]^2 + tilde_m^2) + work[i,2]) )
       end end
     else
       @inbounds begin @FastGTPSA! begin

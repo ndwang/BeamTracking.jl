@@ -20,7 +20,6 @@
     end
   
     @testset "Kernels" begin
-        # GTPSA patch map comparison
         function patch_args(::Type{T}) where {T}
             p0c = T(10e6)
             mc2 = T(ELECTRON.mass)
@@ -36,9 +35,20 @@
             return L, tilde_m, gamsqr_0, beta_0, dt, dx, dy, dz, winv
         end
 
-        test_map(ExactTracking.patch!, "bmad_maps/patch.jl", patch_args(Float64)...; tol=5e-10)
+        function patch_norot_args(::Type{T}) where {T}
+            p0c = T(10e6)
+            mc2 = T(ELECTRON.mass)
+            tilde_m = mc2/p0c
+            gamsqr_0 = 1 + 1/tilde_m^2
+            beta_0 = 1/sqrt(1 + tilde_m^2)
+            dt = T(4e-9)
+            dx = T(1)
+            dy = T(2)
+            dz = T(3)
+            L = dz
+            return L, tilde_m, gamsqr_0, beta_0, dt, dx, dy, dz, nothing
+        end
 
-        # GTPSA drift map comparison
         function drift_args(::Type{T}) where {T}
             L = T(1)
             p0c = T(10e6)
@@ -48,10 +58,7 @@
             beta_0 = 1/sqrt(1 + tilde_m^2)
             return L, tilde_m, gamsqr_0, beta_0
         end
-
-        test_map(ExactTracking.exact_drift!, "bmad_maps/drift.jl", drift_args(Float64)...; tol=5e-10)
         
-        # GTPSA solenoid map comparison
         function solenoid_args(::Type{T}) where {T}
             L = T(1)
             ks = T(2)
@@ -63,7 +70,18 @@
             return L, ks, tilde_m, gamsqr_0, beta_0
         end
 
+        # Scalar parameters
+        test_map(ExactTracking.patch!, "bmad_maps/patch.jl", patch_args(Float64)...; tol=5e-10)
+        test_map(ExactTracking.patch!, "bmad_maps/patch_norot.jl", patch_norot_args(Float64)...; tol=1e-9)
+        test_map(ExactTracking.exact_drift!, "bmad_maps/drift.jl", drift_args(Float64)...; tol=5e-10)
         test_map(ExactTracking.exact_solenoid!, "bmad_maps/solenoid.jl", solenoid_args(Float64)...; tol=5e-10)
+
+        # GTPSA parameters
+        test_map(ExactTracking.patch!, "bmad_maps/patch.jl", patch_args(TPS64{D})...; tol=5e-10, TPS_params=true)
+        test_map(ExactTracking.patch!, "bmad_maps/patch_norot.jl", patch_norot_args(TPS64{D})...; tol=1e-9, TPS_params=true)
+        test_map(ExactTracking.exact_drift!, "bmad_maps/drift.jl", drift_args(TPS64{D})...; tol=5e-10, TPS_params=true)
+        test_map(ExactTracking.exact_solenoid!, "bmad_maps/solenoid.jl", solenoid_args(TPS64{D})...; tol=5e-10, TPS_params=true)
+
 
     end 
     
