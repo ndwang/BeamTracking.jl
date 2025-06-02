@@ -95,15 +95,9 @@ end
       
       # Apply t_offset
       v[i,ZI] += work[i,1]/sqrt(work[i,1]^2+tilde_m^2)*C_LIGHT*dt
-
-      # Drift to face
-      v[i,XI]   += v[i,PXI] * L / work[i,2]
-      v[i,YI]   += v[i,PYI] * L / work[i,2]
-      v[i,ZI]   -=  work[i,1] * L *
-                      ((v[i,PXI]^2 + v[i,PYI]^2) - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0) / 
-                      ( beta_0 * sqrt(work[i,1]^2 + tilde_m^2) * work[i,2] * 
-                        (beta_0 * sqrt(work[i,1]^2 + tilde_m^2) + work[i,2]) )
       end end
+      # Drift to face
+      exact_drift!(i, v, work, -dz, tilde_m, gamsqr_0, beta_0)
     else
       @inbounds begin @FastGTPSA! begin
       # Translate position vector [x, y]
