@@ -95,9 +95,12 @@ end
       
       # Apply t_offset
       v[i,ZI] += work[i,1]/sqrt(work[i,1]^2+tilde_m^2)*C_LIGHT*dt
-      end end
+
       # Drift to face
-      exact_drift!(i, v, work, -dz, tilde_m, gamsqr_0, beta_0)
+      v[i,XI]   += v[i,PXI] * dz / work[i,2]
+      v[i,YI]   += v[i,PYI] * dz / work[i,2]
+      v[i,ZI]   -=  dz * work[i,1] / work[i,2] - L*work[i,1]*sqrt((1+tilde_m^2)/(work[i,1]^2+tilde_m^2))
+      end end
     else
       @inbounds begin @FastGTPSA! begin
       # Translate position vector [x, y]
@@ -140,8 +143,8 @@ end
 Constructs a rotation matrix based on the given Bryan-Tait angles.
 
 Bmad/SciBmad follows the MAD convention of applying z, x, y rotations in that order.
-Furthermore, in ReferenceFrameRotations, the rotation angles around Y and Z axes 
-are defined as negative of the SciBmad `y_rot` and `z_rot`.
+Furthermore, in ReferenceFrameRotations, the rotation angles are defined as negative 
+of the SciBmad rotation angles `z_rot`, `y_rot`, and `z_rot`.
 
 The inverse matrix reverses the order of operations and their signs.
 
@@ -155,12 +158,12 @@ Returns:
 - `DCM{Float64}`: ReferenceFrameRotations.DCM (direct cosine matrix), rotation matrix.
 """
 function w_matrix(x_rot, y_rot, z_rot)
-  return ReferenceFrameRotations.angle_to_rot(-z_rot, x_rot, -y_rot, :ZXY)
+  return ReferenceFrameRotations.angle_to_rot(-z_rot, -x_rot, -y_rot, :ZXY)
 end
 
 # Inverse rotation matrix
 function w_inv_matrix(x_rot, y_rot, z_rot)
-  return ReferenceFrameRotations.angle_to_rot(y_rot, -x_rot, z_rot, :YXZ)
+  return ReferenceFrameRotations.angle_to_rot(y_rot, x_rot, z_rot, :YXZ)
 end
 
 function drift_params(species::Species, Brho)

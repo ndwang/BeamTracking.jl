@@ -1,18 +1,18 @@
 @testset "ExactTracking" begin
     @testset "Utility functions" begin
-        dx_rot = 0.1
+        dx_rot = -0.1
         dy_rot = -0.1
         dz_rot = 0.2
   
         W = [cos(dy_rot) 0 sin(dy_rot); 0 1 0; -sin(dy_rot) 0 cos(dy_rot)] *
-          [1 0 0; 0 cos(dx_rot) sin(dx_rot); 0 -sin(dx_rot) cos(dx_rot)] *
+          [1 0 0; 0 cos(dx_rot) -sin(dx_rot); 0 sin(dx_rot) cos(dx_rot)] *
           [cos(dz_rot) -sin(dz_rot) 0; sin(dz_rot) cos(dz_rot) 0; 0 0 1]
   
         # Test w_matrix function
         @test all(ExactTracking.w_matrix(dx_rot, dy_rot, dz_rot) .== W)
   
         Winv = [cos(dz_rot) sin(dz_rot) 0; -sin(dz_rot) cos(dz_rot) 0; 0 0 1] *
-             [1 0 0; 0 cos(dx_rot) -sin(dx_rot); 0 sin(dx_rot) cos(dx_rot)] *
+             [1 0 0; 0 cos(dx_rot) sin(dx_rot); 0 -sin(dx_rot) cos(dx_rot)] *
              [cos(dy_rot) 0 -sin(dy_rot); 0 1 0; sin(dy_rot) 0 cos(dy_rot)]
   
         # Test w_inv_matrix function
@@ -30,7 +30,7 @@
             dx = T(2)
             dy = T(3)
             dz = T(4)
-            winv = ExactTracking.w_inv_matrix(T(5),T(6),T(7))
+            winv = ExactTracking.w_inv_matrix(T(-5),T(6),T(7))
             L = winv[3,1]*dx + winv[3,2]*dy + winv[3,3]*dz
             return L, tilde_m, gamsqr_0, beta_0, dt, dx, dy, dz, winv
         end
