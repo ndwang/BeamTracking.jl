@@ -144,7 +144,7 @@ Constructs a rotation matrix based on the given Bryan-Tait angles.
 
 Bmad/SciBmad follows the MAD convention of applying z, x, y rotations in that order.
 Furthermore, in ReferenceFrameRotations, the rotation angles are defined as negative 
-of the SciBmad rotation angles `z_rot`, `y_rot`, and `z_rot`.
+of the SciBmad rotation angles `x_rot`, `y_rot`, and `z_rot`.
 
 The inverse matrix reverses the order of operations and their signs.
 
