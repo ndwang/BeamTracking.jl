@@ -224,14 +224,14 @@ L:  element length
 """
 @inline function dkd_multipole!(i, v, work, beta_0, gamsqr_0, tilde_m, mm, kn, ks, L)
   @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for dkd_multipole!()."
-  @inbounds begin @FastGTPSA! begin
+  @inbounds begin #@FastGTPSA! begin
     #ds = L / ns
     #for i = 1:ns
     exact_drift!(   i, v, work, beta_0, gamsqr_0, tilde_m, L / 2)
     multipole_kick!(i, v, work, mm, kn * L, ks * L)
     exact_drift!(   i, v, work, beta_0, gamsqr_0, tilde_m, L / 2)
     #end
-  end end
+  end #end
   return v
 end # function dkd_multipole!()
 
