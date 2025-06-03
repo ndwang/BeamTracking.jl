@@ -5,7 +5,8 @@ function _track!(
   work,
   bunch::Bunch,
   ele::Union{LineElement,BitsLineElement}, 
-  ::Exact
+  ::Exact;
+  kwargs...
 )
   # Unpack the line element
   ma = ele.AlignmentParams
@@ -37,21 +38,22 @@ function exact_universal!(
     if isactive(bendparams) || isactive(bmultipoleparams)
       error("Patch cannot yet be used with bend or multipole elements")
     else
-      p0c = calc_p0c(bunch.species, bunch.Brho_ref)
-      winv = w_inv_matrix(patchparams.dx_rot, patchparams.dy_rot, patchparams.dz_rot)
-      runkernel!(ExactTracking.patch!, i, v, work, L, p0c, massof(bunch.species), patchparams.dt, patchparams.dx, patchparams.dy, patchparams.dz, winv)
+      tilde_m = massof(bunch.species)/calc_p0c(bunch.species, bunch.Brho_ref)
+      winv = ExactTracking.w_inv_matrix(patchparams.dx_rot, patchparams.dy_rot, patchparams.dz_rot)
+      runkernel!(ExactTracking.patch!, i, v, work, L, tilde_m, patchparams.dt, patchparams.dx, patchparams.dy, patchparams.dz, winv)
     end
   elseif isactive(bendparams) # Bend
-    if isactive(bmultipoleparams) # Combined function bend
+    if !isactive(bmultipoleparams) # Exact bend
+      error("Exact bend not yet implemented")
+    else # Combined function bend
       error("Exact bend cannot be used with multipole elements")
-    else
     end
   elseif isactive(bmultipoleparams) # Straight multipole
     if haskey(bmultipoleparams.bdict, 0) # Solenoid
       if L == 0
         error("Exact thin-lens solenoid not yet implemented (L = 0)")
       else
-        Ks = get_thick_strength(bmultipole.bdict[0], L, bunch.Brho_ref)
+        Ks = get_thick_strength(bmultipoleparams.bdict[0], L, bunch.Brho_ref)
         tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
         runkernel!(ExactTracking.exact_solenoid!, i, v, work, L, Ks, tilde_m, gamsqr_0, beta_0)
       end

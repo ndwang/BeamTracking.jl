@@ -78,7 +78,7 @@ end
   return v
 end
 
-@makekernel function patch!(i, v, work, L, tilde_m, gamsqr_0, beta_0, dt, dx, dy, dz, winv::Union{AbstractArray,Nothing})
+@makekernel function patch!(i, v, work, L, tilde_m, dt, dx, dy, dz, winv::Union{AbstractArray,Nothing})
   @assert size(work,2) >= 8 && size(work, 1) >= size(v, 1) "Size of work array must be at least ($(size(v, 1)), 9) for patch transformations. Received $work"
   @assert isnothing(winv) || (size(winv,1) == 3 && size(winv,2) == 3) "The inverse rotation matrix must be either `nothing` or 3x3 for patch!. Received $winv"
   @inbounds begin @FastGTPSA! begin
@@ -144,7 +144,7 @@ Constructs a rotation matrix based on the given Bryan-Tait angles.
 
 Bmad/SciBmad follows the MAD convention of applying z, x, y rotations in that order.
 Furthermore, in ReferenceFrameRotations, the rotation angles are defined as negative 
-of the SciBmad rotation angles `z_rot`, `y_rot`, and `z_rot`.
+of the SciBmad rotation angles `x_rot`, `y_rot`, and `z_rot`.
 
 The inverse matrix reverses the order of operations and their signs.
 

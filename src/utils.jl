@@ -130,12 +130,12 @@ massof(s::Species) = s.mass
 chargeof(s::Species) = s.charge
 
 # Particle energy conversions =============================================================
-calc_Brho(species::Species, E) = @FastGTPSA sqrt(E^2-species.mass^2)/C_LIGHT
-calc_E(species::Species, Brho) = @FastGTPSA sqrt((Brho*C_LIGHT)^2 + species.mass^2)
-calc_gamma(species::Species, Brho) = @FastGTPSA sqrt((Brho*C_LIGHT/species.mass)^2+1)
+calc_Brho(species::Species, E) = @FastGTPSA sqrt(E^2-massof(species)^2)/C_LIGHT/chargeof(species)
+calc_E(species::Species, Brho) = @FastGTPSA sqrt((Brho*C_LIGHT*chargeof(species))^2 + massof(species)^2)
+calc_gamma(species::Species, Brho) = @FastGTPSA sqrt((Brho*C_LIGHT/massof(species))^2+1)
 
-calc_p0c(species::Species, Brho) = @FastGTPSA Brho*C_LIGHT*chargeof(species)/Q
-calc_beta_gammma(species::Species, Brho) = @FastGTPSA Brho*chargeof(bunch.species)*C_LIGHT/massof(bunch.species)
+calc_p0c(species::Species, Brho) = @FastGTPSA Brho*C_LIGHT*chargeof(species)
+calc_beta_gammma(species::Species, Brho) = @FastGTPSA Brho*chargeof(species)*C_LIGHT/massof(species)
 
 
 
