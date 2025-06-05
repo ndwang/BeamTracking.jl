@@ -1,5 +1,7 @@
+using BeamTracking
 using BeamTracking: get_N_particle, runkernel!, MAX_TEMPS, soaview
 using BenchmarkTools
+using DifferentialEquations: Tsit5
 
 """
     evaluate_kernel_performance(bunch, kernel, args...; n_runs=10, kwargs...)
@@ -36,9 +38,9 @@ function evaluate_kernel_performance(bunch, kernel, args...; n_runs=10)
         end samples=n_runs seconds=10
         
         metrics = Dict(
-            "min_time" => time(minimum(result)) / n_particles,
-            "min_memory" => memory(minimum(result)) / n_particles,
-            "min_allocs" => allocs(minimum(result)) / n_particles,
+            "min_time" => time(minimum(result)),
+            "min_memory" => memory(minimum(result)),
+            "min_allocs" => allocs(minimum(result)),
             "success" => true
         )
 
@@ -54,27 +56,19 @@ function evaluate_kernel_performance(bunch, kernel, args...; n_runs=10)
     end 
 end
 
-"""
-    evaluate_field_track_performance(bunch, L, field_func, params, solver; n_runs=10)
 
-Evaluate the performance of field-based particle tracking and return detailed metrics.
+function evaluate_field_track_performance(; n_runs=10, n_particles=1000, solver=Tsit5())
+    bunch = Bunch(n_particles)
+    L = 1.0
+    field_func = (x, y, z, params) -> [0.0, 0.0, 0.0]
+    params = nothing
+    return evaluate_kernel_performance(bunch, FieldTracking.field_track!, L, field_func, params, solver; n_runs=n_runs)
+end
 
-# Arguments
-- `bunch`: Initial particle bunch to be tracked
-- `L`: Drift length for the tracking simulation
-- `field_func`: Function that returns the field at a given position (x, y, z)
-- `params`: Additional parameters for the field function
-- `solver`: ODE solver to use for the integration
-- `n_runs`: Number of runs for performance evaluation (default: 10)
-
-# Returns
-A dictionary containing the following metrics:
-- `min_time`: Minimum tracking time per particle
-- `min_memory`: Minimum memory allocation per particle
-- `min_allocs`: Minimum number of allocations per particle
-- `success`: Boolean whether the tracking was successful
-
-"""
-function evaluate_field_track_performance(bunch, L, field_func, params, solver; n_runs=10)
-    return evaluate_kernel_performance(bunch, field_track!, L, field_func, params, solver; n_runs=n_runs)
+function evaluate_linear_track_performance(;n_runs=10, n_particles=1000)
+    # suggest good default values for bunch, L, r56
+    bunch = Bunch(n_particles)
+    L = 1.0
+    r56 = 1.0
+    return evaluate_kernel_performance(bunch, LinearTracking.linear_drift!, L, r56; n_runs=n_runs)
 end
