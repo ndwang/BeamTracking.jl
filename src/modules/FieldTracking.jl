@@ -16,6 +16,7 @@ using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel
 using DifferentialEquations
 const TRACKING_METHOD = Field
 
+# EVOLVE-BLOCK-START
 """
     field_system!(du, u, p, t)
 
@@ -42,7 +43,7 @@ function field_system!(du, u, p, t)
 end
 
 """
-    field_drift!(i, v, work, L, field_func, params, solver=Tsit5())
+    field_track!(i, v, work, L, field_func, params, solver)
 
 Track a particle through a drift space with arbitrary field using DifferentialEquations.jl.
 
@@ -53,9 +54,9 @@ Track a particle through a drift space with arbitrary field using DifferentialEq
 - `L`: Drift length
 - `field_func`: Function that returns the field at a given position (x, y, z)
 - `params`: Additional parameters for the field function
-- `solver`: ODE solver to use (default: Tsit5())
+- `solver`: ODE solver to use
 """
-@makekernel function field_drift!(i, v, work, L, field_func, params, solver=Tsit5())
+@makekernel function field_track!(i, v, work, L, field_func, params, solver)
     @inbounds begin
         # Initial state vector [x, px, y, py, z, pz]
         u0 = [v[i,XI], v[i,PXI], v[i,YI], v[i,PYI], v[i,ZI], v[i,PZI]]
@@ -77,5 +78,6 @@ Track a particle through a drift space with arbitrary field using DifferentialEq
     end
     return v
 end
+# EVOLVE-BLOCK-END
 
-end 
+end
