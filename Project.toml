@@ -4,6 +4,7 @@ authors = ["mattsignorelli <mgs255@cornell.edu> and contributors"]
 version = "0.1.0"
 
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 GTPSA = "b27dd330-f138-47c5-815b-40db9dd9b6e8"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
@@ -20,6 +21,7 @@ BeamTrackingBeamlinesExt = "Beamlines"
 
 [compat]
 Beamlines = "0.2.1"
+BenchmarkTools = "1.6.0"
 DifferentialEquations = "7.16.1"
 GTPSA = "1.4.2"
 KernelAbstractions = "0.9.34"
