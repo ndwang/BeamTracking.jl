@@ -21,7 +21,7 @@ A dictionary containing the following metrics:
 - `success`: Boolean whether the tracking was successful
 
 """
-function evaluate_kernel_performance(bunch, kernel, args...; n_runs=10, kwargs...)
+function evaluate_kernel_performance(bunch, kernel, args...; n_runs=10)
     n_particles = get_N_particle(bunch)
 
     # Get the tracking method from the kernel's module
@@ -33,7 +33,7 @@ function evaluate_kernel_performance(bunch, kernel, args...; n_runs=10, kwargs..
     try
         # Benchmark the tracking with specified sample size and time budget
         result = @benchmark begin
-            runkernel!($kernel, nothing, $v, $work, $(args...); $(kwargs...))
+            runkernel!($kernel, nothing, $v, $work, $(args...))
         end samples=n_runs seconds=10
         
         metrics = Dict(
