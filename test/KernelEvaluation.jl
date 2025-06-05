@@ -15,8 +15,8 @@ Evaluate the performance of any tracking kernel and return a dictionary of metri
 
 # Returns
 A dictionary containing the following metrics:
-- `min_time`: Minimum tracking time per particle
-- `min_memory`: Minimum memory allocation per particle
+- `min_time`: Minimum tracking time per particle (in nanoseconds)
+- `min_memory`: Minimum memory allocation per particle (in bytes)
 - `min_allocs`: Minimum number of allocations per particle
 - `success`: Boolean whether the tracking was successful
 
@@ -29,11 +29,10 @@ function evaluate_kernel_performance(bunch, kernel, args...; n_runs=10)
     n_temps = MAX_TEMPS(tracking_method)
     work = zeros(eltype(bunch.v), n_particles, n_temps)
     v = soaview(bunch)
-
     try
         # Benchmark the tracking with specified sample size and time budget
         result = @benchmark begin
-            runkernel!($kernel, nothing, $v, $work, $(args...))
+            runkernel!($kernel, nothing, $v, $work, $args...)
         end samples=n_runs seconds=10
         
         metrics = Dict(
@@ -42,7 +41,7 @@ function evaluate_kernel_performance(bunch, kernel, args...; n_runs=10)
             "min_allocs" => allocs(minimum(result)) / n_particles,
             "success" => true
         )
-    
+
         return metrics
     catch e
         @warn "Tracking failed: $e"
@@ -52,7 +51,7 @@ function evaluate_kernel_performance(bunch, kernel, args...; n_runs=10)
             "min_allocs" => NaN,
             "success" => false
         )
-    end
+    end 
 end
 
 """
