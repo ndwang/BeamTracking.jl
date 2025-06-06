@@ -13,7 +13,7 @@ MAX_TEMPS(::Field) = 0
 module FieldTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel
-using DifferentialEquations
+using SciMLBase, OrdinaryDiffEq
 const TRACKING_METHOD = Field
 
 # EVOLVE-BLOCK-START
