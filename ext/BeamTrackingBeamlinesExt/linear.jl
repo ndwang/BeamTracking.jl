@@ -44,7 +44,68 @@ end
 # === Thick elements === #
 @inline function drift(tm::Linear, bunch, L)
   gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
+<<<<<<< HEAD
   return KernelCall(LinearTracking.linear_drift!, (L, L/gamma_0^2))
+=======
+  if !isactive(bmultipoleparams) # Drift
+    if isactive(bendparams)
+      error("Linear tracking requires BendParams.g == BMultipoleParams.K0")
+    end
+    runkernel!(LinearTracking.linear_drift!, i, v, work, L, L/gamma_0^2)
+  elseif haskey(bmultipoleparams.bdict, 0) # Solenoid
+    if any(t -> t >= 1, keys(bmultipoleparams.bdict))
+      error("Linear tracking does not support combined solenoid + other multipole magnets")
+    end
+    if isactive(bendparams)
+      error("Linear tracking does not currently support solenoid with bending")
+    end
+    if L == 0
+      error("Thin solenoid not supported yet")
+    end
+
+    Ks = get_thick_strength(bmultipoleparams.bdict[0], L, bunch.Brho_ref)
+
+    mxy = LinearTracking.linear_solenoid_matrix(Ks, L)
+    runkernel!(LinearTracking.linear_coast!, i, v, work, mxy, L/gamma_0^2)
+  elseif haskey(bmultipoleparams.bdict, 1) # Bend
+    if !isactive(bendparams)
+      error("Linear tracking requires BendParams.g ≈ BMultipoleParams.K0")
+    end
+    if L == 0
+      error("Thin bend not supported yet")
+    end
+    if any(t -> t == 0 || t > 2, keys(bmultipoleparams.bdict)) 
+      error("Linear tracking does not support bend tracking including any other multipole except a quadrupole")
+    end
+
+    K0 = get_thick_strength(bmultipoleparams.bdict[1], L, bunch.Brho_ref)
+    if !haskey(bmultipoleparams.bdict, 2)
+      K1 = nothing
+    else
+      K1 = get_thick_strength(bmultipoleparams.bdict[2], L, bunch.Brho_ref) 
+    end
+
+    mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(K0, L, gamma_0; g=bendparams.g, K1=K1, e1=bendparams.e1, e2=bendparams.e2)
+    runkernel!(LinearTracking.linear_coast_uncoupled!, i, v, work, mx, my, r56, d, t)
+
+  elseif haskey(bmultipoleparams.bdict, 2) # Quadrupole
+    if isactive(bendparams)
+      error("For Linear combined function magnet tracking, both the K0 multipole and BendParams must be set")
+    end
+    if L == 0
+      K1L = get_thin_strength(bmultipoleparams.bdict[2], L, bunch.Brho_ref)
+      mx, my = LinearTracking.linear_thin_quad_matrices(K1L)
+    else
+      K1 = get_thick_strength(bmultipoleparams.bdict[2], L, bunch.Brho_ref)
+      mx, my = LinearTracking.linear_quad_matrices(K1, L)
+    end
+    runkernel!(LinearTracking.linear_coast_uncoupled!, i, v, work, mx, my, L/gamma_0^2)
+  else # Drift for higher-order multipoles
+    runkernel!(LinearTracking.linear_drift!, i, v, work, L, L/gamma_0^2)
+  end
+
+  return v
+>>>>>>> 1939c7b (added tests for k1 = 0)
 end
 
 @inline function thick_pure_bsolenoid(tm::Linear, bunch, bm0, L) 
