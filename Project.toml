@@ -18,7 +18,7 @@ Beamlines = "5bb90b03-0719-46b8-8ce4-1ef3afd3cd4b"
 BeamTrackingBeamlinesExt = "Beamlines"
 
 [compat]
-Beamlines = "0.2.1"
+Beamlines = "0.2.2"
 GTPSA = "1.4.2"
 KernelAbstractions = "0.9.34"
 ReferenceFrameRotations = "3"
