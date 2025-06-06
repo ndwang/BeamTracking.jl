@@ -19,12 +19,26 @@ gr2 = 0.60;  # T/m
 gr3 = 1.20;  # T/m
 gr4 = 3.50;  # T/m
 
+# -- thin-lens kicks
+lk1 = 0.05;  # m
+lk2 = 0.30;  # m
+lk3 = 0.75;  # m
+lk4 = 1.20;  # m
+ms_k1 = [ 2, 3, 4, 5, 6 ]
+bv_k1 = [ 0.20, 0.18, 0.16, 0.14, 0.12 ];  # T·m^{n-1}
+ms_dk1 = [ 1, 2, 3, 4, 5, 6 ]
+bv_dk1 = [ 4.e-4, 0.20, 0.18, 0.16, 0.14, 0.12 ];  # T·m^{n-1}
+ms_k2 = [ 2, 3, 4, 5, 6 ]
+bv_k2 = [ 0.60, 0.40, 0.30, 0.20, 0.10 ];  # T·m^{n-1}
+ms_dk2 = [ 1, 2, 3, 4, 5, 6 ]
+bv_dk2 = [ 12.e-4, 0.60, 0.40, 0.30, 0.20, 0.10 ];  # T·m^{n-1}
+
 # -- multipoles
 lm1 = 0.05;  # m
 lm2 = 0.30;  # m
 lm3 = 0.75;  # m
 lm4 = 1.20;  # m
-mm1 = [ 3, 4, 5, 6 ]
+ms1 = [ 3, 4, 5, 6 ]
 bv1 = [ 0.4, 0.3, 0.2, 0.1 ];  # T·m^{n-1}
 
 # define beams
@@ -67,15 +81,23 @@ Bρ3 = -pc3 / c_light
 Bρ4 =  pc4 / c_light
 
 # -- beams
-# beam1.initial
+# beam.initial
 xi  = [ 0.000,  0.000,  0.000,  0.002,  0.00200, -0.00200 ]
 pxi = [ 0.000,  0.000,  0.000,  0.000,  0.00075, -0.00075 ]
 yi  = [ 0.000,  0.000,  0.000,  0.001,  0.00100, -0.00100 ]
 pyi = [ 0.000,  0.000,  0.000,  0.000,  0.00030, -0.00030 ]
 zi  = [ 0.000,  0.000,  0.000,  0.000,  0.00000,  0.00000 ]
 pzi = [ 0.000,  0.001, -0.001,  0.001,  0.00100,  0.00100 ]
+# beam2.initial
+xi2  = [ 0.000,  0.000,  0.000,  0.002,  0.00200, -0.00200,  0.00200, -0.00200 ]
+pxi2 = [ 0.000,  0.000,  0.000,  0.000,  0.00075, -0.00075,  0.00075, -0.00075 ]
+yi2  = [ 0.000,  0.000,  0.000,  0.001,  0.00100, -0.00100,  0.00100, -0.00100 ]
+pyi2 = [ 0.000,  0.000,  0.000,  0.000,  0.00030, -0.00030,  0.00030, -0.00030 ]
+zi2  = [ 0.000,  0.000,  0.000,  0.000,  0.00000,  0.00000,  0.00000,  0.00000 ]
+pzi2 = [ 0.000,  0.001, -0.001,  0.001,  0.00100,  0.00100, -0.00100, -0.00100 ]
 
-# beam1.dr1.final
+
+# beam.dr1.final
 xf_dr1  = [ 0.,  0.,                     0.,                     2.e-3,                  2.1123876489808660e-3, -2.1123876489808660e-3 ]
 pxf_dr1 = [ 0.,  0.,                     0.,                     0.,                     7.5e-4,                -7.5e-4                ]
 yf_dr1  = [ 0.,  0.,                     0.,                     1.e-3,                  1.0449550595923462e-3, -1.0449550595923462e-3 ]
@@ -83,7 +105,7 @@ pyf_dr1 = [ 0.,  0.,                     0.,                     0.,            
 zf_dr1  = [ 0.,  1.4710284465059844e-4, -1.4711135596840458e-4,  1.4710284465059844e-4,  1.4705400485512816e-4,  1.4705400485512816e-4 ]
 pzf_dr1 = [ 0.,  1.e-3,                 -1.e-3,                  1.e-3,                  1.e-3,                  1.e-3                 ]
 
-# beam2.dr2.final
+# beam.dr2.final
 xf_dr2  = [ 0., 0., 0., 0.002, 0.0025619382449043287, -0.0025619382449043287 ]
 pxf_dr2 = [ 0., 0., 0., 0.,    0.00075,               -0.00075 ]
 yf_dr2  = [ 0., 0., 0., 0.001, 0.0012247752979617315, -0.0012247752979617315 ]
@@ -91,7 +113,7 @@ pyf_dr2 = [ 0., 0., 0., 0.,    0.0003,                -0.0003 ]
 zf_dr2  = [ 0., 0.00008566359457101641, -0.00008589149602558208, 0.00008566359457101641, 0.00008541939559366522, 0.00008541939559366522 ]
 pzf_dr2 = [ 0., 0.001, -0.001, 0.001, 0.001, 0.001 ]
 
-# beam3.dr3.final
+# beam.dr3.final
 xf_dr3  = [ 0., 0., 0., 0.002, 0.003498501986411544,  -0.003498501986411544 ]
 pxf_dr3 = [ 0., 0., 0., 0.,    0.00075,               -0.00075 ]
 yf_dr3  = [ 0., 0., 0., 0.001, 0.0015994007945646172, -0.0015994007945646172 ]
@@ -99,7 +121,7 @@ pyf_dr3 = [ 0., 0., 0., 0.,    0.0003,                -0.0003 ]
 zf_dr3  = [ 0., 5.209250185095532e-10, -5.224901403178192e-10, 5.209250185095532e-10, -6.506763479180273e-7, -6.506763479180273e-7 ]
 pzf_dr3 = [ 0., 0.001, -0.001, 0.001, 0.001, 0.001 ]
 
-# beam4.dr4.final
+# beam.dr4.final
 xf_dr4  = [ 0., 0., 0., 0.002, 0.003498501986411544,  -0.003498501986411544 ]
 pxf_dr4 = [ 0., 0., 0., 0.,    0.00075,               -0.00075 ]
 yf_dr4  = [ 0., 0., 0., 0.001, 0.0015994007945646172, -0.0015994007945646172 ]
@@ -107,7 +129,8 @@ pyf_dr4 = [ 0., 0., 0., 0.,    0.0003,                -0.0003 ]
 zf_dr4  = [ 0., 2.7919184691863886e-8, -2.800306686850912e-8, 2.7919184691863886e-8, -6.232780882446728e-7, -6.232780882446728e-7 ]
 pzf_dr4 = [ 0., 0.001, -0.001, 0.001, 0.001, 0.001 ]
 
-# beam1.qf1.final
+
+# beam.qf1.final
 xf_qf1  = [ 0.,  0.,                      0.,                     4.4834792779340600e-3,  4.5356143287504990e-3, -4.5356143287504990e-3 ]
 pxf_qf1 = [ 0.,  0.,                      0.,                     1.1607821136240948e-1,  1.1776162121669208e-1, -1.1776162121669208e-1 ]
 yf_qf1  = [ 0.,  0.,                      0.,                     1.2400905948673489e-4,  1.3427609296030678e-4, -1.3427609296030678e-4 ]
@@ -115,7 +138,7 @@ pyf_qf1 = [ 0.,  0.,                      0.,                    -2.869166609895
 zf_qf1  = [ 0.,  4.903428155019947e-5,   -4.903711865613486e-5,  -4.8701323139842656e-5, -5.1605970700562340e-5, -5.1605970700562340e-5 ]
 pzf_qf1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                  1.e-3,                  1.e-3                 ]
 
-# beam1.qd1.final
+# beam.qd1.final
 xf_qd1  = [ 0.,  0.,                      0.,                     2.4834727340278294e-4,  2.7409827330240064e-4, -2.7409827330240064e-4 ]
 pxf_qd1 = [ 0.,  0.,                      0.,                    -5.7391734255615580e-2, -5.7299059109537503e-2,  5.7299059109537503e-2 ]
 yf_qd1  = [ 0.,  0.,                      0.,                     2.2414071638535435e-3,  2.2621899982980444e-3, -2.2621899982980444e-3 ]
@@ -123,7 +146,7 @@ pyf_qd1 = [ 0.,  0.,                      0.,                     5.803315314941
 zf_qd1  = [ 0.,  4.9034281550199470e-5,  -4.9037118656134860e-5, -1.1242623339116514e-5, -1.1118475705649755e-5, -1.1118475705649755e-5 ]
 pzf_qd1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                  1.e-3,                  1.e-3                 ]
 
-# beam2.qf2.final
+# beam.qf2.final
 xf_qf2 =  [ 0.,  0.,                      0.,                     2.9271671401041872e-2,  3.0251479090608963e-2, -3.0251479090608963e-2 ]
 pxf_qf2 = [ 0.,  0.,                      0.,                     3.2854870071095094e-1,  3.3959282727762820e-1, -3.3959282727762820e-1 ]
 yf_qf2 =  [ 0.,  0.,                      0.,                    -9.7278287676729380e-4, -9.7883210731348450e-4,  9.7883210731348450e-4 ]
@@ -131,7 +154,7 @@ pyf_qf2 = [ 0.,  0.,                      0.,                     2.641550526508
 zf_qf2 =  [ 0.,  3.4265437828406564e-5,  -3.4356598410232830e-5, -2.3378443788359830e-3, -2.5012489357825860e-3, -2.5012489357825860e-3 ]
 pzf_qf2 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                  1.e-3,                  1.e-3                 ]
 
-# beam2.qd2.final
+# beam.qd2.final
 xf_qd2 =  [ 0.,  0.,                      0.,                    -0.0019464186216836795, -0.001961645985092862, 0.001961645985092862 ]
 pxf_qd2 = [ 0.,  0.,                      0.,                     0.005200326165715375,   0.004472438532736971, -0.004472438532736971 ]
 yf_qd2 =  [ 0.,  0.,                      0.,                     0.014608704236165976,   0.014997970393040412, -0.014997970393040412 ]
@@ -139,7 +162,7 @@ pyf_qd2 = [ 0.,  0.,                      0.,                     0.163989299798
 zf_qd2 =  [ 0.,  3.4265437828406564e-5,  -3.435659841023283e-5,  -5.899497183747271e-4,  -6.222650472445767e-4, -6.222650472445767e-4 ]
 pzf_qd2 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                  1.e-3,                  1.e-3                 ]
 
-# beam3.qf3.final
+# beam.qf3.final
 xf_qf3 =  [ 0.,  0.,                      0.,                     0.002205479704035602,   0.0027865339903883585, -0.0027865339903883585 ]
 pxf_qf3 = [ 0.,  0.,                      0.,                     0.0005576983180317967,  0.0013847532608658173, -0.0013847532608658173 ]
 yf_qf3 =  [ 0.,  0.,                      0.,                     0.0009006624003320741,  0.0011179443238845692, -0.0011179443238845692 ]
@@ -147,7 +170,7 @@ pyf_qf3 = [ 0.,  0.,                      0.,                    -0.000260685226
 zf_qf3 =  [ 0.,  1.9534688194108246e-10, -1.959338026191822e-10, -4.630230762164262e-8,  -4.3665730716563075e-7, -4.3665730716563075e-7 ]
 pzf_qf3 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                  1.e-3,                  1.e-3                 ]
 
-# beam3.qd3.final
+# beam.qd3.final
 xf_qd3 =  [ 0.,  0.,                      0.,                     0.0018013248008431747,   0.0023445295165179687, -0.0023445295165179687 ]
 pxf_qd3 = [ 0.,  0.,                      0.,                    -0.0005213704536906773,   0.0001541263391654702, -0.0001541263391654702 ]
 yf_qd3 =  [ 0.,  0.,                      0.,                     0.0011027398519220506,   0.0013351614586315588, -0.0013351614586315588 ]
@@ -155,7 +178,7 @@ pyf_qd3 = [ 0.,  0.,                      0.,                     0.000278849159
 zf_qd3 =  [ 0.,  1.9534688194108246e-10, -1.959338026191822e-10, -4.4102076263621526e-8,  -1.6795543457606254e-7, -1.6795543457606254e-7 ]
 pzf_qd3 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                   1.e-3,                  1.e-3                 ]
 
-# beam4.qf4.final
+# beam.qf4.final
 xf_qf4 =  [ 0.,  0.,                      0.,                     0.0019939877700227713,   0.002892187842249561, -0.002892187842249561 ]
 pxf_qf4 = [ 0.,  0.,                      0.,                    -0.000010025375230046909, 0.0007377200378071899, -0.0007377200378071899 ]
 yf_qf4 =  [ 0.,  0.,                      0.,                     0.0010030091302526826,   0.0013630102695159176, -0.0013630102695159176 ]
@@ -163,7 +186,7 @@ pyf_qf4 = [ 0.,  0.,                      0.,                     5.022748546347
 zf_qf4 =  [ 0.,  1.675151081511833e-8,   -1.680184012110547e-8,   1.6726401735327598e-8,  -3.698308917351584e-7, -3.698308917351584e-7 ]
 pzf_qf4 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                   1.e-3,                  1.e-3                 ]
 
-# beam4.qd4.final
+# beam.qd4.final
 xf_qd4 =  [ 0.,  0.,                      0.,                     0.002006018260505365,    0.00290602111426842, -0.00290602111426842 ]
 pxf_qd4 = [ 0.,  0.,                      0.,                     0.000010045497092695465, 0.0007623023455299651, -0.0007623023455299651 ]
 yf_qd4 =  [ 0.,  0.,                      0.,                     0.0009969938850113856,   0.0013562739161008426, -0.0013562739161008426 ]
@@ -171,7 +194,73 @@ pyf_qd4 = [ 0.,  0.,                      0.,                    -5.012687615023
 zf_qd4 =  [ 0.,  1.675151081511833e-8,   -1.680184012110547e-8,   1.6726365460219405e-8,  -3.78176641902771e-7, -3.78176641902771e-7 ]
 pzf_qd4 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                   1.e-3,                  1.e-3                 ]
 
-# beam1.mp1.final
+
+# beam2.kp1.final
+xf_kp1  = [  0.,  0.,     0.,     0.002,                0.002,               -0.002,                0.002,               -0.002               ]
+pxf_kp1 = [  0.,  0.,     0.,     0.07006321275745035,  0.07081321275745035, -0.07067295798136997,  0.07081321275745035, -0.07067295798136997 ]
+yf_kp1  = [  0.,  0.,     0.,     0.001,                0.001,               -0.001,                0.001,               -0.001               ]
+pyf_kp1 = [  0.,  0.,     0.,    -0.06224157687021319, -0.06194157687021319,  0.06159214864638122, -0.06194157687021319,  0.06159214864638122 ]
+zf_kp1  = [  0.,  0.,     0.,     0.,                   0.,                   0.,                   0.,                   0.                  ]
+pzf_kp1 = [  0.,  1.e-3, -1.e-3,  1.e-3,                1.e-3,                1.e-3,               -1.e-3,               -1.e-3               ]
+
+# beam2.kn1.final
+xf_kn1  = [  0.,  0.,     0.,     0.002,                0.002,               -0.002,                0.002,               -0.002               ]
+pxf_kn1 = [  0.,  0.,     0.,    -0.07006321275745035, -0.06931321275745035,  0.06917295798136996, -0.06931321275745035,  0.06917295798136996 ]
+yf_kn1  = [  0.,  0.,     0.,     0.001,                0.001,               -0.001,                0.001,               -0.001               ]
+pyf_kn1 = [  0.,  0.,     0.,     0.06224157687021319,  0.0625415768702132,  -0.06219214864638122,  0.0625415768702132,  -0.06219214864638122 ]
+zf_kn1  = [  0.,  0.,     0.,     0.,                   0.,                   0.,                   0.,                   0.                  ]
+pzf_kn1 = [  0.,  1.e-3, -1.e-3,  1.e-3,                1.e-3,                1.e-3,               -1.e-3,               -1.e-3               ]
+
+# beam2.dkp1.final
+xf_dkp1  = [  0.,                    0.,                    0.,                    0.002,                0.002,               -0.002,                 0.002,               -0.002                ]
+pxf_dkp1 = [  0.08082108872791081,   0.08082108872791081,   0.08082108872791081,   0.15088430148536117,  0.15163430148536117,  0.01014813074654084,   0.15163430148536117,  0.01014813074654084  ]
+yf_dkp1  = [  0.,                    0.,                    0.,                    0.001,                0.001,               -0.001,                 0.001,               -0.001                ]
+pyf_dkp1 = [ -0.021655945456047817, -0.021655945456047817, -0.021655945456047817, -0.083897522326261,   -0.08359752232626101,  0.039936203190333405, -0.08359752232626101,  0.039936203190333405 ]
+zf_dkp1  = [  0.,                    0.,                    0.,                    0.,                   0.,                   0.,                    0.,                   0.                   ]
+pzf_dkp1 = [  0.,                    1.e-3,                -1.e-3,                 1.e-3,                1.e-3,                1.e-3,                -1.e-3,               -1.e-3                ]
+
+# beam2.dkn1.final
+xf_dkn1  = [  0.,                    0.,                    0.,                    0.002,                0.002,               -0.002,                 0.002,               -0.002                ]
+pxf_dkn1 = [ -0.08082108872791081,  -0.08082108872791081,  -0.08082108872791081,  -0.15088430148536117, -0.15013430148536117, -0.011648130746540841, -0.15013430148536117, -0.011648130746540841 ]
+yf_dkn1  = [  0.,                    0.,                    0.,                    0.001,                0.001,               -0.001,                 0.001,               -0.001                ]
+pyf_dkn1 = [  0.021655945456047817,  0.021655945456047817,  0.021655945456047817,  0.083897522326261,    0.084197522326261,   -0.04053620319033341,   0.084197522326261,   -0.04053620319033341  ]
+zf_dkn1  = [  0.,                    0.,                    0.,                    0.,                   0.,                   0.,                    0.,                   0.                   ]
+pzf_dkn1 = [  0.,                    1.e-3,                -1.e-3,                 1.e-3,                1.e-3,                1.e-3,                -1.e-3,               -1.e-3                ]
+
+# beam2.kp2.final
+xf_kp2  = [  0.,  0.,     0.,     0.002,                0.002,               -0.002,                0.002,               -0.002               ]
+pxf_kp2 = [  0.,  0.,     0.,     0.06640298429951919,  0.06715298429951919, -0.06704658530538163,  0.06715298429951919, -0.06704658530538163 ]
+yf_kp2  = [  0.,  0.,     0.,     0.001,                0.001,               -0.001,                0.001,               -0.001               ]
+pyf_kp2 = [  0.,  0.,     0.,    -0.05301509095771739, -0.05271509095771739,  0.05248555704730759, -0.05271509095771739,  0.05248555704730759 ]
+zf_kp2  = [  0.,  0.,     0.,     0.,                   0.,                   0.,                   0.,                   0.                  ]
+pzf_kp2 = [  0.,  1.e-3, -1.e-3,  1.e-3,                1.e-3,                1.e-3,               -1.e-3,               -1.e-3               ]
+
+# beam2.kn2.final
+xf_kn2  = [  0.,  0.,     0.,     0.002,                0.002,                -0.002,                 0.002,                -0.002                ]
+pxf_kn2 = [  0.,  0.,     0.,    -0.06640298429951919, -0.06565298429951918,   0.065546585305381630, -0.06565298429951918,   0.06554658530538163  ]
+yf_kn2  = [  0.,  0.,     0.,     0.001,                0.001,                -0.001,                 0.001,                -0.001                ]
+pyf_kn2 = [  0.,  0.,     0.,     0.05301509095771739,  0.053315090957717394, -0.053085557047307594,  0.053315090957717394, -0.053085557047307594 ]
+zf_kn2  = [  0.,  0.,     0.,     0.,                   0.,                    0.,                    0.,                    0.                   ]
+pzf_kn2 = [  0.,  1.e-3, -1.e-3,  1.e-3,                1.e-3,                 1.e-3,                -0.001,                -0.001                ]
+
+# beam2.dkp2.final
+xf_dkp2  = [  0.,                   0.,                   0.,                   0.002,                0.002,               -0.002,                  0.002,               -0.002                 ]
+pxf_dkp2 = [  0.07423987764364487,  0.07423987764364487,  0.07423987764364487,  0.14064286194316405,  0.14139286194316406,  0.0071932923382632364,  0.14139286194316406,  0.0071932923382632364 ]
+yf_dkp2  = [  0.,                   0.,                   0.,                   0.001,                0.001,               -0.001,                  0.001,               -0.001                 ]
+pyf_dkp2 = [ -0.01578017313073629, -0.01578017313073629, -0.01578017313073629, -0.06879526408845368, -0.06849526408845369,  0.0367053839165713,    -0.06849526408845369,  0.0367053839165713    ]
+zf_dkp2  = [  0.,                   0.,                   0.,                   0.,                   0.,                   0.,                     0.,                   0.                    ]
+pzf_dkp2 = [  0.,                   0.001,               -0.001,                0.001,                0.001,                0.001,                 -0.001,               -0.001                 ]
+
+# beam2.dkn2.final
+xf_dkn2  = [  0.,                   0.,                   0.,                   0.002,                0.002,               -0.002,                  0.002,               -0.002                ]
+pxf_dkn2 = [ -0.07423987764364487, -0.07423987764364487, -0.07423987764364487, -0.14064286194316405, -0.13989286194316405, -0.008693292338263237,  -0.13989286194316405, -0.008693292338263237 ]
+yf_dkn2  = [  0.,                   0.,                   0.,                   0.001,                0.001,               -0.001,                  0.001,               -0.001                ]
+pyf_dkn2 = [  0.01578017313073629,  0.01578017313073629,  0.01578017313073629,  0.06879526408845368,  0.06909526408845368, -0.0373053839165713,     0.06909526408845368, -0.0373053839165713   ]
+zf_dkn2  = [  0.,                   0.,                   0.,                   0.,                   0.,                   0.,                     0.,                   0.                   ]
+pzf_dkn2 = [  0.,                   0.001,               -0.001,                0.001,                0.001,                0.001,                 -0.001,               -0.001                ]
+
+
+# beam.mp1.final
 xf_mp1  = [ 0.,  0.,                      0.,                     2.0038906474613948e-3,  2.0414381618753773e-3, -2.0334840740152908e-3 ]
 pxf_mp1 = [ 0.,  0.,                      0.,                     1.5578151070769097e-4,  9.0918337810996800e-4, -5.9070183442735890e-4 ]
 yf_mp1  = [ 0.,  0.,                      0.,                     9.9028590464704330e-4,  1.0051011842090445e-3, -1.0248329717192377e-3 ]
@@ -179,19 +268,19 @@ pyf_mp1 = [ 0.,  0.,                      0.,                    -3.889523438599
 zf_mp1  = [ 0.,  4.9034281550199474e-5,  -4.9037118656134856e-5,  4.903209153457148e-5,   4.901571516330201e-5, 4.9015774852461346e-5   ]
 pzf_mp1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                  1.e-3,                  1.e-3                 ]
 
-# beam1.mm1.final
-xf_mm1  = [ 0.,  0.,                      0.,                     1.9961093525386053e-3,  2.0334869408519317e-3, -2.041441028695591e-3  ]
-pxf_mm1 = [ 0.,  0.,                      0.,                    -1.5578151070769097e-4,  5.9081662189003210e-4, -9.092981655726411e-4  ]
-yf_mm1  = [ 0.,  0.,                      0.,                     1.0097140953529567e-3,  1.0248688568666960e-3, -1.005137069338170e-3  ]
-pyf_mm1 = [ 0.,  0.,                      0.,                     3.8895234385991640e-4,  6.9574864201682590e-4,  9.431180204891087e-5  ]
-zf_mm1  = [ 0.,  4.9034281550199474e-5,  -4.9037118656134856e-5,  4.903209153457148e-5,   4.901574824419741e-5,   4.901571596604123e-5  ]
-pzf_mm1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                  1.e-3,                  1.e-3                 ]
+# beam.mn1.final
+xf_mn1  = [ 0.,  0.,                      0.,                     1.9961093525386053e-3,  2.0334869408519317e-3, -2.041441028695591e-3  ]
+pxf_mn1 = [ 0.,  0.,                      0.,                    -1.5578151070769097e-4,  5.9081662189003210e-4, -9.092981655726411e-4  ]
+yf_mn1  = [ 0.,  0.,                      0.,                     1.0097140953529567e-3,  1.0248688568666960e-3, -1.005137069338170e-3  ]
+pyf_mn1 = [ 0.,  0.,                      0.,                     3.8895234385991640e-4,  6.9574864201682590e-4,  9.431180204891087e-5  ]
+zf_mn1  = [ 0.,  4.9034281550199474e-5,  -4.9037118656134856e-5,  4.903209153457148e-5,   4.901574824419741e-5,   4.901571596604123e-5  ]
+pzf_mn1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                  1.e-3,                  1.e-3                 ]
 
 
 # test individual elements
 @testset "ExactTracking" begin
 
-  # === drifts ===
+  # ===  D R I F T  ===
   #
   # 5 keV electron
   v = [ xi pxi yi pyi zi pzi ]
@@ -234,7 +323,7 @@ pzf_mm1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,        
   @test v[:,BeamTracking.PYI] == pyf_dr4
   @test v[:,BeamTracking.PZI] == pzf_dr4
 
-  # === quadrupoles ===
+  # ===  Q U A D R U P O L E  ===
   #
   # 5 keV electron
   v = [ xi pxi yi pyi zi pzi ]
@@ -308,13 +397,134 @@ pzf_mm1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,        
   @test v[:,BeamTracking.PYI] ≈  pyf_qd4 (rtol=5.e-13)
   @test v[:,BeamTracking.PZI] == pzf_qd4
 
-#  # === multipoles ===
+  # ===  T H I N - L E N S   K I C K  ===
+  #
+  # 5 keV electron
+  v = [ xi2 pxi2 yi2 pyi2 zi2 pzi2 ]
+  work = zeros(size(v, 1), max_temps)
+  kn1 = bv_k1 * cos(15degree) / Bρ1
+  ks1 = bv_k1 * sin(15degree) / Bρ1
+  BeamTracking.launch!(multipole_kick!, v, work, ms_k1,  kn1 * lm1,  ks1 * lm1)
+  @test v[:,BeamTracking.XI]  == xf_kp1
+  @test v[:,BeamTracking.YI]  == yf_kp1
+  @test v[:,BeamTracking.ZI]  == zf_kp1
+  @test v[:,BeamTracking.PXI] ≈  pxf_kp1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_kp1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_kp1
+  v = [ xi2 pxi2 yi2 pyi2 zi2 pzi2 ]
+  BeamTracking.launch!(multipole_kick!, v, work, ms_k1, -kn1 * lm1, -ks1 * lm1)
+  @test v[:,BeamTracking.XI]  == xf_kn1
+  @test v[:,BeamTracking.YI]  == yf_kn1
+  @test v[:,BeamTracking.ZI]  == zf_kn1
+  @test v[:,BeamTracking.PXI] ≈  pxf_kn1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_kn1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_kn1
+  v = [ xi2 pxi2 yi2 pyi2 zi2 pzi2 ]
+  kn1 = bv_dk1 * cos(15degree) / Bρ1
+  ks1 = bv_dk1 * sin(15degree) / Bρ1
+  BeamTracking.launch!(multipole_kick!, v, work, ms_dk1,  kn1 * lm1,  ks1 * lm1)
+  @test v[:,BeamTracking.XI]  == xf_dkp1
+  @test v[:,BeamTracking.YI]  == yf_dkp1
+  @test v[:,BeamTracking.ZI]  == zf_dkp1
+  @test v[:,BeamTracking.PXI] ≈  pxf_dkp1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_dkp1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_dkp1
+  v = [ xi2 pxi2 yi2 pyi2 zi2 pzi2 ]
+  BeamTracking.launch!(multipole_kick!, v, work, ms_dk1, -kn1 * lm1, -ks1 * lm1)
+  @test v[:,BeamTracking.XI]  == xf_dkn1
+  @test v[:,BeamTracking.YI]  == yf_dkn1
+  @test v[:,BeamTracking.ZI]  == zf_dkn1
+  @test v[:,BeamTracking.PXI] ≈  pxf_dkn1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_dkn1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_dkn1
+  #
+  # 1 MeV electron
+  v = [ xi2 pxi2 yi2 pyi2 zi2 pzi2 ]
+  kn2 = bv_k2 * cos(12degree) / Bρ2
+  ks2 = bv_k2 * sin(12degree) / Bρ2
+  BeamTracking.launch!(multipole_kick!, v, work, ms_k2,  kn2 * lm2,  ks2 * lm2)
+  @test v[:,BeamTracking.XI]  == xf_kp2
+  @test v[:,BeamTracking.YI]  == yf_kp2
+  @test v[:,BeamTracking.ZI]  == zf_kp2
+  @test v[:,BeamTracking.PXI] ≈  pxf_kp2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_kp2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_kp2
+  v = [ xi2 pxi2 yi2 pyi2 zi2 pzi2 ]
+  BeamTracking.launch!(multipole_kick!, v, work, ms_k2, -kn2 * lm2, -ks2 * lm2)
+  @test v[:,BeamTracking.XI]  == xf_kn2
+  @test v[:,BeamTracking.YI]  == yf_kn2
+  @test v[:,BeamTracking.ZI]  == zf_kn2
+  @test v[:,BeamTracking.PXI] ≈  pxf_kn2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_kn2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_kn2
+  v = [ xi2 pxi2 yi2 pyi2 zi2 pzi2 ]
+  kn2 = bv_dk2 * cos(12degree) / Bρ2
+  ks2 = bv_dk2 * sin(12degree) / Bρ2
+  BeamTracking.launch!(multipole_kick!, v, work, ms_dk2,  kn2 * lm2,  ks2 * lm2)
+  @test v[:,BeamTracking.XI]  == xf_dkp2
+  @test v[:,BeamTracking.YI]  == yf_dkp2
+  @test v[:,BeamTracking.ZI]  == zf_dkp2
+  @test v[:,BeamTracking.PXI] ≈  pxf_dkp2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_dkp2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_dkp2
+  v = [ xi2 pxi2 yi2 pyi2 zi2 pzi2 ]
+  BeamTracking.launch!(multipole_kick!, v, work, ms_dk2, -kn2 * lm2, -ks2 * lm2)
+  @test v[:,BeamTracking.XI]  == xf_dkn2
+  @test v[:,BeamTracking.YI]  == yf_dkn2
+  @test v[:,BeamTracking.ZI]  == zf_dkn2
+  @test v[:,BeamTracking.PXI] ≈  pxf_dkn2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_dkn2 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_dkn2
 #  #
-#  # 5 keV electron
+#  # 1 GeV electron
+#  v = [ xi pxi yi pyi zi pzi ]
+#  kn3 = bv3 * cos(15degree) / Bρ3
+#  ks3 = bv3 * sin(15degree) / Bρ3
+#  BeamTracking.launch!(dkd_multipole!, v, work, β3, γsq3, 1/βγ3, ms3, kn3, ks3, lm3)
+#  @test v[:,BeamTracking.XI]  ≈  xf_mp3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_mp3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_mp3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_mp3 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_mp3 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_mp3
+#  v = [ xi pxi yi pyi zi pzi ]
+#  BeamTracking.launch!(dkd_multipole!, v, work, β3, γsq3, 1/βγ3, ms3, -kn3, -ks3, lm3)
+#  @test v[:,BeamTracking.XI]  ≈  xf_mn3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_mn3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_mn3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_mn3 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_mn3 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_mn3
+#  #
+#  # 250 GeV proton
+#  v = [ xi pxi yi pyi zi pzi ]
+#  kn4 = bv4 * cos(15degree) / Bρ4
+#  ks4 = bv4 * sin(15degree) / Bρ4
+#  BeamTracking.launch!(dkd_multipole!, v, work, β4, γsq4, 1/βγ4, ms4, kn4, ks4, lm4)
+#  @test v[:,BeamTracking.XI]  ≈  xf_mp4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_mp4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_mp4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_mp4 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_mp4 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_mp4
+#  v = [ xi pxi yi pyi zi pzi ]
+#  BeamTracking.launch!(dkd_multipole!, v, work, β4, γsq4, 1/βγ4, ms4, -kn4, -ks4, lm4)
+#  @test v[:,BeamTracking.XI]  ≈  xf_mn4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_mn4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_mn4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_mn4 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_mn4 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_mn4
+
+
+  # ===  M U L T I P O L E  ===
+  #
+  # 5 keV electron
   v = [ xi pxi yi pyi zi pzi ]
+  work = zeros(size(v, 1), max_temps)
   kn1 = bv1 * cos(15degree) / Bρ1
   ks1 = bv1 * sin(15degree) / Bρ1
-  BeamTracking.launch!(dkd_multipole!, v, work, β1, γsq1, 1/βγ1, mm1, kn1, ks1, lm1)
+  BeamTracking.launch!(dkd_multipole!, v, work, β1, γsq1, 1/βγ1, ms1, kn1, ks1, lm1)
   @test v[:,BeamTracking.XI]  ≈  xf_mp1  (rtol=5.e-13)
   @test v[:,BeamTracking.YI]  ≈  yf_mp1  (rtol=5.e-13)
   @test v[:,BeamTracking.ZI]  ≈  zf_mp1  (rtol=5.e-13)
@@ -322,13 +532,116 @@ pzf_mm1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,        
   @test v[:,BeamTracking.PYI] ≈  pyf_mp1 (rtol=5.e-13)
   @test v[:,BeamTracking.PZI] == pzf_mp1
   v = [ xi pxi yi pyi zi pzi ]
-  BeamTracking.launch!(dkd_multipole!, v, work, β1, γsq1, 1/βγ1, mm1, -kn1, -ks1, lm1)
-  @test v[:,BeamTracking.XI]  ≈  xf_mm1  (rtol=5.e-13)
-  @test v[:,BeamTracking.YI]  ≈  yf_mm1  (rtol=5.e-13)
-  @test v[:,BeamTracking.ZI]  ≈  zf_mm1  (rtol=5.e-13)
-  @test v[:,BeamTracking.PXI] ≈  pxf_mm1 (rtol=5.e-13)
-  @test v[:,BeamTracking.PYI] ≈  pyf_mm1 (rtol=5.e-13)
-  @test v[:,BeamTracking.PZI] == pzf_mm1
+  BeamTracking.launch!(dkd_multipole!, v, work, β1, γsq1, 1/βγ1, ms1, -kn1, -ks1, lm1)
+  @test v[:,BeamTracking.XI]  ≈  xf_mn1  (rtol=5.e-13)
+  @test v[:,BeamTracking.YI]  ≈  yf_mn1  (rtol=5.e-13)
+  @test v[:,BeamTracking.ZI]  ≈  zf_mn1  (rtol=5.e-13)
+  @test v[:,BeamTracking.PXI] ≈  pxf_mn1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PYI] ≈  pyf_mn1 (rtol=5.e-13)
+  @test v[:,BeamTracking.PZI] == pzf_mn1
+#  #
+#  # 1 MeV electron
+#  v = [ xi pxi yi pyi zi pzi ]
+#  kn2 = bv2 * cos(15degree) / Bρ2
+#  ks2 = bv2 * sin(15degree) / Bρ2
+#  BeamTracking.launch!(dkd_multipole!, v, work, β2, γsq2, 1/βγ2, ms2, kn2, ks2, lm2)
+#  @test v[:,BeamTracking.XI]  ≈  xf_mp2  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_mp2  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_mp2  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_mp2 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_mp2 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_mp2
+#  v = [ xi pxi yi pyi zi pzi ]
+#  BeamTracking.launch!(dkd_multipole!, v, work, β2, γsq2, 1/βγ2, ms2, -kn2, -ks2, lm2)
+#  @test v[:,BeamTracking.XI]  ≈  xf_mn2  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_mn2  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_mn2  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_mn2 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_mn2 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_mn2
+#  #
+#  # 1 GeV electron
+#  v = [ xi pxi yi pyi zi pzi ]
+#  kn3 = bv3 * cos(15degree) / Bρ3
+#  ks3 = bv3 * sin(15degree) / Bρ3
+#  BeamTracking.launch!(dkd_multipole!, v, work, β3, γsq3, 1/βγ3, ms3, kn3, ks3, lm3)
+#  @test v[:,BeamTracking.XI]  ≈  xf_mp3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_mp3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_mp3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_mp3 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_mp3 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_mp3
+#  v = [ xi pxi yi pyi zi pzi ]
+#  BeamTracking.launch!(dkd_multipole!, v, work, β3, γsq3, 1/βγ3, ms3, -kn3, -ks3, lm3)
+#  @test v[:,BeamTracking.XI]  ≈  xf_mn3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_mn3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_mn3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_mn3 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_mn3 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_mn3
+#  #
+#  # 250 GeV proton
+#  v = [ xi pxi yi pyi zi pzi ]
+#  kn4 = bv4 * cos(15degree) / Bρ4
+#  ks4 = bv4 * sin(15degree) / Bρ4
+#  BeamTracking.launch!(dkd_multipole!, v, work, β4, γsq4, 1/βγ4, ms4, kn4, ks4, lm4)
+#  @test v[:,BeamTracking.XI]  ≈  xf_mp4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_mp4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_mp4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_mp4 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_mp4 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_mp4
+#  v = [ xi pxi yi pyi zi pzi ]
+#  BeamTracking.launch!(dkd_multipole!, v, work, β4, γsq4, 1/βγ4, ms4, -kn4, -ks4, lm4)
+#  @test v[:,BeamTracking.XI]  ≈  xf_mn4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_mn4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_mn4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_mn4 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_mn4 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_mn4
+
+
+#  # ===  S B E N D  ===
+#  #
+#  # 5 keV electron
+#  v = [ xi pxi yi pyi zi pzi ]
+#  BeamTracking.launch!(exact_sbend!, v, work, β1, Bρ1, hc1, b_1, ee1, ex1, la1)
+#  @test v[:,BeamTracking.XI]  ≈  xf_sb1  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_sb1  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_sb1  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_sb1 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_sb1 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_sb1
+#  #
+#  # 1 MeV electron
+#  v = [ xi pxi yi pyi zi pzi ]
+#  BeamTracking.launch!(exact_sbend!, v, work, β2, Bρ2, hc2, b_2, ee2, ex2, la2)
+#  @test v[:,BeamTracking.XI]  ≈  xf_sb2  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_sb2  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_sb2  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_sb2 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_sb2 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_sb2
+#  #
+#  # 1 GeV electron
+#  v = [ xi pxi yi pyi zi pzi ]
+#  BeamTracking.launch!(exact_sbend!, v, work, β3, Bρ3, hc3, b_3, ee3, ex3, la3)
+#  @test v[:,BeamTracking.XI]  ≈  xf_sb3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_sb3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_sb3  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_sb3 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_sb3 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_sb3
+#  #
+#  # 250 GeV proton
+#  v = [ xi pxi yi pyi zi pzi ]
+#  BeamTracking.launch!(exact_sbend!, v, work, β4, Bρ4, hc4, b_4, ee4, ex4, la4)
+#  @test v[:,BeamTracking.XI]  ≈  xf_sb4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.YI]  ≈  yf_sb4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.ZI]  ≈  zf_sb4  (rtol=5.e-13)
+#  @test v[:,BeamTracking.PXI] ≈  pxf_sb4 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PYI] ≈  pyf_sb4 (rtol=5.e-13)
+#  @test v[:,BeamTracking.PZI] == pzf_sb4
 
 
 end

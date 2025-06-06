@@ -237,33 +237,35 @@ end # function dkd_multipole!()
 
 
 """
-    multipole_kick!(i, v, work, mm, knl, ksl)
+    multipole_kick!(i, v, work, ms, knl, ksl)
 
 Track a beam of particles through a thin-lens multipole
 having integrated normal and skew strengths listed in the
-coefficient vectors knl and ksl respectively. The vector mm
-lists the order of the corresponding entries in knl and ksl.
+coefficient vectors knl and ksl respectively. The vector ms
+lists the orders of the corresponding entries in knl and ksl.
 
+## XXXXXXXXXXXXX
 NB: This function IGNORES the m = 1 (dipole) components of
 both knl and ksl. Moreover, it should *not* include an m = 2
 (quadrupole) component unless this function is used for a
 thin-lens (zero-length) element.
+## XXXXXXXXXXXXX
 
 The algorithm used in this function takes advantage of the
 complex representation of the vector potential Az,
   - ``-Re{ sum_m (b_m + i a_m) (x + i y)^m / m }``,
 and uses a Horner-like scheme (see Shachinger and Talman
 [SSC-52]) to compute the transverse kicks induced by a pure
-multipole magnet.  This method supposedly has good numerical
-properties, though I've not seen a proof of that.
+multipole magnet. This method supposedly has good numerical
+properties, though I've not seen a proof of that claim.
 
 DTA: Ordering matters!
 DTA: Add thin dipole kick.
 
 ### Arguments
- - mm:  vector of m values for non-zero multipole coefficients </br>
- - knl: vector of normal integrated multipole strengths </br>
- - ksl: vector of skew integrated multipole strengths </br>
+ - ms:  vector of m values for non-zero multipole coefficients
+ - knl: vector of normal integrated multipole strengths
+ - ksl: vector of skew integrated multipole strengths
 
 
      NB: Here the j-th component of knl (ksl) denotes the
@@ -272,23 +274,48 @@ DTA: Add thin dipole kick.
        For example, if mm[j] = 3, then knl[j] denotes the
        normal integrated sextupole strength scaled by Bρo.
 """
-@inline function multipole_kick!(i, v, work, mm, knl, ksl)
+#@inline function multipole_kick!(i, v, work, mm, knl, ksl)
+#  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for multipole_kick!()."
+#  @inbounds begin #@FastGTPSA! begin
+#  jm = length(mm)
+#  m = mm[jm]
+#  if m == 1 return v end
+#  work[i,1] = ar = knl[jm] * v[i,XI] - ksl[jm] * v[i,YI]
+#  work[i,2] = ai = knl[jm] * v[i,YI] + ksl[jm] * v[i,XI]
+#  jm -= 1
+#  while m > 2
+#    m -= 1
+#    work[i,3] = work[i,1] * v[i,XI] - work[i,2] * v[i,YI]
+#    work[i,2] = work[i,1] * v[i,YI] + work[i,2] * v[i,XI]
+#    work[i,1] = work[i,3]
+#    if m == mm[jm]
+#      work[i,1] += knl[jm] * v[i,XI] - ksl[jm] * v[i,YI]
+#      work[i,2] += knl[jm] * v[i,YI] + ksl[jm] * v[i,XI]
+#      jm -= 1
+#    end
+#  end
+#  v[i,PXI] -= work[i,1]
+#  v[i,PYI] += work[i,2]
+#  end #end
+#  return v
+#end # function multipole_kick!()
+#
+@inline function multipole_kick!(i, v, work, ms, knl, ksl)
   @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for multipole_kick!()."
   @inbounds begin #@FastGTPSA! begin
-  jm = length(mm)
-  m = mm[jm]
-  if m == 1 return v end
-  work[i,1] = ar = knl[jm] * v[i,XI] - ksl[jm] * v[i,YI]
-  work[i,2] = ai = knl[jm] * v[i,YI] + ksl[jm] * v[i,XI]
+  jm = length(ms)
+  m  = ms[jm]
+  work[i,1] = knl[jm]
+  work[i,2] = ksl[jm]
   jm -= 1
-  while m > 2
+  while 2 <= m
     m -= 1
     work[i,3] = work[i,1] * v[i,XI] - work[i,2] * v[i,YI]
     work[i,2] = work[i,1] * v[i,YI] + work[i,2] * v[i,XI]
     work[i,1] = work[i,3]
-    if m == mm[jm]
-      work[i,1] += knl[jm] * v[i,XI] - ksl[jm] * v[i,YI]
-      work[i,2] += knl[jm] * v[i,YI] + ksl[jm] * v[i,XI]
+    if 0 < jm && m == ms[jm]
+      work[i,1] += knl[jm]
+      work[i,2] += ksl[jm]
       jm -= 1
     end
   end
