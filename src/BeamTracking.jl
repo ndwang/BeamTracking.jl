@@ -2,7 +2,7 @@
     BeamTracking
 
 A high-performance particle beam tracking package for accelerator physics simulations.
-Provides both linear and exact tracking methods with optimized memory layouts and parallel processing.
+Currently provides both linear, exact, field tracking, and Runge-Kutta tracking methods.
 """
 module BeamTracking
 using GTPSA,

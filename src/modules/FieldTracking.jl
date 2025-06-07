@@ -11,12 +11,11 @@ struct Field end
 MAX_TEMPS(::Field) = 0
 
 module FieldTracking
-using ..GTPSA, ..BeamTracking, ..StaticArrays
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel
+using ..BeamTracking
+using ..BeamTracking: @makekernel
+using SciMLBase
 const TRACKING_METHOD = Field
 
-# EVOLVE-BLOCK-START
-using SciMLBase, OrdinaryDiffEq
 """
     field_system!(du, u, p, t)
 
@@ -64,6 +63,5 @@ Track a particle through a drift space with arbitrary field using DifferentialEq
     end
     return v
 end
-# EVOLVE-BLOCK-END
 
 end

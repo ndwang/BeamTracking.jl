@@ -33,22 +33,22 @@ Perform a single 4th order Runge-Kutta step.
 """
 function rk4_step!(i, u, work, t, h, field_func, params)
     # Get views into work matrix for RK4 stages
-    k1 = view(work, i, 1:6)    # First 6 elements for stage 1
-    k2 = view(work, i, 7:12)   # Next 6 elements for stage 2
-    k3 = view(work, i, 13:18)  # Next 6 elements for stage 3
-    k4 = view(work, i, 19:24)  # Last 6 elements for stage 4
+    k1 = view(work, i, 1:6)
+    k2 = view(work, i, 7:12)
+    k3 = view(work, i, 13:18)
+    k4 = view(work, i, 19:24)
     
-    # Stage 1
+    # Intermediate stages
     k1 .= field_func(u, 0.0, params)
+
+    k2 .= u .+ (h/2) .* k1
+    k2 .= field_func(k2, h/2, params)
+
+    k3 .= u .+ (h/2) .* k2
+    k3 .= field_func(k3, h/2, params)
     
-    # Stage 2
-    k2 .= field_func(u .+ (h/2) .* k1, h/2, params)
-    
-    # Stage 3
-    k3 .= field_func(u .+ (h/2) .* k2, h/2, params)
-    
-    # Stage 4
-    k4 .= field_func(u .+ h .* k3, h, params)
+    k4 .= u .+ h .* k3
+    k4 .= field_func(k4, h, params)
     
     # Final update
     u .+= (h/6) .* (k1 .+ 2 .* k2 .+ 2 .* k3 .+ k4)
