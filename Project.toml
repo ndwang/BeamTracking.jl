@@ -20,7 +20,6 @@ BeamTrackingBeamlinesExt = "Beamlines"
 
 [compat]
 Beamlines = "0.2.1"
-BenchmarkTools = "1.6.0"
 GTPSA = "1.4.2"
 KernelAbstractions = "0.9.34"
 ReferenceFrameRotations = "3"
