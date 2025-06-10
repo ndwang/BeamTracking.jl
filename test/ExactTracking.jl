@@ -791,7 +791,7 @@ end
             tilde_m = mc2/p0c
             gamsqr_0 = 1 + 1/tilde_m^2
             beta_0 = 1/sqrt(1 + tilde_m^2)
-            return ks, tilde_m, gamsqr_0, beta_0, L
+            return ks, beta_0, gamsqr_0, tilde_m, L
         end
 
         # Scalar parameters
