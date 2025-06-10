@@ -387,7 +387,7 @@ Lr: element arc length
 end # function exact_sbend!()
 
 
-@makekernel function exact_solenoid!(i, v, work, ks, tilde_m, gamsqr_0, beta_0, L)
+@makekernel function exact_solenoid!(i, v, work, ks, beta_0, gamsqr_0, tilde_m, L)
   @assert size(work, 2) >= 8 && size(work, 1) >= size(v,1) "Size of work matrix must be at least ($(size(v,1)), 8) for exact_solenoid!"
   @inbounds begin @FastGTPSA! begin
     # Recurring variables
