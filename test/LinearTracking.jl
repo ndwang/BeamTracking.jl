@@ -120,7 +120,7 @@
     Ms[5, 5] = 1.0
     Ms[6, 6] = 1.0
     Ms[5, 6] = r56s
-    test_matrix(LinearTracking.linear_coast_uncoupled!, Ms, mxs, mys, r56s)
+    test_matrix(LinearTracking.linear_coast_uncoupled!, Ms, mxs, mys, r56s, nothing, nothing)
     Ms[5, 1:4] = ts
     Ms[1:4, 6] = ds
     test_matrix(LinearTracking.linear_coast_uncoupled!, Ms, mxs, mys, r56s, ds, ts)
@@ -133,7 +133,7 @@
     Mt[5, 5] = 1.0
     Mt[6, 6] = 1.0
     Mt[5, 6] = r56t
-    test_matrix(LinearTracking.linear_coast_uncoupled!, scalar.(Mt), mxt, myt, r56t)
+    test_matrix(LinearTracking.linear_coast_uncoupled!, scalar.(Mt), mxt, myt, r56t, nothing, nothing)
     Mt[5, 1:4] = tt
     Mt[1:4, 6] = dt
     test_matrix(LinearTracking.linear_coast_uncoupled!, scalar.(Mt), mxt, myt, r56t, dt, tt)
@@ -154,7 +154,7 @@
     Ms[5, 5] = 1.0
     Ms[6, 6] = 1.0
     Ms[5, 6] = r56s
-    test_matrix(LinearTracking.linear_coast!, Ms, mxys, r56s)
+    test_matrix(LinearTracking.linear_coast!, Ms, mxys, r56s, nothing, nothing)
     Ms[5, 1:4] = ts
     Ms[1:4, 6] = ds
     test_matrix(LinearTracking.linear_coast!, Ms, mxys, r56s, ds, ts)
@@ -166,7 +166,7 @@
     Mt[5, 5] = 1.0
     Mt[6, 6] = 1.0
     Mt[5, 6] = r56t
-    test_matrix(LinearTracking.linear_coast!, scalar.(Mt), mxyt, r56t)
+    test_matrix(LinearTracking.linear_coast!, scalar.(Mt), mxyt, r56t, nothing, nothing)
     Mt[5, 1:4] = tt
     Mt[1:4, 6] = dt
     test_matrix(LinearTracking.linear_coast!, scalar.(Mt), mxyt, r56t, dt, tt)
