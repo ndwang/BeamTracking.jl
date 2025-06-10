@@ -55,7 +55,7 @@ function exact_universal!(
       else
         Ks = get_thick_strength(bmultipoleparams.bdict[0], L, bunch.Brho_ref)
         tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
-        runkernel!(ExactTracking.exact_solenoid!, i, v, work, beta_0, gamsqr_0, tilde_m, L)
+        runkernel!(ExactTracking.exact_solenoid!, i, v, work, Ks, beta_0, gamsqr_0, tilde_m, L)
       end
     elseif haskey(bmultipoleparams.bdict, 1) # Kick
       error("Exact kick not yet implemented")
