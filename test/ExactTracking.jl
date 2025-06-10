@@ -315,7 +315,6 @@ zf_mn1  = [ 0.,  4.9034281550199474e-5,  -4.9037118656134856e-5,  4.903209153457
 pzf_mn1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,                  1.e-3,                  1.e-3                 ]
 
 
-#=
 # test individual elements
 @testset "ExactTracking" begin
 
@@ -719,10 +718,6 @@ pzf_mn1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,        
 #  @test v[:,BeamTracking.PZI] == pzf_sb4
 
 
-end
-=#
-
-@testset "ExactTracking" begin
     @testset "Utility functions" begin
         dx_rot = -0.1
         dy_rot = -0.1
