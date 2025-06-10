@@ -3,7 +3,6 @@ using Test,
       Beamlines,
       JET,
       BenchmarkTools,
-      KernelAbstractions,
       GTPSA
 
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
