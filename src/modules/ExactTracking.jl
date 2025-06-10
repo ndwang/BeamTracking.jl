@@ -15,11 +15,6 @@ using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel
 using ..BeamTracking: C_LIGHT
 const TRACKING_METHOD = Exact
 
-export exact_drift!
-export mkm_quadrupole!, quadrupole_matrix!, quadrupole_kick!
-export dkd_multipole!, multipole_kick!
-export exact_sbend!
-
 # Update the reference energy of the canonical coordinates
 # BUG: z and pz are not updated correctly
 #=
