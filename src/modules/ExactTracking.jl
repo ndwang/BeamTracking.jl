@@ -127,15 +127,14 @@ s: element length
   @inbounds begin #@FastGTPSA! begin
     sgn = sign(k2_num)
     focus   = k2_num >= 0  # horizontally focusing for positive particles
-    defocus = k2_num <  0  # horizontally defocusing for positive particles
 
     work[i,1] = v[i,PXI] / (1.0 + v[i,PZI])  # x'
     work[i,2] = v[i,PYI] / (1.0 + v[i,PZI])  # y'
     work[i,3] = sqrt(abs(k2_num / (1.0 + v[i,PZI]))) * s  # |κ|s
-    work[i,4] = focus * cos(work[i,3])    + defocus * cosh(work[i,3])
-    work[i,5] = focus * cosh(work[i,3])   + defocus * cos(work[i,3])
-    work[i,6] = focus * sincu(work[i,3])  + defocus * sinhcu(work[i,3])
-    work[i,7] = focus * sinhcu(work[i,3]) + defocus * sincu(work[i,3])
+    work[i,4] = focus ? cos(work[i,3]) : cosh(work[i,3])
+    work[i,5] = focus ? cosh(work[i,3]) : cos(work[i,3])
+    work[i,6] = focus ? sincu(work[i,3]) : sinhcu(work[i,3])
+    work[i,7] = focus ? sinhcu(work[i,3]) : sincu(work[i,3])
 
     v[i,PXI] = v[i,PXI] * work[i,4] - k2_num * s * v[i,XI] * work[i,6]
     v[i,PYI] = v[i,PYI] * work[i,5] + k2_num * s * v[i,YI] * work[i,7]
@@ -395,7 +394,7 @@ end # function exact_sbend!()
     work[i,2] = sqrt(work[i,1]^2 - (v[i,PXI] + v[i,YI] * ks / 2)^2 - (v[i,PYI] - v[i,XI] * ks / 2)^2) # pr
     work[i,3] = sin(ks * L / work[i,2])                      # S
     work[i,4] = 1 + cos(ks * L / work[i,2])                  # Cp
-    work[i,5] = 1 - cos(ks * L / work[i,2])                  # Cm
+    work[i,5] = 2 - work[1,4]                                # Cm
     # Temporaries
     work[i,6] = v[i,XI]                                      # x_0
     work[i,7] = v[i,PXI]                                     # px_0
