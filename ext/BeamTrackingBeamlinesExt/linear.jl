@@ -48,7 +48,7 @@ end
 
 end
 
-@inline function thick_pure_bsolenoid(tm::Linear, bunch, bm0, L) 
+@inline function thick_pure_bsolenoid(tm::Linear, bunch, bm0, L)
   gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
   Ks = get_thick_strength(bm0, L, bunch.Brho_ref)
   mxy = LinearTracking.linear_solenoid_matrix(Ks, L)
