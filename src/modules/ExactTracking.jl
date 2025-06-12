@@ -405,7 +405,7 @@ end # function exact_sbend!()
                   ( beta_0 * sqrt(work[i,1]^2 + tilde_m^2) * work[i,2] * (beta_0 * sqrt(work[i,1]^2 + tilde_m^2) + work[i,2]) )
     v[i,XI] = work[i,4] * work[i,6] / 2 + work[i,3] * (work[i,7] / ks + work[i,8] / 2) + work[i,5] * v[i,PYI] / ks
     v[i,PXI] = work[i,3] * (v[i,PYI] / 2 - ks * work[i,6] / 4) + work[i,4] * work[i,7] / 2 - ks * work[i,5] * work[i,8] / 4
-    v[i,YI] = work[i,3] * (v[i,PYI] / ks - work[i,6] / 2) + (work[i,4] * work[i,8] - work[i,5] * work[i,7]) / ks
+    v[i,YI] = work[i,3] * (v[i,PYI] / ks - work[i,6] / 2) + work[i,4] * work[i,8] / 2 - work[i,5] * work[i,7] / ks
     v[i,PYI]  = ks * work[i,5] * work[i,6] / 4 - work[i,3] * (work[i,7] / 2 + ks * work[i,8] / 4) + work[i,4] * v[i,PYI] / 2
   end end
   return v
