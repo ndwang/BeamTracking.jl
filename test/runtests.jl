@@ -47,7 +47,7 @@ function test_matrix(
   end
   # 3) No scalar allocations
   if no_scalar_allocs
-    v = rand(1,6)
+    v = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
     b = BunchView(state, v, nothing)
     @test @ballocated(BeamTracking.launch!($b, $kernel_call; use_KA=false)) == 0 
   end
@@ -89,7 +89,7 @@ function test_map(
   end
   # 3) No scalar allocations
   if no_scalar_allocs
-    v = rand(1,6)
+    v = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
     b = BunchView(state, v, nothing)
     @test @ballocated(BeamTracking.launch!($b, $kernel_call; use_KA=false)) == 0 
   end
