@@ -46,9 +46,9 @@
     # Thick solenoid:
     ele_sol = LineElement(L=1.0, Ks=2.0, tracking_method=Exact())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
-    bl = Beamline([ele_drift], Brho_ref=Brho_ref)
+    bl = Beamline([ele_sol], Brho_ref=Brho_ref)
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/drift.jl")
+    v_expected = read_map("bmad_maps/solenoid.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
 
@@ -58,10 +58,10 @@
     ele_patch_bend = LineElement(L=1.0, g=0.01, dy=3.0, dz_rot=0.3, tracking_method=Exact())
     ele_patch_sol = LineElement(L=1.0, Ks=1.0, dt=1.0, tracking_method=Exact())
     ele_bend_quad = LineElement(L=1.0, g=0.01, K1=1.0, tracking_method=Exact())
-    @test_throws ErrorException track!(bunch, Beamline([ele_kick],       Brho_ref=Brho_ref))
-    @test_throws ErrorException track!(bunch, Beamline([ele_bend],       Brho_ref=Brho_ref))
-    @test_throws ErrorException track!(bunch, Beamline([ele_patch_bend], Brho_ref=Brho_ref))
-    @test_throws ErrorException track!(bunch, Beamline([ele_patch_sol],  Brho_ref=Brho_ref))
-    @test_throws ErrorException track!(bunch, Beamline([ele_bend_quad],  Brho_ref=Brho_ref))
+    @test_throws ErrorException track!(b0, Beamline([ele_kick],       Brho_ref=Brho_ref))
+    @test_throws ErrorException track!(b0, Beamline([ele_bend],       Brho_ref=Brho_ref))
+    @test_throws ErrorException track!(b0, Beamline([ele_patch_bend], Brho_ref=Brho_ref))
+    @test_throws ErrorException track!(b0, Beamline([ele_patch_sol],  Brho_ref=Brho_ref))
+    @test_throws ErrorException track!(b0, Beamline([ele_bend_quad],  Brho_ref=Brho_ref))
   end
 end

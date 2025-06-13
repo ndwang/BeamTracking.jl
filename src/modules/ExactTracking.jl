@@ -346,7 +346,7 @@ end # function exact_sbend!()
 
 @makekernel fastgtpsa=true function exact_solenoid!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, L)
   v = b.v
-  # Recurring variables
+  # Recurring variables 
   rel_p = 1 + v[i,PZI]    
   pr = sqrt(rel_p^2 - (v[i,PXI] + v[i,YI] * ks / 2)^2 - (v[i,PYI] - v[i,XI] * ks / 2)^2)
   s = sin(ks * L / pr)   
