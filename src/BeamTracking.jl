@@ -3,7 +3,12 @@ using GTPSA,
       ReferenceFrameRotations,
       StaticArrays, 
       SIMD,
-      VectorizationBase
+      VectorizationBase,
+      EnumX,
+      Unrolled,
+      MacroTools,
+      Adapt,
+      Accessors
 
 using KernelAbstractions
       
@@ -16,8 +21,9 @@ export ExactTracking, Exact
 export track!
 
 include("utils.jl")
-include("kernel.jl")
 include("types.jl")
+include("kernel.jl")
+
 
 
 include("modules/ExactTracking.jl") #; TRACKING_METHOD(::ExactTracking) = Exact
