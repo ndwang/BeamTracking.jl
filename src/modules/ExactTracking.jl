@@ -46,7 +46,6 @@ tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
 L: element length
 """
 @makekernel fastgtpsa=true function exact_drift!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, L)
- #@assert size(work, 2) >= 1 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 1) for exact_drift!()."
   v = b.v
   P_s = sqrt((1.0 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)) 
   v[i,XI]   = v[i,XI] + v[i,PXI] * L / work[i,1]
@@ -82,7 +81,6 @@ k2_num:   g / Bρ0 = g / (p0 / q)
 L: element length
 """
 @makekernel fastgtpsa=true function mkm_quadrupole!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, k2_num, L)
-  #@assert size(work, 2) >= 7 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 7) for mkm_quadrupole!()."
   quadrupole_matrix!(i, b::BunchView, k2_num, L / 2)
   quadrupole_kick!(  i, b::BunchView, beta_0, gamsqr_0, tilde_m, L)
   quadrupole_matrix!(i, b::BunchView, k2_num, L / 2)
@@ -102,7 +100,6 @@ k2_num:  g / Bρ0 = g / (p0 / q)
 s: element length
 """
 @makekernel fastgtpsa=true function quadrupole_matrix!(i, b::BunchView, k2_num, s)
-  #@assert size(work, 2) >= 7 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 7) for quadrupole_matrix!()."
   v = b.v
   sgn = sign(k2_num)
   focus   = k2_num >= 0  # horizontally focusing for positive particles
@@ -152,7 +149,6 @@ tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
 s: element length
 """
 @makekernel fastgtpsa=true function quadrupole_kick!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, s)
-  #@assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for quadrupole_kick!"
   v = b.v
   rP0 = 1.0 + v[i,PZI]              # reduced total momentum,  P/P0 = 1 + δ
   sqrPt = v[i,PXI]^2 + v[i,PYI]^2   # (transverse momentum)^2, P⟂^2 = (Px^2 + Py^2) / P0^2
@@ -194,7 +190,6 @@ ks: vector of skew multipole strengths scaled by Bρ0
 L:  element length
 """
 @makekernel fastgtpsa=true function dkd_multipole!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, mm, kn, ks, L)
-  #@assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for dkd_multipole!()."
   exact_drift!(   i, b, beta_0, gamsqr_0, tilde_m, L / 2)
   multipole_kick!(i, b, mm, kn * L, ks * L)
   exact_drift!(   i, b, beta_0, gamsqr_0, tilde_m, L / 2)
@@ -233,7 +228,6 @@ DTA: Add thin dipole kick.
        normal integrated sextupole strength scaled by Bρo.
 """
 #@inline function multipole_kick!(i, b, mm, knl, ksl)
-#  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for multipole_kick!()."
 #  @inbounds begin #@FastGTPSA! begin
 #  jm = length(mm)
 #  m = mm[jm]
@@ -259,7 +253,6 @@ DTA: Add thin dipole kick.
 #end # function multipole_kick!()
 #
 @makekernel fastgtpsa=true function multipole_kick!(i, b::BunchView, ms, knl, ksl)
-  #@assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for multipole_kick!()."
   v = b.v
   jm = length(ms)
   m  = ms[jm]
@@ -327,7 +320,6 @@ e2: exit face angle (+ve angle <=> toward rbend)
 Lr: element arc length
 """
 @makekernel fastgtpsa=true function exact_sbend!(i, b::BunchView, beta_0, brho_0, hc, b0, e1, e2, Lr)
-  #@assert size(work, 2) >= 5 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 5) for multipole_kick!()."
   rho = brho0 / b0
   ang = hc * Lr
   c1 = cos(ang)
@@ -351,7 +343,6 @@ end # function exact_sbend!()
 
 
 @makekernel fastgtpsa=true function exact_solenoid!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, L)
-  #@assert size(work, 2) >= 8 && size(work, 1) >= size(v,1) "Size of work matrix must be at least ($(size(v,1)), 8) for exact_solenoid!"
   # Recurring variables
   rel_p = 1 + v[i,PZI]                                 
   pr = sqrt(rel_p^2 - (v[i,PXI] + v[i,YI] * ks / 2)^2 - (v[i,PYI] - v[i,XI] * ks / 2)^2)
@@ -372,9 +363,7 @@ end # function exact_sbend!()
   v[i,PYI]  = ks * cm * x_0 / 4 - s * (px_0 / 2 + ks * y_0 / 4) + cp * v[i,PYI] / 2
 end
 
-@makekernel fastgtpsa=true function patch!(i, b::BunchView, tilde_m, dt, dx, dy, dz, winv::Union{AbstractArray,Nothing}, L)
-  #@assert size(work,2) >= 8 && size(work, 1) >= size(v, 1) "Size of work array must be at least ($(size(v, 1)), 9) for patch transformations. Received $work"
-  #@assert isnothing(winv) || (size(winv,1) == 3 && size(winv,2) == 3) "The inverse rotation matrix must be either `nothing` or 3x3 for patch!. Received $winv"
+@makekernel fastgtpsa=true function patch!(i, b::BunchView, tilde_m, dt, dx, dy, dz, winv::Union{StaticMatrix{3,3},Nothing}, L)
   # Temporary momentum [1+δp, ps_0]
   rel_p = 1 + v[i,PZI]                                 
   ps_0 = sqrt(rel_p^2 - v[i,PXI]^2 - v[i,PYI]^2)  

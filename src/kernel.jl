@@ -53,15 +53,14 @@ end
 # Matrix v should ALWAYS be in SoA whether for real or as a view via tranpose(v)
 
 @inline function launch!(
-  b::BunchView,
+  b::BunchView{S,V},
   kc::KernelChain;
   groupsize::Union{Nothing,Integer}=nothing, #backend isa CPU ? floor(Int,REGISTER_SIZE/sizeof(eltype(v))) : 256 
   multithread_threshold::Integer=Threads.nthreads() > 1 ? 1750*Threads.nthreads() : typemax(Int),
   use_KA::Bool=!(get_backend(b.v) isa CPU && isnothing(groupsize)),
-  use_explicit_SIMD::Bool=false
-)
+  use_explicit_SIMD::Bool=!use_KA # Default to use explicit SIMD on CPU
+) where {S,V}
   v = b.v
-  V = typeof(v)
   if use_KA && use_explicit_SIMD
     error("Cannot use both KernelAbstractions (KA) and explicit SIMD")
   end

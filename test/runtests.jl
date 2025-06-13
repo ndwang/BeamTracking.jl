@@ -5,23 +5,38 @@ using Test,
       BenchmarkTools,
       GTPSA
 
+using BeamTracking: BunchView
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
 
 const D = Descriptor(6, 1)
 
-function test_matrix(kernel, M_expected, args...; type_stable=VERSION >= v"1.11", no_allocs=true, tol=1e-14)
-  n_temps = BeamTracking.MAX_TEMPS(parentmodule(kernel).TRACKING_METHOD())
+function test_matrix(kernel, M_expected, args...; type_stable=VERSION >= v"1.11", no_scalar_allocs=true, rtol=nothing, atol=nothing)
+  # Initialize bunch without spin
   v = transpose(@vars(D))
-  work = zeros(eltype(v), 1, n_temps)
+  state = similar(v, State.T, N)
+  state .= State.Alive
+  b = BunchView(state, v, nothing)
 
-  BeamTracking.launch!(kernel, v, work, args...)
+  # Set up kernel chain and launch!
+  kc = (KernelCall(kernel, args),)
+  BeamTracking.launch!(b, kc)
+
+  # Set up tolerance kwargs
+  kwargs = ()
+  if !isnothing(atol)
+    kwargs = pairs((;kwargs..., atol=atol))
+  end
+  if !isnothing(rtol)
+    kwargs = pairs((;kwargs..., rtol=rtol))
+  end
+
 
   # 1) Correctness
-  @test norm(GTPSA.jacobian(v)[1:6,1:6] - scalar.(M_expected)) < tol 
+  @test isapprox(GTPSA.jacobian(b.v)[1:6,1:6], scalar.(M_expected); kwargs...)
   # 2) Type stability
   if type_stable
-    @test_opt BeamTracking.launch!(kernel, v, work, args...)
+    @test_opt BeamTracking.launch!(b, kc)
   end
   # 3) No Allocations
   if no_allocs

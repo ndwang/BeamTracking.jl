@@ -32,6 +32,7 @@ struct BunchView{S,V,Q}
     q = soaviewq(b)
     return new{typeof.((state,v,q))...}(state,v,q)
   end
+  BunchView(args...) = new{typeof.(args)...}(args...)
 end
 
 Adapt.@adapt_structure BunchView
@@ -54,7 +55,7 @@ function Bunch(N::Integer; mem=SoA, Brho_ref=NaN, species=ELECTRON, spin=false)
     q = spin ? rand(4,N) : nothing
   end
   state = similar(v, State.T, N)
-  state .= State.Preborn
+  state .= State.Alive
   return Bunch{mem}(species, Brho_ref, state, v, q)
 end
 
@@ -67,7 +68,7 @@ function Bunch(v::AbstractArray, q=nothing; mem=SoA, Brho_ref=NaN, species=ELECT
     N_particle = size(v, 2)
   end
   state = similar(v, State.T, N_particle)
-  state .= State.Preborn
+  state .= State.Alive
   return Bunch{mem}(species, Brho_ref, state, v, q)
 end
 
