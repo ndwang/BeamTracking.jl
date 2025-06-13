@@ -73,6 +73,7 @@ end
 end
 
 @makekernel fastgtpsa=true function linear_6D!(i, b::BunchView, m::StaticMatrix{6,6})
+  v = b.v
   old_x  = v[i,XI]
   old_px = v[i,PXI]
   old_y  = v[i,YI]

@@ -48,14 +48,14 @@ L: element length
 @makekernel fastgtpsa=true function exact_drift!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, L)
   v = b.v
   P_s = sqrt((1.0 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)) 
-  v[i,XI]   = v[i,XI] + v[i,PXI] * L / work[i,1]
-  v[i,YI]   = v[i,YI] + v[i,PYI] * L / work[i,1]
+  v[i,XI]   = v[i,XI] + v[i,PXI] * L / P_s
+  v[i,YI]   = v[i,YI] + v[i,PYI] * L / P_s
   # high-precision computation of z_final
   # vf.z = vi.z - (1 + δ) * L * (1 / Ps - 1 / (β0 * sqrt((1 + δ)^2 + tilde_m^2)))
   v[i,ZI]   = v[i,ZI] - ( (1.0 + v[i,PZI]) * L
                 * ((v[i,PXI]^2 + v[i,PYI]^2) - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
-                / ( beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) * work[i,1]
-                    * (beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) + work[i,1])
+                / ( beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) * P_s
+                    * (beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) + P_s)
                   )
               )
 end # function exact_drift!()
@@ -320,6 +320,8 @@ e2: exit face angle (+ve angle <=> toward rbend)
 Lr: element arc length
 """
 @makekernel fastgtpsa=true function exact_sbend!(i, b::BunchView, beta_0, brho_0, hc, b0, e1, e2, Lr)
+  v = b.v
+
   rho = brho0 / b0
   ang = hc * Lr
   c1 = cos(ang)
@@ -343,6 +345,7 @@ end # function exact_sbend!()
 
 
 @makekernel fastgtpsa=true function exact_solenoid!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, L)
+  v = b.v
   # Recurring variables
   rel_p = 1 + v[i,PZI]                                 
   pr = sqrt(rel_p^2 - (v[i,PXI] + v[i,YI] * ks / 2)^2 - (v[i,PYI] - v[i,XI] * ks / 2)^2)
@@ -365,6 +368,7 @@ end
 
 @makekernel fastgtpsa=true function patch!(i, b::BunchView, tilde_m, dt, dx, dy, dz, winv::Union{StaticMatrix{3,3},Nothing}, L)
   # Temporary momentum [1+δp, ps_0]
+  v = b.v
   rel_p = 1 + v[i,PZI]                                 
   ps_0 = sqrt(rel_p^2 - v[i,PXI]^2 - v[i,PYI]^2)  
   # Only apply rotations if needed

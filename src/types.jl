@@ -35,6 +35,7 @@ struct BunchView{S,V,Q}
   BunchView(args...) = new{typeof.(args)...}(args...)
 end
 
+# Necessary for GPU compatibility:
 Adapt.@adapt_structure BunchView
 
 # Index particle i coordinate x as (i,1) , px as (i,2), etc

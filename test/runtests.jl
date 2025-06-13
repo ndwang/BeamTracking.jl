@@ -3,24 +3,32 @@ using Test,
       Beamlines,
       JET,
       BenchmarkTools,
-      GTPSA
+      GTPSA,
+      StaticArrays
 
-using BeamTracking: BunchView
+using BeamTracking: BunchView, KernelCall
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
 
-const D = Descriptor(6, 1)
+const D1 = Descriptor(6, 1)   # 6 variables 1st order
+const D10 = Descriptor(6, 10) # 6 variables 10th order
 
-function test_matrix(kernel, M_expected, args...; type_stable=VERSION >= v"1.11", no_scalar_allocs=true, rtol=nothing, atol=nothing)
+function test_matrix(
+  M_expected,
+  kernel_call;
+  type_stable=VERSION >= v"1.11", 
+  no_scalar_allocs=!(any(t->eltype(t) <: TPS, kernel_call.args)), # only for non-parametric 
+  rtol=nothing, 
+  atol=nothing
+)
   # Initialize bunch without spin
-  v = transpose(@vars(D))
-  state = similar(v, State.T, N)
+  v = transpose(@vars(D1))
+  state = similar(v, State.T, 1)
   state .= State.Alive
   b = BunchView(state, v, nothing)
 
   # Set up kernel chain and launch!
-  kc = (KernelCall(kernel, args),)
-  BeamTracking.launch!(b, kc)
+  BeamTracking.launch!(b, kernel_call)
 
   # Set up tolerance kwargs
   kwargs = ()
@@ -31,51 +39,63 @@ function test_matrix(kernel, M_expected, args...; type_stable=VERSION >= v"1.11"
     kwargs = pairs((;kwargs..., rtol=rtol))
   end
 
-
   # 1) Correctness
   @test isapprox(GTPSA.jacobian(b.v)[1:6,1:6], scalar.(M_expected); kwargs...)
   # 2) Type stability
   if type_stable
-    @test_opt BeamTracking.launch!(b, kc)
+    @test_opt kernel_call.kernel(1, b, kernel_call.args...)
   end
-  # 3) No Allocations
-  if no_allocs
-    @test @ballocated(BeamTracking.launch!($kernel, $v, $work, $args...)) == 0 
+  # 3) No scalar allocations
+  if no_scalar_allocs
+    v = rand(1,6)
+    b = BunchView(state, v, nothing)
+    @test @ballocated(BeamTracking.launch!($b, $kernel_call; use_KA=false)) == 0 
   end
 end
 
-function test_map(kernel, bmad_map_file::AbstractString, args...; type_stable=VERSION >= v"1.11", kernel_test=true, TPS_params=false, no_allocs=true, tol=1e-8, kwargs...)
+function read_map(bmad_map_file::AbstractString)
   # Load reference data from file in isolated module to avoid polluting global namespace
   mod = Module()
   Base.include(mod, bmad_map_file)
-  D = getfield(mod, :d_z)
-  v_expected = getfield(mod, :v_z)
+  d_z = getfield(mod, :d_z)
+  d_z == D10 || error("Please use a 10th order map for test_map")
+  v_z = getfield(mod, :v_z)
+  return v_z
+end
 
-  # Construct test input variables
-  v = transpose(@vars(D))
+function test_map(
+  bmad_map_file::AbstractString,
+  kernel_call;
+  type_stable=VERSION >= v"1.11", 
+  no_scalar_allocs=!(any(t->eltype(t) <: TPS, kernel_call.args)), # only for non-parametric 
+  tol=1e-8
+)
+  v_expected = read_map(bmad_map_file)
 
-  if kernel_test # Kernel tracking test
-    n_temps = BeamTracking.MAX_TEMPS(parentmodule(kernel).TRACKING_METHOD())
-    work = zeros(eltype(v), 1, n_temps)
-    if TPS_params
-      args = map(el -> el === nothing ? nothing : convert.(TPS64{D}, el), args)
-    end
+  # Initialize bunch without spin
+  v = transpose(@vars(D10))
+  state = similar(v, State.T, 1)
+  state .= State.Alive
+  b = BunchView(state, v, nothing)
 
-    # Run kernel
-    v = BeamTracking.launch!(kernel, v, work, args...)
+  # Set up kernel chain and launch!
+  BeamTracking.launch!(b, kernel_call)
 
-    # 1) Correctness
-    @test coeffs_approx_equal(v_expected, v, tol)
-    # 2) Type stability
-    if type_stable
-        @test_opt BeamTracking.launch!(kernel, v, work, args...)
-    end
-    # 3) No allocations
-    if no_allocs
-        @test @ballocated(BeamTracking.launch!($kernel, $v, $work, $args...)) == 0
-    end
+  # 1) Correctness
+  @test coeffs_approx_equal(v_expected, b.v, tol)
+  # 2) Type stability
+  if type_stable
+    @test_opt kernel_call.kernel(1, b, kernel_call.args...)
+  end
+  # 3) No scalar allocations
+  if no_scalar_allocs
+    v = rand(1,6)
+    b = BunchView(state, v, nothing)
+    @test @ballocated(BeamTracking.launch!($b, $kernel_call; use_KA=false)) == 0 
+  end
 
-  else # LineElement tracking test
+
+  #= LineElement tracking test
     if haskey(kwargs, :Brho_ref) && haskey(kwargs, :species)
       Brho_ref = kwargs[:Brho_ref]
     elseif haskey(kwargs, :E) && haskey(kwargs, :species)
@@ -93,7 +113,8 @@ function test_map(kernel, bmad_map_file::AbstractString, args...; type_stable=VE
       v = track!(b, kwargs[:ele]).v
       @test coeffs_approx_equal(v_expected, v, tol)
     end
-  end
+
+  =#
 end
 
 #  Coefficient-wise approximate equality

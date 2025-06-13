@@ -57,8 +57,8 @@ end
   kc::KernelChain;
   groupsize::Union{Nothing,Integer}=nothing, #backend isa CPU ? floor(Int,REGISTER_SIZE/sizeof(eltype(v))) : 256 
   multithread_threshold::Integer=Threads.nthreads() > 1 ? 1750*Threads.nthreads() : typemax(Int),
-  use_KA::Bool=!(get_backend(b.v) isa CPU && isnothing(groupsize)),
-  use_explicit_SIMD::Bool=!use_KA # Default to use explicit SIMD on CPU
+  use_KA::Bool=true, #!(get_backend(b.v) isa CPU && isnothing(groupsize)),
+  use_explicit_SIMD::Bool=false #!use_KA # Default to use explicit SIMD on CPU
 ) where {S,V}
   v = b.v
   if use_KA && use_explicit_SIMD
@@ -137,6 +137,9 @@ function check_kwargs(mac, kwargs...)
     end
   end
 end
+
+# Also allow launch! on single KernelCalls
+@inline launch!(b::BunchView, kcall::KernelCall; kwargs...) = launch!(b, (kcall,); kwargs...)
 
 macro makekernel(args...)
   kwargs = args[1:length(args)-1]
