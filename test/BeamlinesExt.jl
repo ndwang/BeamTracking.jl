@@ -32,7 +32,7 @@
     bl = Beamline([ele_patch], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/patch.jl")
-    @test coeffs_approx_equal(v_expected, b0.v, tol=5e-10)
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Drift: 
     ele_drift = LineElement(L=1.0, tracking_method=Exact())   
@@ -40,7 +40,7 @@
     bl = Beamline([ele_drift], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/drift.jl")
-    @test coeffs_approx_equal(v_expected, b0.v, tol=5e-10)
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
 
     # Thick solenoid:
@@ -49,7 +49,7 @@
     bl = Beamline([ele_drift], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/drift.jl")
-    @test coeffs_approx_equal(v_expected, b0.v, tol=5e-10)
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
 
     # Errors:

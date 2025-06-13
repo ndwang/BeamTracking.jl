@@ -101,29 +101,29 @@ s: element length
 """
 @makekernel fastgtpsa=true function quadrupole_matrix!(i, b::BunchView, k2_num, s)
   v = b.v
+
   sgn = sign(k2_num)
-  focus   = k2_num >= 0  # horizontally focusing for positive particles
-  defocus = k2_num <  0  # horizontally defocusing for positive particles
+  focus = k2_num >= 0  # horizontally focusing for positive particles
 
   xp = v[i,PXI] / (1.0 + v[i,PZI])  # x'
   yp = v[i,PYI] / (1.0 + v[i,PZI])  # y'
   sqrtks = sqrt(abs(k2_num / (1.0 + v[i,PZI]))) * s  # |κ|s
-  cx = focus * cos(sqrtks)    + defocus * cosh(sqrtks)
-  cy = focus * cosh(sqrtks)   + defocus * cos(sqrtks)
-  sx = focus * sincu(sqrtks)  + defocus * sinhcu(sqrtks)
-  sy = focus * sinhcu(sqrtks) + defocus * sincu(sqrtks)
+  cx = focus ? cos(sqrtks) : cosh(sqrtks)
+  cy = focus ? cosh(sqrtks) : cos(sqrtks)
+  sx = focus ? sincu(sqrtks) : sinhcu(sqrtks)
+  sy = focus ? sinhcu(sqrtks) : sincu(sqrtks)
 
   v[i,PXI] = v[i,PXI] * cx - k2_num * s * v[i,XI] * sx
   v[i,PYI] = v[i,PYI] * cy + k2_num * s * v[i,YI] * sy
   v[i,ZI]  = (v[i,ZI] - (s / 4) * (  xp^2 * (1.0 + sx * cx)
-                                   + yp^2 * (1.0 + sy * cy)
-                                   + k2_num / (1.0 + v[i,PZI])
-                                       * ( v[i,XI]^2 * (1.0 - sx * cx)
-                                         - v[i,YI]^2 * (1.0 - sy * cy) )
+                                    + yp^2 * (1.0 + sy * cy)
+                                    + k2_num / (1.0 + v[i,PZI])
+                                        * ( v[i,XI]^2 * (1.0 - sx * cx)
+                                          - v[i,YI]^2 * (1.0 - sy * cy) )
                                   )
                       + sgn * ( v[i,XI] * xp * (sqrtks * sx)^2
                               - v[i,YI] * yp * (sqrtks * sy)^2 ) / 2.0
-             )
+              )
   v[i,XI]  = v[i,XI] * cx + xp * s * sx
   v[i,YI]  = v[i,YI] * cy + yp * s * sy
 end # function quadrupole_matrix!()
@@ -347,22 +347,22 @@ end # function exact_sbend!()
 @makekernel fastgtpsa=true function exact_solenoid!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, L)
   v = b.v
   # Recurring variables
-  rel_p = 1 + v[i,PZI]                                 
+  rel_p = 1 + v[i,PZI]    
   pr = sqrt(rel_p^2 - (v[i,PXI] + v[i,YI] * ks / 2)^2 - (v[i,PYI] - v[i,XI] * ks / 2)^2)
-  s = sin(ks * L / pr)       
-  cp = 1 + cos(ks * L / pr)  
-  cm = 1 - cos(ks * L / pr)  
+  s = sin(ks * L / pr)   
+  cp = 1 + cos(ks * L / pr)                
+  cm = 2 - cp
   # Temporaries
-  x_0 = v[i,XI]     
-  px_0 = v[i,PXI]   
-  y_0 = v[i,YI]     
+  x_0 = v[i,XI] 
+  px_0 = v[i,PXI] 
+  y_0 = v[i,YI]  
   # Update
   v[i,ZI]  -= rel_p * L *
                 ((v[i,PXI] + v[i,YI] * ks / 2)^2 + (v[i,PYI] - v[i,XI] * ks / 2)^2 - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0) /
                 ( beta_0 * sqrt(rel_p^2 + tilde_m^2) * pr * (beta_0 * sqrt(rel_p^2 + tilde_m^2) + pr) )
   v[i,XI] = cp * x_0 / 2 + s * (px_0 / ks + y_0 / 2) + cm * v[i,PYI] / ks
   v[i,PXI] = s * (v[i,PYI] / 2 - ks * x_0 / 4) + cp * px_0 / 2 - ks * cm * y_0 / 4
-  v[i,YI] = s * (v[i,PYI] / ks - x_0 / 2) + (cp * y_0 - cm * px_0) / ks
+  v[i,YI] = s * (v[i,PYI] / ks - x_0 / 2) + cp * y_0 / 2 - cm * px_0 / ks
   v[i,PYI]  = ks * cm * x_0 / 4 - s * (px_0 / 2 + ks * y_0 / 4) + cp * v[i,PYI] / 2
 end
 
