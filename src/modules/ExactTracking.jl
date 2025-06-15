@@ -47,12 +47,12 @@ L: element length
 """
 @makekernel fastgtpsa=true function exact_drift!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, L)
   v = b.v
-  P_s = sqrt((1.0 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)) 
+  P_s = sqrt((1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)) 
   v[i,XI]   = v[i,XI] + v[i,PXI] * L / P_s
   v[i,YI]   = v[i,YI] + v[i,PYI] * L / P_s
   # high-precision computation of z_final
   # vf.z = vi.z - (1 + δ) * L * (1 / Ps - 1 / (β0 * sqrt((1 + δ)^2 + tilde_m^2)))
-  v[i,ZI]   = v[i,ZI] - ( (1.0 + v[i,PZI]) * L
+  v[i,ZI]   = v[i,ZI] - ( (1 + v[i,PZI]) * L
                 * ((v[i,PXI]^2 + v[i,PYI]^2) - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
                 / ( beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) * P_s
                     * (beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) + P_s)
@@ -105,9 +105,9 @@ s: element length
   sgn = sign(k2_num)
   focus = k2_num >= 0  # horizontally focusing for positive particles
 
-  xp = v[i,PXI] / (1.0 + v[i,PZI])  # x'
-  yp = v[i,PYI] / (1.0 + v[i,PZI])  # y'
-  sqrtks = sqrt(abs(k2_num / (1.0 + v[i,PZI]))) * s  # |κ|s
+  xp = v[i,PXI] / (1 + v[i,PZI])  # x'
+  yp = v[i,PYI] / (1 + v[i,PZI])  # y'
+  sqrtks = sqrt(abs(k2_num / (1 + v[i,PZI]))) * s  # |κ|s
   cx = focus ? cos(sqrtks) : cosh(sqrtks)
   cy = focus ? cosh(sqrtks) : cos(sqrtks)
   sx = focus ? sincu(sqrtks) : sinhcu(sqrtks)
@@ -115,14 +115,14 @@ s: element length
 
   v[i,PXI] = v[i,PXI] * cx - k2_num * s * v[i,XI] * sx
   v[i,PYI] = v[i,PYI] * cy + k2_num * s * v[i,YI] * sy
-  v[i,ZI]  = (v[i,ZI] - (s / 4) * (  xp^2 * (1.0 + sx * cx)
-                                    + yp^2 * (1.0 + sy * cy)
-                                    + k2_num / (1.0 + v[i,PZI])
-                                        * ( v[i,XI]^2 * (1.0 - sx * cx)
-                                          - v[i,YI]^2 * (1.0 - sy * cy) )
+  v[i,ZI]  = (v[i,ZI] - (s / 4) * (  xp^2 * (1 + sx * cx)
+                                    + yp^2 * (1 + sy * cy)
+                                    + k2_num / (1 + v[i,PZI])
+                                        * ( v[i,XI]^2 * (1 - sx * cx)
+                                          - v[i,YI]^2 * (1 - sy * cy) )
                                   )
                       + sgn * ( v[i,XI] * xp * (sqrtks * sx)^2
-                              - v[i,YI] * yp * (sqrtks * sy)^2 ) / 2.0
+                              - v[i,YI] * yp * (sqrtks * sy)^2 ) / 2
               )
   v[i,XI]  = v[i,XI] * cx + xp * s * sx
   v[i,YI]  = v[i,YI] * cy + yp * s * sy
@@ -150,13 +150,13 @@ s: element length
 """
 @makekernel fastgtpsa=true function quadrupole_kick!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, s)
   v = b.v
-  rP0 = 1.0 + v[i,PZI]              # reduced total momentum,  P/P0 = 1 + δ
+  rP0 = 1 + v[i,PZI]              # reduced total momentum,  P/P0 = 1 + δ
   sqrPt = v[i,PXI]^2 + v[i,PYI]^2   # (transverse momentum)^2, P⟂^2 = (Px^2 + Py^2) / P0^2
   Ps = sqrt(rP0^2 - sqrPt)          # longitudinal momentum,   Ps = √[(1 + δ)^2 - P⟂^2]
   v[i,XI] = v[i,XI] + s * v[i,PXI] / rP0 * sqrPt / (Ps * (rP0 + Ps))
   v[i,YI] = v[i,YI] + s * v[i,PYI] / rP0 * sqrPt / (Ps * (rP0 + Ps))
   v[i,ZI] = v[i,ZI] - s * ( rP0
-                              * (sqrPt - v[i,PZI] * (2.0 + v[i,PZI]) / gamsqr_0)
+                              * (sqrPt - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
                                 / ( beta_0 * sqrt(rP0^2 + tilde_m^2) * Ps
                                     * (beta_0 * sqrt(rP0^2 + tilde_m^2) + Ps)
                                   )
@@ -283,7 +283,7 @@ end # function multipole_kick!()
 #  dimensional multipole magnets.
 #  """
 #  if m == 0
-#    return [ 1.0, 0.0 ]
+#    return [ 1, 0.0 ]
 #  end
 #  ar = x
 #  ai = y
@@ -327,9 +327,9 @@ Lr: element arc length
   c1 = cos(ang)
   s1 = sin(ang)
 
-  P_s     = sqrt((1.0 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2))  # P_s
-  P_alpha = sqrt((1.0 + v[i,PZI])^2 - v[i,PYI]^2)                 # P_α
-  s1phx = (1.0 + hc * v[i,XI]) / (hc * rho)                     # scaled (1 + h x)
+  P_s     = sqrt((1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2))  # P_s
+  P_alpha = sqrt((1 + v[i,PZI])^2 - v[i,PYI]^2)                 # P_α
+  s1phx = (1 + hc * v[i,XI]) / (hc * rho)                     # scaled (1 + h x)
   Pxpph = P_s - s1phx                                 # Px'/h
   ang_eff = ang + asin(v[i,PXI] / P_alpha) - asin((v[i,PXI] * c1 + Pxpph * s1) / P_alpha)  # α + φ1 - φ2
   # high-precision computation of x-final
@@ -339,8 +339,8 @@ Lr: element arc length
   v[i,PXI] = v[i,PXI] * c1 + Pxpph * s1
   v[i,YI] = v[i,YI] + rho * v.py * ang_eff
   # high-precision computation of z-final
-  v[i,ZI] = (v[i,ZI] - rho * (1.0 + v[i,PZI]) * ang_eff
-               + (1.0 + v[i,PZI]) * Lr / (beta_0 * sqrt(1.0 / beta_0^2 + (2 + v[i,PZI]) * v[i,PZI])))
+  v[i,ZI] = (v[i,ZI] - rho * (1 + v[i,PZI]) * ang_eff
+               + (1 + v[i,PZI]) * Lr / (beta_0 * sqrt(1 / beta_0^2 + (2 + v[i,PZI]) * v[i,PZI])))
 end # function exact_sbend!()
 
 
