@@ -1,15 +1,10 @@
+struct Field end
+
 """
     FieldTracking
 
 Module implementing particle tracking through arbitrary electromagnetic fields using DifferentialEquations.jl.
 """
-
-# Define the Field tracking method
-struct Field end
-
-# Number of temporaries needed for a single particle
-MAX_TEMPS(::Field) = 0
-
 module FieldTracking
 using ..BeamTracking
 using ..BeamTracking: @makekernel, BunchView
@@ -49,7 +44,7 @@ Track a particle through a drift space with arbitrary field using DifferentialEq
 - `solver_params`: Additional parameters for the solver
 """
 @makekernel function field_track!(i, b::BunchView, L, field_func, field_params, solver, solver_params)
-    @inbounds begin
+    begin
         # Initial state vector
         u0 = view(b.v, i, :)
         
