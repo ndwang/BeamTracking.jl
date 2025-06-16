@@ -1,5 +1,5 @@
 using BeamTracking
-using BeamTracking: get_N_particle, runkernel!, MAX_TEMPS, soaview
+using BeamTracking: get_N_particle, runkernels!, MAX_TEMPS, KernelCall, KernelChain, BunchView
 using BenchmarkTools
 using SciMLBase, OrdinaryDiffEq
 using StaticArrays
@@ -24,17 +24,13 @@ A dictionary containing the following metrics:
 
 """
 function evaluate_kernel_performance(bunch, kernel, args...; n_runs=10)
-    n_particles = get_N_particle(bunch)
-
-    # Get the tracking method from the kernel's module
-    tracking_method = parentmodule(kernel).TRACKING_METHOD()
-    n_temps = MAX_TEMPS(tracking_method)
-    work = zeros(eltype(bunch.v), n_particles, n_temps)
-    v = soaview(bunch)
     try
+        # Create kernel chain
+        kc = (KernelCall(kernel, args),)
+        
         # Benchmark the tracking with specified sample size and time budget
         result = @benchmark begin
-            runkernel!($kernel, nothing, $v, $work, $args...)
+            runkernels!(nothing, $bunch, $kc)
         end samples=n_runs seconds=10
         
         metrics = Dict(
@@ -62,7 +58,7 @@ function evaluate_field_track_performance(; n_runs=10, n_particles=1000, solver=
     L = 1.0
     field_func = (u, t, params) -> SVector(u[2], 0.0, u[4], 0.0, u[6], 0.0)
     params = nothing
-    return evaluate_kernel_performance(bunch, FieldTracking.field_track!, L, field_func, params, solver, solver_params; n_runs=n_runs)
+    return evaluate_kernel_performance(BunchView(bunch), FieldTracking.field_track!, L, field_func, params, solver, solver_params; n_runs=n_runs)
 end
 
 function evaluate_linear_track_performance(;n_runs=10, n_particles=1000)
@@ -70,7 +66,7 @@ function evaluate_linear_track_performance(;n_runs=10, n_particles=1000)
     bunch = Bunch(n_particles)
     L = 1.0
     r56 = 1.0
-    return evaluate_kernel_performance(bunch, LinearTracking.linear_drift!, L, r56; n_runs=n_runs)
+    return evaluate_kernel_performance(BunchView(bunch), LinearTracking.linear_drift!, L, r56; n_runs=n_runs)
 end
 
 function evaluate_rk4_track_performance(;n_runs=10, n_particles=1000)
@@ -78,6 +74,6 @@ function evaluate_rk4_track_performance(;n_runs=10, n_particles=1000)
     t_span = (0.0, 1.0)
     field_func = (u, t, params) -> SVector(u[2], 0.0, u[4], 0.0, u[6], 0.0)
     params = nothing
-    return evaluate_kernel_performance(bunch, RungeKuttaTracking.rk4_track!, t_span, field_func, params, 10; n_runs=n_runs)
+    return evaluate_kernel_performance(BunchView(bunch), RungeKuttaTracking.rk4_track!, t_span, field_func, params, 10; n_runs=n_runs)
 end
 
