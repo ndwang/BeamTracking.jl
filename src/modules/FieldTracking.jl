@@ -50,7 +50,7 @@ Track a particle through a drift space with arbitrary field using DifferentialEq
         
         # Set up and solve the ODE
         prob = ODEProblem(field_system!, u0, (0.0, L), (field_func, field_params))
-        sol = solve(prob, solver; reltol=1e-8, abstol=1e-8, solver_params...)
+        sol = solve(prob, solver; solver_params...)
         
         # Update final coordinates by assigning each component
         u0 .= sol.u[end]
