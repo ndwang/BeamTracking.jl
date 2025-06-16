@@ -12,7 +12,8 @@ function _track!(
   ap = ele.AlignmentParams
   bp = ele.BendParams
   bm = ele.BMultipoleParams
-  pp = ele.PatchParams
+  # bc BitsLineElement does not support PatchParams yet
+  pp = ele isa BitsLineElement ? nothing : ele.PatchParams
 
   # Function barrier
   universal!(i, b, tm, bunch, L, ap, bp, bm, pp; kwargs...)
