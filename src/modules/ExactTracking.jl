@@ -262,32 +262,6 @@ DTA: Add thin dipole kick.
        For example, if mm[j] = 3, then knl[j] denotes the
        normal integrated sextupole strength scaled by Bρo.
 """
-#@inline function multipole_kick!(i, v, work, mm, knl, ksl)
-#  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for multipole_kick!()."
-#  @inbounds begin #@FastGTPSA! begin
-#  jm = length(mm)
-#  m = mm[jm]
-#  if m == 1 return v end
-#  work[i,1] = ar = knl[jm] * v[i,XI] - ksl[jm] * v[i,YI]
-#  work[i,2] = ai = knl[jm] * v[i,YI] + ksl[jm] * v[i,XI]
-#  jm -= 1
-#  while m > 2
-#    m -= 1
-#    work[i,3] = work[i,1] * v[i,XI] - work[i,2] * v[i,YI]
-#    work[i,2] = work[i,1] * v[i,YI] + work[i,2] * v[i,XI]
-#    work[i,1] = work[i,3]
-#    if m == mm[jm]
-#      work[i,1] += knl[jm] * v[i,XI] - ksl[jm] * v[i,YI]
-#      work[i,2] += knl[jm] * v[i,YI] + ksl[jm] * v[i,XI]
-#      jm -= 1
-#    end
-#  end
-#  v[i,PXI] -= work[i,1]
-#  v[i,PYI] += work[i,2]
-#  end #end
-#  return v
-#end # function multipole_kick!()
-#
 @inline function multipole_kick!(i, v, work, ms, knl, ksl)
   @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for multipole_kick!()."
   @inbounds begin #@FastGTPSA! begin
@@ -312,29 +286,6 @@ DTA: Add thin dipole kick.
   end #end
   return v
 end # function multipole_kick!()
-
-
-#function binom(m::Integer, x, y)
-#  """
-#  This function computes the real and imaginary parts of
-#  (x + i y)^m. One can use these components to compute,
-#  among other things, the multipole kick induced by two-
-#  dimensional multipole magnets.
-#  """
-#  if m == 0
-#    return [ 1.0, 0.0 ]
-#  end
-#  ar = x
-#  ai = y
-#  mm = m
-#  while mm > 1
-#    mm -= 1
-#    t  = x * ar - y * ai
-#    ai = y * ar + x * ai
-#    ar = t
-#  end
-#  return [ ar, ai ]
-#end # function binom()
 
 
 #
