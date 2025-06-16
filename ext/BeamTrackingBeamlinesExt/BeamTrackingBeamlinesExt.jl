@@ -3,7 +3,7 @@ using Beamlines, BeamTracking, GTPSA, StaticArrays, KernelAbstractions
 using Beamlines: isactive, BitsLineElement
 using BeamTracking: soaview, get_N_particle, calc_gamma, calc_p0c, runkernels!,
                     @makekernel, BunchView, KernelCall, KernelChain, push
-import BeamTracking: track!, MAX_TEMPS, C_LIGHT, chargeof, massof
+import BeamTracking: track!, C_LIGHT, chargeof, massof
 
 
 include("utils.jl")
@@ -64,6 +64,8 @@ function track!(
   if length(bbl.params) == 0
     return bunch
   end
+  
+  check_Brho(NaN, bunch)
 
   if !outer_particle_loop
     if !isnothing(bbl.rep)
