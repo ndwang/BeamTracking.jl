@@ -12,12 +12,12 @@ MAX_TEMPS(::RungeKutta) = 24  # Number of RK4 stages
 
 module RungeKuttaTracking
 using ..BeamTracking
-using ..BeamTracking: @makekernel
+using ..BeamTracking: @makekernel, BunchView
 
 const TRACKING_METHOD = RungeKutta
 
 """
-    rk4_step!(u, h, field_func, params, work, i)
+    rk4_step!(i, u, work, t, h, field_func, params)
 
 Perform a single 4th order Runge-Kutta step.
 
@@ -55,13 +55,13 @@ function rk4_step!(i, u, work, t, h, field_func, params)
 end
 
 """
-    rk4_track!(i, v, work, L, field_func, params, n_steps)
+    rk4_track!(i, b, work, t_span, field_func, params, n_steps)
 
 Track a particle through a drift space with arbitrary field using 4th order Runge-Kutta.
 
 # Arguments
 - `i`: Particle index
-- `v`: Coordinate matrix
+- `b`: BunchView containing particle coordinates
 - `work`: Work matrix (n_particles × 24)
 - `t_span`: Time span [t_start, t_end]
 - `field_func`: Function that returns the field. Must be of the form `field_func(u, t, params)`.
@@ -69,10 +69,10 @@ Track a particle through a drift space with arbitrary field using 4th order Rung
 - `params`: Additional parameters for the field function
 - `n_steps`: Number of integration steps
 """
-@makekernel function rk4_track!(i, v, work, t_span, field_func, params, n_steps)
+@makekernel function rk4_track!(i, b::BunchView, work, t_span, field_func, params, n_steps)
     @inbounds begin
         # Create a view of the particle coordinates
-        u = view(v, i, :)
+        u = view(b.v, i, :)
         
         # Integration step size
         h = (t_span[2] - t_span[1]) / n_steps
@@ -84,7 +84,6 @@ Track a particle through a drift space with arbitrary field using 4th order Rung
             t += h
         end
     end
-    return v
 end
 
 end 

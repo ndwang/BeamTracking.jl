@@ -12,7 +12,7 @@ MAX_TEMPS(::Field) = 0
 
 module FieldTracking
 using ..BeamTracking
-using ..BeamTracking: @makekernel
+using ..BeamTracking: @makekernel, BunchView
 using SciMLBase
 const TRACKING_METHOD = Field
 
@@ -35,24 +35,23 @@ function field_system!(du, u, p, t)
 end
 
 """
-    field_track!(i, v, work, L, field_func, field_params, solver, solver_params)
+    field_track!(i, b, L, field_func, field_params, solver, solver_params)
 
 Track a particle through a drift space with arbitrary field using DifferentialEquations.jl.
 
 # Arguments
 - `i`: Particle index
-- `v`: Coordinate matrix
-- `work`: Work matrix
+- `b`: BunchView containing particle coordinates
 - `L`: Drift length
 - `field_func`: Function that returns the field at a given position (x, y, z)
 - `field_params`: Additional parameters for the field function
 - `solver`: ODE solver to use
 - `solver_params`: Additional parameters for the solver
 """
-@makekernel function field_track!(i, v, work, L, field_func, field_params, solver, solver_params)
+@makekernel function field_track!(i, b::BunchView, L, field_func, field_params, solver, solver_params)
     @inbounds begin
         # Initial state vector
-        u0 = view(v, i, :)
+        u0 = view(b.v, i, :)
         
         # Set up and solve the ODE
         prob = ODEProblem(field_system!, u0, (0.0, L), (field_func, field_params))
@@ -61,7 +60,6 @@ Track a particle through a drift space with arbitrary field using DifferentialEq
         # Update final coordinates by assigning each component
         u0 .= sol.u[end]
     end
-    return v
 end
 
 end
