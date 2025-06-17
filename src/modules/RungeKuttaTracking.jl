@@ -8,13 +8,14 @@ Module implementing particle tracking through arbitrary electromagnetic fields u
 module RungeKuttaTracking
 using ..BeamTracking
 using ..BeamTracking: @makekernel, BunchView
+using StaticArrays
 
 const TRACKING_METHOD = RungeKutta
 
 """
     rk4_step!(u, t, h, field_func, params)
 
-Perform a single 4th order Runge-Kutta step.
+Perform a single 4th order Runge-Kutta step using stack-allocated temporary variables.
 
 # Arguments
 - `u`: State vector [x, px, y, py, z, pz]
@@ -25,14 +26,25 @@ Perform a single 4th order Runge-Kutta step.
 - `params`: Additional parameters for the field function
 """
 function rk4_step!(u, t, h, field_func, params)
-    # Intermediate stages
-    k1 = field_func(u, 0.0, params)
-    k2 = field_func(u .+ (h/2) .* k1, h/2, params)
-    k3 = field_func(u .+ (h/2) .* k2, h/2, params)
-    k4 = field_func(u .+ h .* k3, h, params)
+    # Intermediate stages - use stack-allocated SVector to avoid heap allocations
+    k1 = field_func(u, t, params)
     
-    # Final update
-    u .+= (h/6) .* (k1 .+ 2 .* k2 .+ 2 .* k3 .+ k4)
+    # temp1 = u + (h/2) * k1
+    temp1 = @SVector [u[i] + (h/2) * k1[i] for i in 1:6]
+    k2 = field_func(temp1, t + h/2, params)
+    
+    # temp2 = u + (h/2) * k2
+    temp2 = @SVector [u[i] + (h/2) * k2[i] for i in 1:6]
+    k3 = field_func(temp2, t + h/2, params)
+    
+    # temp3 = u + h * k3
+    temp3 = @SVector [u[i] + h * k3[i] for i in 1:6]
+    k4 = field_func(temp3, t + h, params)
+    
+    # Final update: u += (h/6) * (k1 + 2*k2 + 2*k3 + k4)
+    for i in 1:6
+        u[i] += (h/6) * (k1[i] + 2*k2[i] + 2*k3[i] + k4[i])
+    end
 end
 
 """
