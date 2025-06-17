@@ -1,0 +1,83 @@
+julia> main()
+BeamTracking GPU Benchmark Example
+==================================================
+CUDA is available
+GPU: NVIDIA GeForce RTX 4070
+Compute Capability: 8.9.0
+Memory: 12.0 GB
+
+Testing individual kernels...
+------------------------------
+1. Linear Drift Kernel
+CPU: 0.0 ms
+GPU: 0.024 ms
+Speedup: 0.02x
+
+2. RK4 Tracking Kernel
+CPU: 0.058 ms
+GPU: 0.046 ms
+Speedup: 1.24x
+
+Running comprehensive benchmark...
+------------------------------
+================================================================================
+GPU vs CPU Kernel Performance Benchmark Results
+================================================================================
+
+LINEAR_DRIFT KERNEL:
+--------------------------------------------------
+
+Particles: 10000
+  CPU:   0.012 ms
+  GPU:   0.034 ms
+  Speedup: 0.35x
+  GPU Device: NVIDIA GeForce RTX 4070
+
+Particles: 100000
+  CPU:   0.128 ms
+  GPU:   0.033 ms
+  Speedup: 3.93x
+  GPU Device: NVIDIA GeForce RTX 4070
+
+Particles: 1000
+  CPU:   0.0 ms
+  GPU:   0.032 ms
+  Speedup: 0.01x
+  GPU Device: NVIDIA GeForce RTX 4070
+
+Particles: 100
+  CPU:   0.0 ms
+  GPU:   0.024 ms
+  Speedup: 0.0x
+  GPU Device: NVIDIA GeForce RTX 4070
+
+RK4_TRACK KERNEL:
+--------------------------------------------------
+
+Particles: 10000
+  CPU:   0.589 ms
+  GPU:   0.05 ms
+  Speedup: 11.89x
+  GPU Device: NVIDIA GeForce RTX 4070
+
+Particles: 100000
+  CPU:   5.933 ms
+  GPU:   0.361 ms
+  Speedup: 16.44x
+  GPU Device: NVIDIA GeForce RTX 4070
+
+Particles: 1000
+  CPU:   0.058 ms
+  GPU:   0.049 ms
+  Speedup: 1.18x
+  GPU Device: NVIDIA GeForce RTX 4070
+
+Particles: 100
+  CPU:   0.006 ms
+  GPU:   0.033 ms
+  Speedup: 0.18x
+  GPU Device: NVIDIA GeForce RTX 4070
+
+================================================================================
+
+GPU benchmark completed successfully!
