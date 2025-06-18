@@ -344,15 +344,17 @@ Lr: element arc length
 end # function exact_sbend!()
 
 """
-    exact_bend!(i, v, theta, gtot, g, L, mc2, p0c, beta_0) 
+    exact_bend!(i, b::BunchView, theta, g, k0, tilde_m, beta_0, L)
 
 Tracks a particle through a sector bend via exact tracking. (no edge angles)
 
 #Arguments
 - 'theta'    -- 'g' * 'L'
-- 'k0'     -- 'g' + 'dg'
-- 'p0c'      -- reference momentum in eV
-- 'beta_0' -- 'p0c' / sqrt('mc2'^2 + 'p0c'^2)
+- 'g'        -- curvature
+- 'k0'       -- normalized dipole field
+- 'tilde_m'  -- mc2/p0c
+- 'beta_0'   -- p0c/E0
+- 'L'        -- length
 """
 @inline function exact_bend!(i, b::BunchView, theta, g, k0, tilde_m, beta_0, L)
   v = b.v
