@@ -7,7 +7,7 @@ using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, BunchView
 function track!(bunch::Bunch, ele::LineElement)
     b = BeamTracking.BunchView(bunch)
     theta = ele.g * ele.L
-    mc2 = BeamTracking.massof(bunch.species) * 10^6
+    mc2 = BeamTracking.massof(bunch.species)
     p0c = 10E6
     tilde_m = mc2/p0c
     beta_0 = p0c / sqrt(mc2^2 + p0c^2)
@@ -38,13 +38,5 @@ bmadstd = [  0.85374615     0.52189495     0.00000000     0.00004425     0.00000
              0.00000000     0.00000000     0.00000000     1.00000000     0.00000000     0.00000000   
             -0.48001775    -0.12085250     0.00000000     0.00015870     1.00000000    -0.01861516 
              0.00000000     0.00000000     0.00000000     0.00000000     0.00000000     1.00000000]
-
-for i in 1:6
-    println((M)[i,:])
-end
-for i in 1:6
-    println((b.v[i])[0])
-end
-
 
 @test M ≈ bmadstd

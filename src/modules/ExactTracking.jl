@@ -378,8 +378,6 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
   v[i,YI] = v[i,YI] + v[i,PYI]*Lp/pt 
   v[i,ZI] = v[i,ZI] - rel_p*Lp/pt + 
                   abs(L)*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0
-  println("t", - rel_p*Lp/pt + 
-                  abs(L)*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0)
 end
 
 @makekernel fastgtpsa=true function exact_solenoid!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, L)
