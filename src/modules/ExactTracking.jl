@@ -261,8 +261,13 @@ DTA: Add thin dipole kick.
   jm -= 1
   while 2 <= m
     m -= 1
+<<<<<<< HEAD
     tmp_knl_tot = (knl_tot * v[i,XI] - ksl_tot * v[i,YI]) / m
     ksl_tot     = (knl_tot * v[i,YI] + ksl_tot * v[i,XI]) / m
+=======
+    tmp_knl_tot = knl_tot * v[i,XI] - ksl_tot * v[i,YI]
+    ksl_tot     = knl_tot * v[i,YI] + ksl_tot * v[i,XI]
+>>>>>>> bdf3b40fafa1d3a1d2bfab6aa95bda312442f1ce
     knl_tot = tmp_knl_tot
     if 0 < jm && m == ms[jm]
       knl_tot += knl[jm]
@@ -322,7 +327,11 @@ Lr: element arc length
 @makekernel fastgtpsa=true function exact_sbend!(i, b::BunchView, beta_0, brho_0, hc, b0, e1, e2, Lr)
   v = b.v
 
+<<<<<<< HEAD
   rho = brho_0 / b0
+=======
+  rho = brho0 / b0
+>>>>>>> bdf3b40fafa1d3a1d2bfab6aa95bda312442f1ce
   ang = hc * Lr
   c1 = cos(ang)
   s1 = sin(ang)
@@ -337,7 +346,11 @@ Lr: element arc length
              + rho * (v[i,PXI] + ((v[i,PXI]^2 + (P_s + Pxpph) * s1phx) * s1 - 2v[i,PXI] * Pxpph * c1)
                              / (sqrt(P_alpha^2 - (v[i,PXI] * c1 + Pxpph * s1)^2) + P_s * c1)) * s1)
   v[i,PXI] = v[i,PXI] * c1 + Pxpph * s1
+<<<<<<< HEAD
   v[i,YI] = v[i,YI] + rho * v[i,PYI] * ang_eff
+=======
+  v[i,YI] = v[i,YI] + rho * v.py * ang_eff
+>>>>>>> bdf3b40fafa1d3a1d2bfab6aa95bda312442f1ce
   # high-precision computation of z-final
   v[i,ZI] = (v[i,ZI] - rho * (1 + v[i,PZI]) * ang_eff
                + (1 + v[i,PZI]) * Lr / (beta_0 * sqrt(1 / beta_0^2 + (2 + v[i,PZI]) * v[i,PZI])))
@@ -346,6 +359,7 @@ end # function exact_sbend!()
 """
 bkb_multipole()
 
+<<<<<<< HEAD
 This integrator uses Bend-Kick-Bend to track a beam through
 a curved, finite-length multipole magnet. The method is
 accurate through second order in the step size. The vectors
@@ -372,6 +386,8 @@ L:  element arc length
 end 
 
 
+=======
+>>>>>>> bdf3b40fafa1d3a1d2bfab6aa95bda312442f1ce
 @makekernel fastgtpsa=true function exact_solenoid!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, L)
   v = b.v
   # Recurring variables 
@@ -394,6 +410,7 @@ end
   v[i,PYI]  = ks * cm * x_0 / 4 - s * (px_0 / 2 + ks * y_0 / 4) + cp * v[i,PYI] / 2
 end
 
+<<<<<<< HEAD
 
 """
 sks_multipole()
@@ -432,6 +449,17 @@ end
     # No rotation case
     v[i,XI] -= dx
     v[i,YI] -= dy
+=======
+@makekernel fastgtpsa=true function patch!(i, b::BunchView, tilde_m, dt, dx, dy, dz, winv::Union{StaticMatrix{3,3},Nothing}, L)
+  # Temporary momentum [1+δp, ps_0]
+  v = b.v
+  rel_p = 1 + v[i,PZI]                                 
+  ps_0 = sqrt(rel_p^2 - v[i,PXI]^2 - v[i,PYI]^2)  
+  # Only apply rotations if needed
+  if isnothing(winv)
+    # No rotation case
+    v[i,XI] -= dx
+    v[i,YI] -= dy
 
     # Apply t_offset
     v[i,ZI] += rel_p/sqrt(rel_p^2+tilde_m^2)*C_LIGHT*dt
@@ -458,11 +486,41 @@ end
     v[i,PXI]  = winv[1,1]*px_0 + winv[1,2]*py_0 + winv[1,3]*ps_0
     v[i,PYI]  = winv[2,1]*px_0 + winv[2,2]*py_0 + winv[2,3]*ps_0
     ps_f = winv[3,1]*px_0 + winv[3,2]*py_0 + winv[3,3]*ps_0 # ps_f
+>>>>>>> bdf3b40fafa1d3a1d2bfab6aa95bda312442f1ce
 
     # Apply t_offset
     v[i,ZI] += rel_p/sqrt(rel_p^2+tilde_m^2)*C_LIGHT*dt
 
     # Drift to face
+<<<<<<< HEAD
+    v[i,XI]   += v[i,PXI] * dz / ps_0
+    v[i,YI]   += v[i,PYI] * dz / ps_0
+    v[i,ZI]   -=  dz * rel_p / ps_0 - L*rel_p*sqrt((1+tilde_m^2)/(rel_p^2+tilde_m^2))
+  else
+    # Translate position vector [x, y]
+    x_0 = v[i,XI] - dx                                # x_0
+    y_0 = v[i,YI] - dy                                # y_0
+
+    # Temporary momentum vector [px, py]
+    px_0 = v[i,PXI]                                    # px_0
+    py_0 = v[i,PYI]                                    # py_0
+
+    # Transform position vector [x - dx, y - dy, -dz]
+    v[i,XI]   = winv[1,1]*x_0 + winv[1,2]*y_0 - winv[1,3]*dz
+    v[i,YI]   = winv[2,1]*x_0 + winv[2,2]*y_0 - winv[2,3]*dz
+    s_f = winv[3,1]*x_0 + winv[3,2]*y_0 - winv[3,3]*dz  # s_f
+
+    # Transform momentum vector [px, py, ps]
+    v[i,PXI]  = winv[1,1]*px_0 + winv[1,2]*py_0 + winv[1,3]*ps_0
+    v[i,PYI]  = winv[2,1]*px_0 + winv[2,2]*py_0 + winv[2,3]*ps_0
+    ps_f = winv[3,1]*px_0 + winv[3,2]*py_0 + winv[3,3]*ps_0 # ps_f
+
+    # Apply t_offset
+    v[i,ZI] += rel_p/sqrt(rel_p^2+tilde_m^2)*C_LIGHT*dt
+
+    # Drift to face
+=======
+>>>>>>> bdf3b40fafa1d3a1d2bfab6aa95bda312442f1ce
     v[i,XI] -= s_f * v[i,PXI] / ps_f
     v[i,YI] -= s_f * v[i,PYI] / ps_f
     v[i,ZI] += s_f * rel_p / ps_f + L*rel_p*sqrt((1+tilde_m^2)/(rel_p^2+tilde_m^2))

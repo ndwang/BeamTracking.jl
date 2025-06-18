@@ -140,6 +140,6 @@ function coeffs_approx_equal(v_expected, v_calculated, ϵ)
 end
 
 
-#include("LinearTracking.jl")
-#include("ExactTracking.jl")
+include("LinearTracking.jl")
+include("ExactTracking.jl")
 include("BeamlinesExt.jl")
