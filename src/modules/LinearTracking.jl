@@ -126,9 +126,9 @@ end
 
 
 
-function linear_dipole_matrices(K0, L, gamma_0; g=nothing, K1=nothing, e1=nothing, e2=nothing)
+function linear_dipole_matrices(K0, L, gamma_0; g::Union{Nothing, Real}=nothing, K1::Union{Nothing, Real}=nothing, e1=nothing, e2=nothing)
 
-    if isnothing(g) || g ≈ K0
+    if !isnothing(g) && g ≈ K0
       if !isnothing(K1) && K1 != 0
         wy = sqrt(abs(K1))
         wyL = wy * L
@@ -191,34 +191,44 @@ function linear_dipole_matrices(K0, L, gamma_0; g=nothing, K1=nothing, e1=nothin
         t = SA[-theta*sc,  -theta*L*cc, 0, 0]
       end
     else
+        if isnothing(g)
+          g = 0
+        end
+
+        if isnothing(K1)
+          K1 = 0 
+        end 
+
         wy = sqrt(abs(K1))
-        wyL = wy * L 
-        if K1 >= 0
+        sgny = copysign(1,K1)
+        wyL = wy * L
+        
+        if (wyL < 1e-6)
+          cy = 1 + sgny * wyL^2 / 2
+          syc = (1 + sgny * wyL^2 / 6) * L
+        elseif K1 >= 0
           cy  = cosh(wyL)
           syc = sinhcu(wyL) * L
-          sgny = 1
         else
           cy  = cos(wyL)
           syc = sincu(wyL) * L
-          sgny = - 1
         end
 
         kx = K1 + g * K0 
         wx = sqrt(abs(kx))
+        sgnx = - copysign(1,kx)
         wxL = wx * L 
-        if kx >= 0
+        if (wxL < 1e-6)
+          sxc = (1 + sgnx * wxL^2 / 6) * L
+          cx = 1 + sgnx * wxL^2 / 2
+          z2 = g * L^2 / 2
+        elseif kx >= 0
           cx  = cos(wxL)
           sxc = sincu(wxL) * L 
-          sgnx = - 1
+          z2 = sgnx * g * (1 - cx) / (wx * wx)
         else
           cx  = cosh(wxL)
           sxc = sinhcu(wxL) * L
-          sgnx = 1
-        end
-        
-        if abs(kx)<1e-10
-          z2 = g * L * L / 2
-        else 
           z2 = sgnx * g * (1 - cx) / (wx * wx)
         end
       

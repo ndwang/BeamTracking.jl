@@ -22,7 +22,7 @@
 
     #combined
     ring2 = Beamline([SBend(K0 = 0.24, g = 0.25, K1 = 0.25, L = 1.0, e1 = 0.5, e2 = 0.2)], Brho_ref = -0.0017045090263411496)
-    b0 = Bunch(collect(transpose(@vars(d))), Brho_ref=-0.0017045090263411496)
+    b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=-0.0017045090263411496)
     foreach(t -> t.tracking_method = Linear(), ring2.line)
     track!(b0, ring2)
     M_combined = [
@@ -36,10 +36,9 @@
     @test GTPSA.jacobian(b0.v) ≈  M_combined
 
     bblring = BitsBeamline(ring2, store_normalized=true)
-    b0 = Bunch(collect(transpose(@vars(d))), Brho_ref=ring2.Brho_ref)
+    b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=ring2.Brho_ref)
     track!(b0, bblring)
     @test GTPSA.jacobian(b0.v) ≈ M_combined
-
   end
 
   @testset "Exact" begin
