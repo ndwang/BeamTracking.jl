@@ -1,33 +1,25 @@
 # =========== HELPER FUNCTIONS ============= #
 @inline function get_thin_multipoles(bunch, bm, L)
   brho_0 = bunch.Brho_ref
-  mm = @SArray [i for i in 1:21]
-  kn = @SArray [haskey(bm,i) ? get_thin_strength(bm[i], L, brho_0)*cos(-i*bm[i].tilt) : 0.0 for i in 1:21]
-  sn = @SArray [haskey(bm,i) ? get_thin_strength(bm[i], L, brho_0)*sin(-i*bm[i].tilt) : 0.0 for i in 1:21]
-  return mm, kn, sn
-end
-
-@inline function get_thin_multipoles_no_dipole(bunch, bm, L)
-  brho_0 = bunch.Brho_ref
-  mm = @SArray [i for i in 2:21]
-  kn = @SArray [haskey(bm,i) ? get_thin_strength(bm[i], L, brho_0)*cos(-i*bm[i].tilt) : 0.0 for i in 2:21]
-  sn = @SArray [haskey(bm,i) ? get_thin_strength(bm[i], L, brho_0)*sin(-i*bm[i].tilt) : 0.0 for i in 2:21]
+  mm = sort(collect(keys(bm)))
+  kn = [get_thin_strength(bm[i], L, brho_0)*cos(-i*bm[i].tilt) for i in mm]
+  sn = [get_thin_strength(bm[i], L, brho_0)*sin(-i*bm[i].tilt) for i in mm]
   return mm, kn, sn
 end
 
 @inline function get_thick_multipoles(bunch, bm, L)
   brho_0 = bunch.Brho_ref
-  mm = @SArray [i for i in 1:21]
-  kn = @SArray [haskey(bm,i) ? get_thick_strength(bm[i], L, brho_0)*cos(-i*bm[i].tilt) : 0.0 for i in 1:21]
-  sn = @SArray [haskey(bm,i) ? get_thick_strength(bm[i], L, brho_0)*sin(-i*bm[i].tilt) : 0.0 for i in 1:21]
+  mm = sort(collect(keys(bm)))
+  kn = [get_thick_strength(bm[i], L, brho_0)*cos(-i*bm[i].tilt) for i in mm]
+  sn = [get_thick_strength(bm[i], L, brho_0)*sin(-i*bm[i].tilt) for i in mm]
   return mm, kn, sn
 end
 
 @inline function get_thick_multipoles_no_dipole(bunch, bm, L)
   brho_0 = bunch.Brho_ref
-  mm = @SArray [i for i in 2:21]
-  kn = @SArray [haskey(bm,i) ? get_thick_strength(bm[i], L, brho_0)*cos(-i*bm[i].tilt) : 0.0 for i in 2:21]
-  sn = @SArray [haskey(bm,i) ? get_thick_strength(bm[i], L, brho_0)*sin(-i*bm[i].tilt) : 0.0 for i in 2:21]
+  mm = sort(setdiff(collect(keys(bm))))[2:end]
+  kn = [get_thick_strength(bm[i], L, brho_0)*cos(-i*bm[i].tilt) for i in mm]
+  sn = [get_thick_strength(bm[i], L, brho_0)*sin(-i*bm[i].tilt) for i in mm]
   return mm, kn, sn
 end
 
@@ -170,7 +162,7 @@ end
   brho_0 = bunch.Brho_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
   hc, e1, e2 = bendparams.g, bendparams.e1, bendparams.e2
-  mm, kn, sn = get_thick_multipoles_no_dipole(bunch, bm, L)
+  mm, kn, sn = get_thick_multipoles(bunch, bm, L)
   params = (beta_0, brho_0, hc, 0.0, e1, e2, mm, kn, sn)
   return integration_launcher!(ExactTracking.bkb_multipole!, params, tm.order, tm.n_steps, L)
 end
