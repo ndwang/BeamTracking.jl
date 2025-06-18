@@ -71,10 +71,7 @@ end
 
 
 # === Thick elements === #
-@inline function drift(tm::Integration, bunch, L)
-  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
-  return KernelCall(ExactTracking.exact_drift!, (beta_0, gamsqr_0, tilde_m, L))
-end
+@inline drift(tm::Integration, bunch, L) = drift(Exact(), bunch, L)
 
 @inline function thick_pure_bsolenoid(tm::Integration, bunch, bm0, L) 
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
