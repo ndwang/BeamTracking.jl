@@ -63,7 +63,6 @@
     @test_throws ErrorException track!(b0, Beamline([ele_patch_bend], Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_patch_sol],  Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_bend_quad],  Brho_ref=Brho_ref))
-<<<<<<< HEAD
   end
 
   @testset "Integration" begin
@@ -155,7 +154,5 @@
     v_expected = read_map("bmad_maps/sextupole.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 1e-5)
 
-=======
->>>>>>> bdf3b40fafa1d3a1d2bfab6aa95bda312442f1ce
   end
 end
