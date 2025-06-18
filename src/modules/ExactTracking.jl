@@ -343,6 +343,42 @@ Lr: element arc length
                + (1 + v[i,PZI]) * Lr / (beta_0 * sqrt(1 / beta_0^2 + (2 + v[i,PZI]) * v[i,PZI])))
 end # function exact_sbend!()
 
+"""
+    exact_bend!(i, v, theta, gtot, g, L, mc2, p0c, beta_0) 
+
+Tracks a particle through a sector bend via exact tracking. (no edge angles)
+
+#Arguments
+- 'theta'    -- 'g' * 'L'
+- 'k0'     -- 'g' + 'dg'
+- 'p0c'      -- reference momentum in eV
+- 'beta_0' -- 'p0c' / sqrt('mc2'^2 + 'p0c'^2)
+"""
+@inline function exact_bend!(i, b::BunchView, theta, g, k0, tilde_m, beta_0, L)
+  v = b.v
+  rel_p = 1 + v[i,PZI]
+  pt = sqrt(rel_p^2 - v[i,PYI]^2) #pt
+  phi1 = theta + asin(v[i,PXI] / pt) #phi1
+  gp = k0 / pt #gp
+  h = 1+g*v[i,XI] # 1 + g * x
+  cplus = cos(phi1) #cos(theta + phi1)
+  sinc_theta = sincu(theta) #sincu(theta)
+  alpha = 2*h*sin(phi1)*L*sinc_theta- gp*h^2*L^2*(sinc_theta)^2 #alpha
+  if abs(phi1) < π/2
+      xi = alpha/(sqrt(cplus^2 + gp*alpha) + cplus) #xi
+  else
+      xi = (sqrt(cplus^2 + gp*alpha) - cplus) / gp #xi
+  end
+  Lcv = -L*sinc_theta-v[i,XI]*sin(theta) #Lcv
+  thetap = 2 * (phi1 - atan(xi, -Lcv)) #theta_p
+  Lp = sqrt(Lcv^2 + xi^2) / sincu(thetap/2) #Lp
+
+  v[i,XI] = v[i,XI]*cos(theta) - g/2*L^2*(sincu(theta/2))^2 + xi
+  v[i,PXI] = pt*sin(phi1 - thetap)
+  v[i,YI] = v[i,YI] + v[i,PYI]*Lp/pt 
+  v[i,ZI] = v[i,ZI] - rel_p*Lp/pt + 
+                  L*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0
+end
 
 @makekernel fastgtpsa=true function exact_solenoid!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, L)
   v = b.v
@@ -452,46 +488,6 @@ function drift_params(species::Species, Brho)
   gamsqr_0 = @FastGTPSA 1+beta_gamma_0^2
   beta_0 = @FastGTPSA beta_gamma_0/sqrt(gamsqr_0)
   return tilde_m, gamsqr_0, beta_0
-end
-
-
-"""
-    exact_bend!(i, v, work, theta, gtot, g, L, mc2, p0c, beta_ref) 
-
-Tracks a particle through a sector bend via exact tracking. (no edge angles)
-
-#Arguments
-- 'theta'    -- 'g' * 'L'
-- 'gtot'     -- 'g' + 'dg'
-- 'p0c'      -- reference momentum in eV
-- 'beta_ref' -- 'p0c' / sqrt('mc2'^2 + 'p0c'^2)
-"""
-@inline function exact_bend!(i, v, work, theta, gtot, g, L, mc2, p0c, beta_ref)
-  @inbounds begin #@FastGTPSA! begin
-      work[i,1] = sqrt((1 + v[i,PZI])^2 - v[i,PYI]^2) #pt
-      work[i,2] = theta + asin(v[i,PXI] / work[i,1]) #phi1
-      work[i,3] = gtot / work[i,1] #gp
-      work[i,4] = 1+g*v[i,XI] # 1 + g * x
-      work[i,5] = cos(work[i,2]) #cos(theta + phi1)
-      work[i,6] = sincu(theta) #sincu(theta)
-      work[i,7] = 2*work[i,4]*sin(work[i,2])*L*work[i,6]- work[i,3]*work[i,4]^2*L^2*(work[i,6])^2 #alpha
-      if abs(work[i,2]) < π/2
-          work[i,8] = work[i,7]/(sqrt(work[i,5]^2 + work[i,3]*work[i,7]) + work[i,5]) #xi
-      else
-          work[i,8] = (sqrt(work[i,5]^2 + work[i,3]*work[i,7]) - work[i,5]) / work[i,3] #xi
-      end
-      work[i,9] = -L*work[i,6]-v[i,XI]*sin(theta) #Lcv
-      work[i,10] = 2 * (work[i,2] - atan(work[i,8], -work[i,9])) #theta_p
-      work[i,11] = sqrt(work[i,9]^2 + work[i,8]^2) / sincu(work[i,10]/2) #Lp
-      work[i,12] = (v[i,PZI] * p0c + p0c) #p
-
-      v[i,XI] = v[i,XI]*cos(theta) - g/2*L^2*(sincu(theta/2))^2 + work[i,8]
-      v[i,PXI] = work[i,1]*sin(work[i,2] - work[i,10])
-      v[i,YI] = v[i,YI] + v[i,PYI]*work[i,11]/work[i,1] 
-      v[i,ZI] = v[i,ZI] - (1 + v[i,PZI])*work[i,11]/work[i,1] + 
-                      L*(work[i,12]/sqrt(mc2^2+work[i,12]^2))/beta_ref
-  end #end
-  return v
 end
 
 end
