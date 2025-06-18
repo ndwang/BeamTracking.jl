@@ -363,21 +363,21 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
   h = 1+g*v[i,XI] # 1 + g * x
   cplus = cos(phi1) #cos(theta + phi1)
   sinc_theta = sincu(theta) #sincu(theta)
-  alpha = 2*h*sin(phi1)*L*sinc_theta- gp*h^2*L^2*(sinc_theta)^2 #alpha
+  alpha = 2*h*sin(phi1)*abs(L)*sinc_theta- gp*h^2*L^2*(sinc_theta)^2 #alpha
   if abs(phi1) < π/2
       xi = alpha/(sqrt(cplus^2 + gp*alpha) + cplus) #xi
   else
       xi = (sqrt(cplus^2 + gp*alpha) - cplus) / gp #xi
   end
-  Lcv = -L*sinc_theta-v[i,XI]*sin(theta) #Lcv
-  thetap = 2 * (phi1 - atan(xi, -Lcv)) #theta_p
-  Lp = sqrt(Lcv^2 + xi^2) / sincu(thetap/2) #Lp
+  Lcv = -L*sinc_theta-sign(L)*v[i,XI]*sin(theta) #Lcv
+  thetap = 2 * (phi1 - sign(L)*atan(xi, -Lcv)) #theta_p
+  Lp = sign(L)*sqrt(Lcv^2 + xi^2) / sincu(thetap/2) #Lp
 
   v[i,XI] = v[i,XI]*cos(theta) - g/2*L^2*(sincu(theta/2))^2 + xi
   v[i,PXI] = pt*sin(phi1 - thetap)
   v[i,YI] = v[i,YI] + v[i,PYI]*Lp/pt 
   v[i,ZI] = v[i,ZI] - rel_p*Lp/pt + 
-                  L*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0
+                  abs(L)*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0
 end
 
 @makekernel fastgtpsa=true function exact_solenoid!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, L)
