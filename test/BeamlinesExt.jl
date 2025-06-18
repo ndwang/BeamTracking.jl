@@ -51,6 +51,33 @@
     v_expected = read_map("bmad_maps/solenoid.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
+    # Thick pure bend:
+    ele_bend = LineElement(L=0.5, g=1, K0 = 1.001, tracking_method=Exact())
+    b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
+    bl = Beamline([ele_bend], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    M_bend = [0.87735271     0.47936691     0.00000000     0.00000000     0.00000000     0.12252488   
+              -0.47990496     0.87758256     0.00000000     0.00000000     0.00000000     0.47942554  
+              0.00000000     0.00000000     1.00000000     0.49997945     0.00000000     0.00000000   
+              0.00000000     0.00000000     0.00000000     1.00000000     0.00000000     0.00000000  
+              -0.47942559    -0.12229504     0.00000000     0.00000000     1.00000000    -0.01925165  
+              0.00000000     0.00000000     0.00000000     0.00000000     0.00000000     1.00000000  ]
+
+    @test GTPSA.jacobian(b0.v) ≈ M_bend
+
+    # Thick pure dipole:
+    ele_thick_dipole = LineElement(L=0.5, K0 = 0.001, tracking_method=Exact())
+    b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
+    bl = Beamline([ele_thick_dipole], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    M_thick_dipole = [1.00000000     0.50000006     0.00000000     0.00000000     0.00000000     0.00012500  
+                      0.00000000     1.00000000     0.00000000     0.00000000     0.00000000     0.00000000  
+                      0.00000000     0.00000000     1.00000000     0.50000002     0.00000000     0.00000000  
+                      0.00000000     0.00000000     0.00000000     1.00000000     0.00000000     0.00000000   
+                      0.00000000     0.00012500     0.00000000     0.00000000     1.00000000     0.00130224  
+                      0.00000000     0.00000000     0.00000000     0.00000000     0.00000000     1.00000000 ]
+
+    @test GTPSA.jacobian(b0.v) ≈ M_thick_dipole
 
     # Errors:
     ele_kick = LineElement(L=1.0, K0L=1.0, tracking_method=Exact())

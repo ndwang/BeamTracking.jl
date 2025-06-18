@@ -28,9 +28,3 @@ end
   tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
   return KernelCall(ExactTracking.exact_bend!, (0, 0, k0, tilde_m, beta_0, L))
 end
-
-@inline function thin_pure_bdipole(tm::Exact, bunch, bm1)
-  k0 = get_thick_strength(bm1, L, bunch.Brho_ref)
-  tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
-  return KernelCall(ExactTracking.exact_bend!, (0, 0, k0, tilde_m, beta_0, 0))
-end
