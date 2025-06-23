@@ -263,8 +263,6 @@ and uses a Horner-like scheme (see Shachinger and Talman
 multipole magnet. This method supposedly has good numerical
 properties, though I've not seen a proof of that claim.
 
-DTA: Ordering matters!
-
 ## Arguments
  - ms:  vector of m values for non-zero multipole coefficients
  - knl: vector of normal integrated multipole strengths
@@ -276,6 +274,8 @@ DTA: Ordering matters!
        order ms[j] (after scaling by the reference Bρ).
        For example, if ms[j] = 3, then knl[j] denotes the
        normal integrated sextupole strength scaled by Bρo.
+       Moreover, and this is essential, the multipole
+       coefficients must apear in ascending order.
 """
 @inline function multipole_kick!(i, v, work, ms, knl, ksl)
   @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least" *
