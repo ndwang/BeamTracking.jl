@@ -34,7 +34,7 @@ end
 end
 
 # Ignore higher order multipoles with quadrupole: 
-@inline thin_bquadrupole(tm::Linear, bunch, bdict) = thick_pure_bquadrupole(tm, bunch, bdict[2], 0)
+@inline thin_bquadrupole(tm::Linear, bunch, bdict) = thin_pure_bquadrupole(tm, bunch, bdict[2])
 
 # Ignore higher order multipoles: do nothing for thin case (0 length)
 @inline thin_pure_bmultipole(tm::Linear, bunch, bmn) = KernelCall()
