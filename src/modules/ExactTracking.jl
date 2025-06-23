@@ -3,6 +3,16 @@
 Exact tracking methods
 
 =#
+
+#export exact_drift!
+#export mkm_quadrupole!
+#export quadrupole_matrix!
+#export quadrupole_kick!
+#export dkd_multipole!
+#export multipole_kick!
+#export exact_sbend!
+#export exact_solenoid!
+
 # Define the Exact tracking method, and number of columns in the work matrix
 # (equal to number of temporaries needed for a single particle)
 struct Exact end
@@ -43,23 +53,29 @@ end
 # ===============  E X A C T   D R I F T  ===============
 #
 """
-exact_drift!()
+    exact_drift!(i, v, work, β_0, γsqr_0, tilde_m, L)
 
-In the computation of z_final, we use the fact that
-    1/√a - 1/√b == (b - a)/(√a √b (√a + √b))
+Return the result of exact tracking a particle through a drift
+of length `L`, assuming `β_0`, `γsqr_0`, and `tilde_m` respectively
+denote the reference velocity normalized to the speed of light,
+the corresponding value of the squared Lorentz factor, and the
+particle rest energy normalized to the reference value of ``pc``.
+
+NB: In the computation of ``z_final``, we use the fact that
+  - ``1/√a - 1/√b == (b - a)/(√a √b (√a + √b))``
 to avoid the potential for severe cancellation when
-a and b both have the form 1 + ε for different small
-values of ε.
+``a`` and ``b`` both have the form ``1 + ε`` for different small
+values of ``ε``.
 
-Arguments
-—————————
-beta_0:   β_0 = (βγ)_0 / √(γ_0^2)
-gamsqr_0: γ_0^2 = 1 + (βγ)_0^2
-tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
-L: element length
+## Arguments
+- `β_0`:     reference velocity normalized to the speed of light, ``v_0 / c``
+- `γsqr_0`:  corresponding value of the squared Lorentz factor
+- `tilde_m`: particle rest energy normalized to the reference value of ``pc``
+- `L`:       element length, in meters
 """
 @inline function exact_drift!(i, v, work, beta_0, gamsqr_0, tilde_m, L)
-  @assert size(work, 2) >= 1 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 1) for exact_drift!()."
+  @assert size(work, 2) >= 1 && size(work, 1) == size(v, 1) "Size of work matrix must be at least" *
+                                                            "($size(v, 1), 1) for exact_drift!()."
   @inbounds begin @FastGTPSA! begin
     work[i,1] = sqrt((1.0 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2))  # P_s
     v[i,XI]   = v[i,XI] + v[i,PXI] * L / work[i,1]
@@ -81,23 +97,23 @@ end # function exact_drift!()
 # ===============  Q U A D R U P O L E  ===============
 #
 """
-mkm_quadrupole!()
+    mkm_quadrupole!(i, v, work, β_0, γsqr_0, tilde_m, k2_num, L)
 
 This integrator uses Matrix-Kick-Matrix to implement a quadrupole
 integrator accurate though second-order in the integration step-size.
 
-Arguments
-—————————
-beta_0:   β_0 = (βγ)_0 / √(γ_0^2)
-gamsqr_0: γ_0^2 = 1 + (βγ)_0^2
-tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
-k2_num:   g / Bρ0 = g / (p0 / q)
-          where g and Bρ0 respectively denote the quadrupole gradient
-          and (signed) reference magnetic rigidity.
-L: element length
+## Arguments
+- beta_0:   β_0 = (βγ)_0 / √(γ_0^2)
+- gamsqr_0: γ_0^2 = 1 + (βγ)_0^2
+- tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
+- k2_num:   g / Bρ0 = g / (p0 / q)
+              where g and Bρ0 respectively denote the quadrupole gradient
+              and (signed) reference magnetic rigidity.
+- L:         element length, in meters
 """
 @inline function mkm_quadrupole!(i, v, work, beta_0, gamsqr_0, tilde_m, k2_num, L)
-  @assert size(work, 2) >= 7 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 7) for mkm_quadrupole!()."
+  @assert size(work, 2) >= 7 && size(work, 1) == size(v, 1) "Size of work matrix must be at least" *
+                                                            "($size(v, 1), 7) for mkm_quadrupole!()."
   @inbounds begin #@FastGTPSA! begin
     #ds = L / ns
     #for i = 1:ns
@@ -115,15 +131,15 @@ quadrupole_matrix!()
 
 Track "matrix part" of quadrupole.
 
-Arguments
-—————————
-k2_num:  g / Bρ0 = g / (p0 / q)
-         where g and Bρ0 respectively denote the quadrupole gradient
-         and (signed) reference magnetic rigidity.
-s: element length
+## Arguments
+- k2_num: g / Bρ0 = g / (p0 / q)
+            where g and Bρ0 respectively denote the quadrupole gradient
+            and (signed) reference magnetic rigidity.
+- s:      element length, in meters
 """
 @inline function quadrupole_matrix!(i, v, work, k2_num, s)
-  @assert size(work, 2) >= 7 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 7) for quadrupole_matrix!()."
+  @assert size(work, 2) >= 7 && size(work, 1) == size(v, 1) "Size of work matrix must be at least" *
+                                                            "($size(v, 1), 7) for quadrupole_matrix!()."
   @inbounds begin #@FastGTPSA! begin
     sgn = sign(k2_num)
     focus   = k2_num >= 0  # horizontally focusing for positive particles
@@ -166,15 +182,15 @@ which suffers a loss of precision when ``|A| \\ll 1``. To combat that
 problem, we rewrite it in the form ``A / (1 + \\sqrt{1-A})``---more
 complicated, yes, but far more accurate.
 
-Arguments
-—————————
-beta_0:   β_0 = (βγ)_0 / √(γ_0^2)
-gamsqr_0: γ_0^2 = 1 + (βγ)_0^2
-tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
-s: element length
+## Arguments
+- beta_0:   β_0 = (βγ)_0 / √(γ_0^2)
+- gamsqr_0: γ_0^2 = 1 + (βγ)_0^2
+- tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
+- s:        element length, in meters
 """
 @inline function quadrupole_kick!(i, v, work, beta_0, gamsqr_0, tilde_m, s)
-  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for quadrupole_kick!"
+  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least" *
+                                                            "($size(v, 1), 3) for quadrupole_kick!"
   @inbounds begin #@FastGTPSA! begin
   work[i,1] = 1.0 + v[i,PZI]                 # reduced total momentum,  P/P0 = 1 + δ
   work[i,2] = v[i,PXI]^2 + v[i,PYI]^2        # (transverse momentum)^2, P⟂^2 = (Px^2 + Py^2) / P0^2
@@ -207,18 +223,18 @@ starting with the dipole component. (For example, b[3] denotes
 the normal sextupole strength in Tesla/m^2.) The argument ns
 denotes the number of slices.
 
-Arguments
-—————————
-beta_0:   β_0 = (βγ)_0 / √(γ_0^2)
-gamsqr_0: γ_0^2 = 1 + (βγ)_0^2
-tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
-mm: vector of m values for non-zero multipole coefficients
-kn: vector of normal multipole strengths scaled by Bρ0
-ks: vector of skew multipole strengths scaled by Bρ0
-L:  element length
+## Arguments
+- beta_0:   β_0 = (βγ)_0 / √(γ_0^2)
+- gamsqr_0: γ_0^2 = 1 + (βγ)_0^2
+- tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
+- mm:       vector of m values for non-zero multipole coefficients
+- kn:       vector of normal multipole strengths scaled by Bρ0
+- ks:       vector of skew multipole strengths scaled by Bρ0
+- L:        element length, in meters
 """
 @inline function dkd_multipole!(i, v, work, beta_0, gamsqr_0, tilde_m, mm, kn, ks, L)
-  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for dkd_multipole!()."
+  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least" *
+                                                            "($size(v, 1), 3) for dkd_multipole!()."
   @inbounds begin #@FastGTPSA! begin
     #ds = L / ns
     #for i = 1:ns
@@ -248,9 +264,8 @@ multipole magnet. This method supposedly has good numerical
 properties, though I've not seen a proof of that claim.
 
 DTA: Ordering matters!
-DTA: Add thin dipole kick.
 
-### Arguments
+## Arguments
  - ms:  vector of m values for non-zero multipole coefficients
  - knl: vector of normal integrated multipole strengths
  - ksl: vector of skew integrated multipole strengths
@@ -258,12 +273,13 @@ DTA: Add thin dipole kick.
 
      NB: Here the j-th component of knl (ksl) denotes the
        normal (skew) component of the multipole strength of
-       order mm[j] (after scaling by the reference Bρ).
-       For example, if mm[j] = 3, then knl[j] denotes the
+       order ms[j] (after scaling by the reference Bρ).
+       For example, if ms[j] = 3, then knl[j] denotes the
        normal integrated sextupole strength scaled by Bρo.
 """
 @inline function multipole_kick!(i, v, work, ms, knl, ksl)
-  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 3) for multipole_kick!()."
+  @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least" *
+                                                            "($size(v, 1), 3) for multipole_kick!()."
   @inbounds begin #@FastGTPSA! begin
   jm = length(ms)
   m  = ms[jm]
@@ -299,18 +315,18 @@ reference value of βγ must be that of a particle with the
 design energy.  Should we wish to change that, we shall need
 to carry both reference and design values.
 
-Arguments
-—————————
-beta_0: β_0 = (βγ)_0 / √(γ_0^2)
-brho_0: Bρ_0,  reference magnetic rigidity
-hc: coordinate frame curvature
-b0: magnet field strength
-e1: entrance face angle (+ve angle <=> toward rbend)
-e2: exit face angle (+ve angle <=> toward rbend)
-Lr: element arc length
+## Arguments
+- beta_0: β_0 = (βγ)_0 / √(γ_0^2)
+- brho_0: Bρ_0,  reference magnetic rigidity
+- hc:     coordinate frame curvature
+- b0:     magnet field strength
+- e1:     entrance face angle (+ve angle <=> toward rbend)
+- e2:     exit face angle (+ve angle <=> toward rbend)
+- Lr:     element arc length, in meters
 """
 @inline function exact_sbend!(i, v, work, beta_0, brho_0, hc, b0, e1, e2, Lr)
-  @assert size(work, 2) >= 5 && size(work, 1) == size(v, 1) "Size of work matrix must be at least ($size(v, 1), 5) for multipole_kick!()."
+  @assert size(work, 2) >= 5 && size(work, 1) == size(v, 1) "Size of work matrix must be at least" *
+                                                            "($size(v, 1), 5) for multipole_kick!()."
   @inbounds begin @FastGTPSA! begin
   rho = brho0 / b0
   ang = hc * Lr
@@ -338,7 +354,8 @@ end # function exact_sbend!()
 
 
 @makekernel function exact_solenoid!(i, v, work, ks, beta_0, gamsqr_0, tilde_m, L)
-  @assert size(work, 2) >= 8 && size(work, 1) >= size(v,1) "Size of work matrix must be at least ($(size(v,1)), 8) for exact_solenoid!"
+  @assert size(work, 2) >= 8 && size(work, 1) >= size(v,1) "Size of work matrix must be at least" *
+                                                            "($(size(v,1)), 8) for exact_solenoid!"
   @inbounds begin @FastGTPSA! begin
     # Recurring variables
     work[i,1] = 1 + v[i,PZI]                                 # rel_p
