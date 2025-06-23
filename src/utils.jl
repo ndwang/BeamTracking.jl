@@ -135,7 +135,7 @@ calc_E(species::Species, Brho) = @FastGTPSA sqrt((Brho*C_LIGHT*chargeof(species)
 calc_gamma(species::Species, Brho) = @FastGTPSA sqrt((Brho*C_LIGHT/massof(species))^2+1)
 
 calc_p0c(species::Species, Brho) = @FastGTPSA Brho*C_LIGHT*chargeof(species)
-calc_beta_gammma(species::Species, Brho) = @FastGTPSA Brho*chargeof(species)*C_LIGHT/massof(species)
+calc_beta_gamma(species::Species, Brho) = @FastGTPSA Brho*chargeof(species)*C_LIGHT/massof(species)
 
 
 
