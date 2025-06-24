@@ -1,3 +1,4 @@
+
 @testset "Beamlines" begin
   include("lattices/esr.jl")
 
@@ -112,7 +113,7 @@
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/sol_quad.jl")
-    @test coeffs_approx_equal(v_expected, b0.v, 9e-5)
+    @test coeffs_approx_equal(v_expected, b0.v, 1e-5)
 
     # Pure dipole:
     #ele = LineElement(L=2.0, K0=0.1+1e-3, g=0.1, e1=1e-3, e2=-2e-3, tracking_method=Standard())
@@ -131,7 +132,7 @@
     #@test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Pure quadrupole:
-    ele = LineElement(L=2.0, K1=0.1, tracking_method=Standard(order=6,num_steps=200))
+    ele = LineElement(L=2.0, K1=0.1, tracking_method=Standard(order=6,num_steps=100))
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
@@ -139,12 +140,12 @@
     @test coeffs_approx_equal(v_expected, b0.v, 1e-5)
 
     # Skewed quadrupole:
-    ele = LineElement(L=2.0, K1=0.1, tilt1 = 0.25*pi, tracking_method=Standard(order=6,num_steps=200))
+    ele = LineElement(L=2.0, K1=0.1, tilt1 = 0.25*pi, tracking_method=Standard(order=6,num_steps=100))
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/skewed_quad.jl")
-    @test coeffs_approx_equal(v_expected[1:4], b0.v[1:4], 1e-5)
+    @test coeffs_approx_equal(v_expected, b0.v, 1e-5)
 
     # Quadrupole with octupole:
     ele = LineElement(L=2.0, K1=0.1, K3=100, tracking_method=DKD())
@@ -161,6 +162,5 @@
     track!(b0, bl)
     v_expected = read_map("bmad_maps/sextupole.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 1e-5)
-
   end
 end
