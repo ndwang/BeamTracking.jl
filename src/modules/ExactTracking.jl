@@ -213,7 +213,7 @@ end # function quadrupole_kick!()
 # ===============  M U L T I P O L E  ===============
 #
 """
-dkd_multipole()
+    dkd_multipole()
 
 This integrator uses Drift-Kick-Drift to track a beam through
 a straight, finite-length multipole magnet. The method is
@@ -227,19 +227,19 @@ denotes the number of slices.
 - beta_0:   β_0 = (βγ)_0 / √(γ_0^2)
 - gamsqr_0: γ_0^2 = 1 + (βγ)_0^2
 - tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
-- mm:       vector of m values for non-zero multipole coefficients
+- ms:       vector of m values for non-zero multipole coefficients
 - kn:       vector of normal multipole strengths scaled by Bρ0
 - ks:       vector of skew multipole strengths scaled by Bρ0
 - L:        element length, in meters
 """
-@inline function dkd_multipole!(i, v, work, beta_0, gamsqr_0, tilde_m, mm, kn, ks, L)
+@inline function dkd_multipole!(i, v, work, beta_0, gamsqr_0, tilde_m, ms, kn, ks, L)
   @assert size(work, 2) >= 3 && size(work, 1) == size(v, 1) "Size of work matrix must be at least" *
                                                             "($size(v, 1), 3) for dkd_multipole!()."
   @inbounds begin #@FastGTPSA! begin
     #ds = L / ns
     #for i = 1:ns
     exact_drift!(   i, v, work, beta_0, gamsqr_0, tilde_m, L / 2)
-    multipole_kick!(i, v, work, mm, kn * L, ks * L)
+    multipole_kick!(i, v, work, ms, kn * L, ks * L)
     exact_drift!(   i, v, work, beta_0, gamsqr_0, tilde_m, L / 2)
     #end
   end #end
@@ -283,22 +283,22 @@ properties, though I've not seen a proof of that claim.
   @inbounds begin #@FastGTPSA! begin
   jm = length(ms)
   m  = ms[jm]
-  work[i,1] = knl[jm]
-  work[i,2] = ksl[jm]
+  ar = knl[jm]
+  ai = ksl[jm]
   jm -= 1
   while 2 <= m
     m -= 1
-    work[i,3] = work[i,1] * v[i,XI] - work[i,2] * v[i,YI]
-    work[i,2] = work[i,1] * v[i,YI] + work[i,2] * v[i,XI]
-    work[i,1] = work[i,3]
+    t  = (ar * v[i,XI] - ai * v[i,YI]) / m
+    ai = (ar * v[i,YI] + ai * v[i,XI]) / m
+    ar = t
     if 0 < jm && m == ms[jm]
-      work[i,1] += knl[jm]
-      work[i,2] += ksl[jm]
+      ar += knl[jm]
+      ai += ksl[jm]
       jm -= 1
     end
   end
-  v[i,PXI] -= work[i,1]
-  v[i,PYI] += work[i,2]
+  v[i,PXI] -= ar
+  v[i,PYI] += ai
   end #end
   return v
 end # function multipole_kick!()
@@ -326,7 +326,7 @@ to carry both reference and design values.
 """
 @inline function exact_sbend!(i, v, work, beta_0, brho_0, hc, b0, e1, e2, Lr)
   @assert size(work, 2) >= 5 && size(work, 1) == size(v, 1) "Size of work matrix must be at least" *
-                                                            "($size(v, 1), 5) for multipole_kick!()."
+                                                            "($size(v, 1), 5) for exact_sbend!()."
   @inbounds begin @FastGTPSA! begin
   rho = brho0 / b0
   ang = hc * Lr
