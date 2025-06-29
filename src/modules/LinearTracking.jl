@@ -126,10 +126,10 @@ end
 
 
 
-function linear_dipole_matrices(K0, L, gamma_0; g::Union{Nothing, Real}=nothing, K1::Union{Nothing, Real}=nothing, e1=nothing, e2=nothing)
+function linear_dipole_matrices(K0, L, gamma_0; g=0, K1=0, e1=nothing, e2=nothing)
 
-    if !isnothing(g) && g ≈ K0
-      if !isnothing(K1) && K1 != 0
+    if g != 0 && g ≈ K0
+      if K1 != 0
         wy = sqrt(abs(K1))
         wyL = wy * L
         if K1 >= 0
@@ -191,18 +191,9 @@ function linear_dipole_matrices(K0, L, gamma_0; g::Union{Nothing, Real}=nothing,
         t = SA[-theta*sc,  -theta*L*cc, 0, 0]
       end
     else
-        if isnothing(g)
-          g = 0
-        end
-
-        if isnothing(K1)
-          K1 = 0 
-        end 
-
         wy = sqrt(abs(K1))
         sgny = copysign(1,K1)
         wyL = wy * L
-        
         if (wyL < 1e-6)
           cy = 1 + sgny * wyL^2 / 2
           syc = (1 + sgny * wyL^2 / 6) * L
@@ -215,6 +206,7 @@ function linear_dipole_matrices(K0, L, gamma_0; g::Union{Nothing, Real}=nothing,
         end
 
         kx = K1 + g * K0 
+
         wx = sqrt(abs(kx))
         sgnx = - copysign(1,kx)
         wxL = wx * L 
