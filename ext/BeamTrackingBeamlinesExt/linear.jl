@@ -58,6 +58,7 @@ end
   # Sophia: this a thick corrector coil
   # In Fortran Bmad is g == 0 but dg != 0. 
   # In SciBmad this is g == 0 but K0 != 0.
+  # Singularity for simutaneous `g==0' and 'k1 = 0'
   error("Undefined for tracking method $tm")
 end
 
@@ -69,7 +70,7 @@ end
     gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
     K0 = get_thick_strength(bdict[1], L, bunch.Brho_ref)
     K1 = get_thick_strength(bdict[2], L, bunch.Brho_ref) 
-    mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(K0, L, gamma_0; K1 = K1)
+    mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(0,0,0, K0, K1, gamma_0, L)
   return KernelCall(LinearTracking.linear_coast_uncoupled!, (mx, my, r56, d, t))
   else # ignore higher order multipoles
     return thick_pure_bdipole(tm, bunch, bdict[1], L)
@@ -97,13 +98,14 @@ end
 @inline function thick_bend_no_field(tm::Linear, bunch, bendparams, L)
   # Sophia: this has NO FIELD!
   # In Fortran Bmad it is like setting dg == -g
+  # Singularity for simutaneous`k0==0' and 'k1 = 0'
   error("Undefined for tracking method $tm")
 end
 
 @inline function thick_bend_pure_bdipole(tm::Linear, bunch, bendparams, bm1, L)     
   gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
   K0 = get_thick_strength(bm1, L, bunch.Brho_ref)
-  mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(K0, L, gamma_0; g = bendparams.g, e1 = bendparams.e1, e2 = bendparams.e2)
+  mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g, bendparams.e1, bendparams.e2, K0, 0, gamma_0, L)
   return KernelCall(LinearTracking.linear_coast_uncoupled!, (mx, my, r56, d, t))
 end
 
@@ -115,7 +117,7 @@ end
     gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
     K0 = get_thick_strength(bdict[1], L, bunch.Brho_ref)
     K1 = get_thick_strength(bdict[2], L, bunch.Brho_ref)
-    mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(K0, L, gamma_0; g = bendparams.g, K1 = K1, e1=bendparams.e1, e2=bendparams.e2)
+    mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g, bendparams.e1, bendparams.e2, K0, K1, gamma_0, L)
     return KernelCall(LinearTracking.linear_coast_uncoupled!, (mx, my, r56, d, t))
   else # ignore higher order multipoles
     return thick_bend_pure_bdipole(tm, bunch, bendparams, bdict[1], L)
@@ -127,7 +129,7 @@ end
   # In Fortran Bmad it would be like dg == -g, K1 != 0.
   gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
   K1 = get_thick_strength(bm2, L, bunch.Brho_ref)
-  mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(0, L, gamma_0; g = bendparams.g, K1 = K1, e1=bendparams.e1, e2=bendparams.e2)
+  mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g, bendparams.e1, bendparams.e2, 0, K1, gamma_0, L)
   return KernelCall(LinearTracking.linear_coast_uncoupled!, (mx, my, r56, d, t))
 end
 

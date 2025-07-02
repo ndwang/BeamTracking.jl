@@ -126,8 +126,7 @@ end
 
 
 
-function linear_dipole_matrices(K0, L, gamma_0; g=0, K1=0, e1=nothing, e2=nothing)
-
+function linear_dipole_matrices(g, e1, e2, K0, K1, gamma_0, L)
     if g != 0 && g ≈ K0
       if K1 != 0
         wy = sqrt(abs(K1))
