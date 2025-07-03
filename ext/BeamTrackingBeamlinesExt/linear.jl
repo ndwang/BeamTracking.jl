@@ -58,7 +58,7 @@ end
   # Sophia: this a thick corrector coil
   # In Fortran Bmad is g == 0 but dg != 0. 
   # In SciBmad this is g == 0 but K0 != 0.
-  # Singularity for simutaneous `g==0' and 'k1 = 0'
+  # Singularity for g==0
   error("Undefined for tracking method $tm")
 end
 
