@@ -366,10 +366,16 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
   cplus = cos(phi1) #cos(theta + phi1)
   sinc_theta = sincu(theta) #sincu(theta)
   alpha = 2*h*sin(phi1)*abs(L)*sinc_theta- gp*h^2*L^2*(sinc_theta)^2 #alpha
+  cond = cplus^2 + gp*alpha
+  #particle does not intersect the exit face
+  if cond <= 0
+    b.state[i] = State.Lost
+    return
+  end
   if abs(phi1) < π/2
-      xi = alpha/(sqrt(cplus^2 + gp*alpha) + cplus) #xi
+      xi = alpha/(sqrt(cond) + cplus) #xi
   else
-      xi = (sqrt(cplus^2 + gp*alpha) - cplus) / gp #xi
+      xi = (sqrt(cond) - cplus) / gp #xi
   end
   Lcv = -L*sinc_theta-sign(L)*v[i,XI]*sin(theta) #Lcv
   thetap = 2 * (phi1 - sign(L)*atan(xi, -Lcv)) #theta_p

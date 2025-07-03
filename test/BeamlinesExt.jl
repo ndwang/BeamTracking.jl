@@ -79,13 +79,17 @@
 
     @test GTPSA.jacobian(b0.v) ≈ M_thick_dipole
 
-    # Errors:
+    b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
     ele_kick = LineElement(L=1.0, K0L=1.0, tracking_method=Exact())
+    track!(b0, Beamline([ele_kick],       Brho_ref=Brho_ref))
+    @test b0.state[1] == State.Lost
+
+    # Errors:
+    b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
     ele_bend = LineElement(L=1.0, g=0.01, tracking_method=Exact())
     ele_patch_bend = LineElement(L=1.0, g=0.01, dy=3.0, dz_rot=0.3, tracking_method=Exact())
     ele_patch_sol = LineElement(L=1.0, Ks=1.0, dt=1.0, tracking_method=Exact())
     ele_bend_quad = LineElement(L=1.0, g=0.01, K1=1.0, tracking_method=Exact())
-    @test_throws ErrorException track!(b0, Beamline([ele_kick],       Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_bend],       Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_patch_bend], Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_patch_sol],  Brho_ref=Brho_ref))
