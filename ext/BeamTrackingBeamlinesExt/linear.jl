@@ -135,7 +135,8 @@ end
   # This is a quadrupole with a g, I think your code should be able to handle this
   # In Fortran Bmad it would be like dg == -g, Kn1 != 0.
   gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
-  Kn1 = get_strengths(bm2, L, bunch.Brho_ref)
+  Kn1, Ks1 = get_strengths(bm2, L, bunch.Brho_ref)
+  Ks1 ≈ 0 || error("Skew/tilt multipoles not implemented yet for tracking method $tm")
   mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g, bendparams.e1, bendparams.e2, 0, Kn1, gamma_0, L)
   return KernelCall(LinearTracking.linear_coast_uncoupled!, (mx, my, r56, d, t))
 end
