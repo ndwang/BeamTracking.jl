@@ -26,10 +26,10 @@ function universal!(
   tm,
   bunch,
   L, 
-  alignmentparams, 
-  bendparams,
-  bmultipoleparams,
-  patchparams;
+  alignmentparams::Union{AlignmentParams,Nothing}, 
+  bendparams::Union{BendParams,Nothing},
+  bmultipoleparams::Union{BMultipoleParams,Nothing},
+  patchparams::Union{PatchParams,Nothing};
   kwargs...
 ) 
   kc = KernelChain(Val{1}())
@@ -53,77 +53,83 @@ function universal!(
       # Bend no field
       kc = push(kc, @inline(bend_no_field(tm, bunch, bendparams, L)))
     else
-      bdict = bmultipoleparams.bdict
-      n_multipoles = length(keys(bdict))
-      if haskey(bdict, 0) # Bend-solenoid
+      n_multipoles = length(bmultipoleparams)
+      if 0 in bmultipoleparams.order # Bend-solenoid
         if n_multipoles == 1
+          bm0 = first(bmultipoleparams)
           # Pure bend-solenoid
-          kc = push(kc, @inline(bend_pure_bsolenoid(tm, bunch, bendparams, bdict[0], L)))
+          kc = push(kc, @inline(bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)))
         else
           # Bend-solenoid with other multipoles of order > 0
-          kc = push(kc, @inline(bend_bsolenoid(tm, bunch, bendparams, bdict, L)))
+          kc = push(kc, @inline(bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams, L)))
         end
-      elseif haskey(bdict, 1) # Bend-dipole
+      elseif 1 in bmultipoleparams.order # Bend-dipole
         if n_multipoles == 1
+          bm1 = first(bmultipoleparams)
           # Pure bend-dipole
-          kc = push(kc, @inline(bend_pure_bdipole(tm, bunch, bendparams, bdict[1], L)))
+          kc = push(kc, @inline(bend_pure_bdipole(tm, bunch, bendparams, bm1, L)))
         else
           # Bend-dipole with other multipoles of order > 1
-          kc = push(kc, @inline(bend_bdipole(tm, bunch, bendparams, bdict, L)))
+          kc = push(kc, @inline(bend_bdipole(tm, bunch, bendparams, bmultipoleparams, L)))
         end
-      elseif haskey(bdict, 2) # Bend-quadrupole
+      elseif 2 in bmultipoleparams.order # Bend-quadrupole
         if n_multipoles == 1
+          bm2 = first(bmultipoleparams)
           # Pure bend-quadrupole
-          kc = push(kc, @inline(bend_pure_bquadrupole(tm, bunch, bendparams, bdict[2], L)))
+          kc = push(kc, @inline(bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L)))
         else
           # Bend-quadrupole with other multipoles of order > 1
-          kc = push(kc, @inline(bend_bquadrupole(tm, bunch, bendparams, bdict, L)))
+          kc = push(kc, @inline(bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams, L)))
         end
       else # Bend-multipole
         if n_multipoles == 1
+          bmk = first(bmultipoleparams)
           # Pure bend-multipole
-          kc = push(kc, @inline(bend_pure_bmultipole(tm, bunch, bendparams, first(values(bdict)), L)))
+          kc = push(kc, @inline(bend_pure_bmultipole(tm, bunch, bendparams, bmk, L)))
         else
           # Bend-multipole with other multipoles of order > 2
-          kc = push(kc, @inline(bend_bmultipole(tm, bunch, bendparams, bdict, L)))
+          kc = push(kc, @inline(bend_bmultipole(tm, bunch, bendparams, bmultipoleparams, L)))
         end
       end
     end
   elseif isactive(bmultipoleparams)
     # BMultipole
-    bdict = bmultipoleparams.bdict
-    n_multipoles = length(keys(bdict))
-    if haskey(bdict, 0) # Solenoid
+    n_multipoles = length(bmultipoleparams)
+    if 0 in bmultipoleparams.order # Solenoid
       if n_multipoles == 1
         # Pure solenoid
-        kc = push(kc, @inline(pure_bsolenoid(tm, bunch, bdict[0], L)))
+        bm0 = first(bmultipoleparams)
+        kc = push(kc, @inline(pure_bsolenoid(tm, bunch, bm0, L)))
       else
         # Solenoid with other multipoles of order > 0
-        kc = push(kc, @inline(bsolenoid(tm, bunch, bdict, L)))
+        kc = push(kc, @inline(bsolenoid(tm, bunch, bmultipoleparams, L)))
       end
-    elseif haskey(bdict, 1) # Dipole without bend
+    elseif 1 in bmultipoleparams.order # Dipole without bend
       if n_multipoles == 1
         # Pure dipole
-        kc = push(kc, @inline(pure_bdipole(tm, bunch, bdict[1], L)))
+        bm1 = first(bmultipoleparams)
+        kc = push(kc, @inline(pure_bdipole(tm, bunch, bm1, L)))
       else
         # Dipole with other multipoles of order > 1
-        kc = push(kc, @inline(bdipole(tm, bunch, bdict, L)))
+        kc = push(kc, @inline(bdipole(tm, bunch, bmultipoleparams, L)))
       end
-    elseif haskey(bdict, 2) # Quadrupole
+    elseif 2 in bmultipoleparams.order # Quadrupole
       if n_multipoles == 1
         # Pure quadrupole
-        kc = push(kc, @inline(pure_bquadrupole(tm, bunch, bdict[2], L)))
+        bm2 = first(bmultipoleparams)
+        kc = push(kc, @inline(pure_bquadrupole(tm, bunch, bm2, L)))
       else
         # Quadrupole with other multipoles of order > 1
-        kc = push(kc, @inline(bquadrupole(tm, bunch, bdict, L)))
+        kc = push(kc, @inline(bquadrupole(tm, bunch, bmultipoleparams, L)))
       end
     else # Higher order multipole
       if n_multipoles == 1
         # Pure multipole
-        kc = push(kc, @inline(pure_bmultipole(tm, bunch, first(values(bdict)), L)))
+        bmk = first(bmultipoleparams)
+        kc = push(kc, @inline(pure_bmultipole(tm, bunch, bmk, L)))
       else
         # Multipole with other multipoles of order > 2
-        kc = push(kc, @inline(bmultipole(tm, bunch, bdict, L)))
+        kc = push(kc, @inline(bmultipole(tm, bunch, bmultipoleparams, L)))
       end
     end
   elseif !(L ≈ 0)
@@ -146,23 +152,23 @@ end
 # "Pure" means only ONE SINGLE multipole.
 # When "pure" is not present, it means that at least one HIGHER ORDER
 # multipole exists.
-@inline thin_pure_bsolenoid(tm, bunch, bm0)   = error("Undefined for tracking method $tm")
-@inline thin_bsolenoid(tm, bunch, bdict)      = error("Undefined for tracking method $tm")
-@inline thin_pure_bdipole(tm, bunch, bm1)     = error("Undefined for tracking method $tm")
-@inline thin_bdipole(tm, bunch, bdict)        = error("Undefined for tracking method $tm")
-@inline thin_pure_bquadrupole(tm, bunch, bm2) = error("Undefined for tracking method $tm")
-@inline thin_bquadrupole(tm, bunch, bdict)    = error("Undefined for tracking method $tm")
-@inline thin_pure_bmultipole(tm, bunch, bmn)  = error("Undefined for tracking method $tm")
-@inline thin_bmultipole(tm, bunch, bdict)     = error("Undefined for tracking method $tm")
+@inline thin_pure_bsolenoid(tm, bunch, bm0)           = error("Undefined for tracking method $tm")
+@inline thin_bsolenoid(tm, bunch, bmultipoleparams)   = error("Undefined for tracking method $tm")
+@inline thin_pure_bdipole(tm, bunch, bm1)             = error("Undefined for tracking method $tm")
+@inline thin_bdipole(tm, bunch, bmultipoleparams)     = error("Undefined for tracking method $tm")
+@inline thin_pure_bquadrupole(tm, bunch, bm2)         = error("Undefined for tracking method $tm")
+@inline thin_bquadrupole(tm, bunch, bmultipoleparams) = error("Undefined for tracking method $tm")
+@inline thin_pure_bmultipole(tm, bunch, bmk)          = error("Undefined for tracking method $tm")
+@inline thin_bmultipole(tm, bunch, bmultipoleparams)  = error("Undefined for tracking method $tm")
 
-@inline thick_pure_bsolenoid(tm, bunch, bm0, L)   = error("Undefined for tracking method $tm")
-@inline thick_bsolenoid(tm, bunch, bdict, L)      = error("Undefined for tracking method $tm")
-@inline thick_pure_bdipole(tm, bunch, bm1, L)     = error("Undefined for tracking method $tm")
-@inline thick_bdipole(tm, bunch, bdict, L)        = error("Undefined for tracking method $tm")
-@inline thick_pure_bquadrupole(tm, bunch, bm2, L) = error("Undefined for tracking method $tm")
-@inline thick_bquadrupole(tm, bunch, bdict, L)    = error("Undefined for tracking method $tm")
-@inline thick_pure_bmultipole(tm, bunch, bmn, L)  = error("Undefined for tracking method $tm")
-@inline thick_bmultipole(tm, bunch, bdict, L)     = error("Undefined for tracking method $tm")
+@inline thick_pure_bsolenoid(tm, bunch, bm0, L)           = error("Undefined for tracking method $tm")
+@inline thick_bsolenoid(tm, bunch, bmultipoleparams, L)   = error("Undefined for tracking method $tm")
+@inline thick_pure_bdipole(tm, bunch, bm1, L)             = error("Undefined for tracking method $tm")
+@inline thick_bdipole(tm, bunch, bmultipoleparams, L)     = error("Undefined for tracking method $tm")
+@inline thick_pure_bquadrupole(tm, bunch, bm2, L)         = error("Undefined for tracking method $tm")
+@inline thick_bquadrupole(tm, bunch, bmultipoleparams, L) = error("Undefined for tracking method $tm")
+@inline thick_pure_bmultipole(tm, bunch, bmk, L)          = error("Undefined for tracking method $tm")
+@inline thick_bmultipole(tm, bunch, bmultipoleparams, L)  = error("Undefined for tracking method $tm")
 
 
 # === Elements with curving coordinate system "bend" === #
@@ -174,43 +180,43 @@ end
 # multipole exists.
 
 # SciBmad will probably not support thin bends ever but I leave them here for now
-@inline thin_bend_no_field(tm, bunch, bendparams)              = error("Undefined for tracking method $tm")
-@inline thin_bend_pure_bsolenoid(tm, bunch, bendparams, bm0)   = error("Undefined for tracking method $tm")
-@inline thin_bend_bsolenoid(tm, bunch, bendparams, bdict)      = error("Undefined for tracking method $tm")
-@inline thin_bend_pure_bdipole(tm, bunch, bendparams, bm1)     = error("Undefined for tracking method $tm")
-@inline thin_bend_bdipole(tm, bunch, bendparams, bdict)        = error("Undefined for tracking method $tm")
-@inline thin_bend_pure_bquadrupole(tm, bunch, bendparams, bm2) = error("Undefined for tracking method $tm")
-@inline thin_bend_bquadrupole(tm, bunch, bendparams, bdict)    = error("Undefined for tracking method $tm")
-@inline thin_bend_pure_bmultipole(tm, bunch, bendparams, bmn)  = error("Undefined for tracking method $tm")
-@inline thin_bend_bmultipole(tm, bunch, bendparams, bdict)     = error("Undefined for tracking method $tm")
+@inline thin_bend_no_field(tm, bunch, bendparams)                      = error("Undefined for tracking method $tm")
+@inline thin_bend_pure_bsolenoid(tm, bunch, bendparams, bm0)           = error("Undefined for tracking method $tm")
+@inline thin_bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams)   = error("Undefined for tracking method $tm")
+@inline thin_bend_pure_bdipole(tm, bunch, bendparams, bm1)             = error("Undefined for tracking method $tm")
+@inline thin_bend_bdipole(tm, bunch, bendparams, bmultipoleparams)     = error("Undefined for tracking method $tm")
+@inline thin_bend_pure_bquadrupole(tm, bunch, bendparams, bm2)         = error("Undefined for tracking method $tm")
+@inline thin_bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams) = error("Undefined for tracking method $tm")
+@inline thin_bend_pure_bmultipole(tm, bunch, bendparams, bmk)          = error("Undefined for tracking method $tm")
+@inline thin_bend_bmultipole(tm, bunch, bendparams, bmultipoleparams)  = error("Undefined for tracking method $tm")
 
-@inline thick_bend_no_field(tm, bunch, bendparams, L)              = error("Undefined for tracking method $tm")
-@inline thick_bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)   = error("Undefined for tracking method $tm")
-@inline thick_bend_bsolenoid(tm, bunch, bendparams, bdict, L)      = error("Undefined for tracking method $tm")
-@inline thick_bend_pure_bdipole(tm, bunch, bendparams, bm1, L)     = error("Undefined for tracking method $tm")
-@inline thick_bend_bdipole(tm, bunch, bendparams, bdict, L)        = error("Undefined for tracking method $tm")
-@inline thick_bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L) = error("Undefined for tracking method $tm")
-@inline thick_bend_bquadrupole(tm, bunch, bendparams, bdict, L)    = error("Undefined for tracking method $tm")
-@inline thick_bend_pure_bmultipole(tm, bunch, bendparams, bmn, L)  = error("Undefined for tracking method $tm")
-@inline thick_bend_bmultipole(tm, bunch, bendparams, bdict, L)     = error("Undefined for tracking method $tm")
+@inline thick_bend_no_field(tm, bunch, bendparams, L)                      = error("Undefined for tracking method $tm")
+@inline thick_bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)           = error("Undefined for tracking method $tm")
+@inline thick_bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams, L)   = error("Undefined for tracking method $tm")
+@inline thick_bend_pure_bdipole(tm, bunch, bendparams, bm1, L)             = error("Undefined for tracking method $tm")
+@inline thick_bend_bdipole(tm, bunch, bendparams, bmultipoleparams, L)     = error("Undefined for tracking method $tm")
+@inline thick_bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L)         = error("Undefined for tracking method $tm")
+@inline thick_bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams, L) = error("Undefined for tracking method $tm")
+@inline thick_bend_pure_bmultipole(tm, bunch, bendparams, bmk, L)          = error("Undefined for tracking method $tm")
+@inline thick_bend_bmultipole(tm, bunch, bendparams, bmultipoleparams, L)  = error("Undefined for tracking method $tm")
 
 
 # === Elements thin vs thick check === #
-@inline pure_bsolenoid(tm, bunch, bm0, L)   = L ≈ 0 ? thin_pure_bsolenoid(tm, bunch, bm0)   : thick_pure_bsolenoid(tm, bunch, bm0, L)      
-@inline bsolenoid(tm, bunch, bdict, L)      = L ≈ 0 ? thin_bsolenoid(tm, bunch, bdict)      : thick_bsolenoid(tm, bunch, bdict, L)         
-@inline pure_bdipole(tm, bunch, bm1, L)     = L ≈ 0 ? thin_pure_bdipole(tm, bunch, bm1)     : thick_pure_bdipole(tm, bunch, bm1, L)          
-@inline bdipole(tm, bunch, bdict, L)        = L ≈ 0 ? thin_bdipole(tm, bunch, bdict)        : thick_bdipole(tm, bunch, bdict, L)             
-@inline pure_bquadrupole(tm, bunch, bm2, L) = L ≈ 0 ? thin_pure_bquadrupole(tm, bunch, bm2) : thick_pure_bquadrupole(tm, bunch, bm2, L)        
-@inline bquadrupole(tm, bunch, bdict, L)    = L ≈ 0 ? thin_bquadrupole(tm, bunch, bdict)    : thick_bquadrupole(tm, bunch, bdict, L)           
-@inline pure_bmultipole(tm, bunch, bmn, L)  = L ≈ 0 ? thin_pure_bmultipole(tm, bunch, bmn)  : thick_pure_bmultipole(tm, bunch, bmn, L)                   
-@inline bmultipole(tm, bunch, bdict, L)     = L ≈ 0 ? thin_bmultipole(tm, bunch, bdict)     : thick_bmultipole(tm, bunch, bdict, L)                      
-@inline bend_no_field(tm, bunch, bendparams, L)              = L ≈ 0 ? thin_bend_no_field(tm, bunch, bendparams)              : thick_bend_no_field(tm, bunch, bendparams, L)
-@inline bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)   = L ≈ 0 ? thin_bend_pure_bsolenoid(tm, bunch, bendparams, bm0)   : thick_bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)      
-@inline bend_bsolenoid(tm, bunch, bendparams, bdict, L)      = L ≈ 0 ? thin_bend_bsolenoid(tm, bunch, bendparams, bdict)      : thick_bend_bsolenoid(tm, bunch, bendparams, bdict, L)         
-@inline bend_pure_bdipole(tm, bunch, bendparams, bm1, L)     = L ≈ 0 ? thin_bend_pure_bdipole(tm, bunch, bendparams, bm1)     : thick_bend_pure_bdipole(tm, bunch, bendparams, bm1, L)          
-@inline bend_bdipole(tm, bunch, bendparams, bdict, L)        = L ≈ 0 ? thin_bend_bdipole(tm, bunch, bendparams, bdict)        : thick_bend_bdipole(tm, bunch, bendparams, bdict, L)             
-@inline bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L) = L ≈ 0 ? thin_bend_pure_bquadrupole(tm, bunch, bendparams, bm2) : thick_bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L)        
-@inline bend_bquadrupole(tm, bunch, bendparams, bdict, L)    = L ≈ 0 ? thin_bend_bquadrupole(tm, bunch, bendparams, bdict)    : thick_bend_bquadrupole(tm, bunch, bendparams, bdict, L)           
-@inline bend_pure_bmultipole(tm, bunch, bendparams, bmn, L)  = L ≈ 0 ? thin_bend_pure_bmultipole(tm, bunch, bendparams, bmn)  : thick_bend_pure_bmultipole(tm, bunch, bendparams, bmn, L)                   
-@inline bend_bmultipole(tm, bunch, bendparams, bdict, L)     = L ≈ 0 ? thin_bend_bmultipole(tm, bunch, bendparams, bdict)     : thick_bend_bmultipole(tm, bunch, bendparams, bdict, L)                      
+@inline pure_bsolenoid(tm, bunch, bm0, L)                            = L ≈ 0 ? thin_pure_bsolenoid(tm, bunch, bm0)                            : thick_pure_bsolenoid(tm, bunch, bm0, L)      
+@inline bsolenoid(tm, bunch, bmultipoleparams, L)                    = L ≈ 0 ? thin_bsolenoid(tm, bunch, bmultipoleparams)                    : thick_bsolenoid(tm, bunch, bmultipoleparams, L)         
+@inline pure_bdipole(tm, bunch, bm1, L)                              = L ≈ 0 ? thin_pure_bdipole(tm, bunch, bm1)                              : thick_pure_bdipole(tm, bunch, bm1, L)          
+@inline bdipole(tm, bunch, bmultipoleparams, L)                      = L ≈ 0 ? thin_bdipole(tm, bunch, bmultipoleparams)                      : thick_bdipole(tm, bunch, bmultipoleparams, L)             
+@inline pure_bquadrupole(tm, bunch, bm2, L)                          = L ≈ 0 ? thin_pure_bquadrupole(tm, bunch, bm2)                          : thick_pure_bquadrupole(tm, bunch, bm2, L)        
+@inline bquadrupole(tm, bunch, bmultipoleparams, L)                  = L ≈ 0 ? thin_bquadrupole(tm, bunch, bmultipoleparams)                  : thick_bquadrupole(tm, bunch, bmultipoleparams, L)           
+@inline pure_bmultipole(tm, bunch, bmk, L)                           = L ≈ 0 ? thin_pure_bmultipole(tm, bunch, bmk)                           : thick_pure_bmultipole(tm, bunch, bmk, L)                   
+@inline bmultipole(tm, bunch, bmultipoleparams, L)                   = L ≈ 0 ? thin_bmultipole(tm, bunch, bmultipoleparams)                   : thick_bmultipole(tm, bunch, bmultipoleparams, L)                      
+@inline bend_no_field(tm, bunch, bendparams, L)                      = L ≈ 0 ? thin_bend_no_field(tm, bunch, bendparams)                      : thick_bend_no_field(tm, bunch, bendparams, L)
+@inline bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)           = L ≈ 0 ? thin_bend_pure_bsolenoid(tm, bunch, bendparams, bm0)           : thick_bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)      
+@inline bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams, L)   = L ≈ 0 ? thin_bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams)   : thick_bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams, L)         
+@inline bend_pure_bdipole(tm, bunch, bendparams, bm1, L)             = L ≈ 0 ? thin_bend_pure_bdipole(tm, bunch, bendparams, bm1)             : thick_bend_pure_bdipole(tm, bunch, bendparams, bm1, L)          
+@inline bend_bdipole(tm, bunch, bendparams, bmultipoleparams, L)     = L ≈ 0 ? thin_bend_bdipole(tm, bunch, bendparams, bmultipoleparams)     : thick_bend_bdipole(tm, bunch, bendparams, bmultipoleparams, L)             
+@inline bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L)         = L ≈ 0 ? thin_bend_pure_bquadrupole(tm, bunch, bendparams, bm2)         : thick_bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L)        
+@inline bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams, L) = L ≈ 0 ? thin_bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams) : thick_bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams, L)           
+@inline bend_pure_bmultipole(tm, bunch, bendparams, bmk, L)          = L ≈ 0 ? thin_bend_pure_bmultipole(tm, bunch, bendparams, bmk)          : thick_bend_pure_bmultipole(tm, bunch, bendparams, bmk, L)                   
+@inline bend_bmultipole(tm, bunch, bendparams, bmultipoleparams, L)  = L ≈ 0 ? thin_bend_bmultipole(tm, bunch, bendparams, bmultipoleparams)  : thick_bend_bmultipole(tm, bunch, bendparams, bmultipoleparams, L)                      
 
