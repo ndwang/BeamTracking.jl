@@ -21,7 +21,7 @@
     @test GTPSA.jacobian(b0.v) ≈ M_ESR
 
     #combined
-    ring2 = Beamline([SBend(K0 = 0.24, g = 0.25, K1 = 0.25, L = 1.0, e1 = 0.5, e2 = 0.2)], Brho_ref = -0.0017045090263411496)
+    ring2 = Beamline([SBend(K0 = 0.24, g = 0.25, Kn1 = 0.25, L = 1.0, e1 = 0.5, e2 = 0.2)], Brho_ref = -0.0017045090263411496)
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=-0.0017045090263411496)
     foreach(t -> t.tracking_method = Linear(), ring2.line)
     track!(b0, ring2)
@@ -42,8 +42,8 @@
 
     #g=0, dg!=0 thin corrector coil
 
-    #SBend(K0=0.17, g=0, L = 1.1), line #L72 - L76
-    ring3 = Beamline([SBend(K0=0.17,g=0,K1=-0.20,L=1.1)], Brho_ref = -0.0017045090263411496)
+    #SBend(Kn0=0.17, g=0, L = 1.1), line #L72 - L76
+    ring3 = Beamline([SBend(K0=0.17,g=0,Kn1=-0.20,L=1.1)], Brho_ref = -0.0017045090263411496)
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=-0.0017045090263411496)
     foreach(t -> t.tracking_method = Linear(), ring3.line)
     track!(b0, ring3)
@@ -65,7 +65,7 @@
 
     #thick_bend_no_field line 103-104 --> singularity
     #L132 - L134
-    ring4 = Beamline([SBend(K0=0.0, g=0.005, L = 1.1, K1 = 0.05, e1 = 0.1, e2 = 0.2)], Brho_ref = -0.0017045090263411496)
+    ring4 = Beamline([SBend(K0=0.0, g=0.005, L = 1.1, Kn1 = 0.05, e1 = 0.1, e2 = 0.2)], Brho_ref = -0.0017045090263411496)
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=-0.0017045090263411496)
     foreach(t -> t.tracking_method = Linear(), ring4.line)
     track!(b0, ring4)
@@ -122,7 +122,7 @@
     ele_bend = LineElement(L=1.0, g=0.01, tracking_method=Exact())
     ele_patch_bend = LineElement(L=1.0, g=0.01, dy=3.0, dz_rot=0.3, tracking_method=Exact())
     ele_patch_sol = LineElement(L=1.0, Ks=1.0, dt=1.0, tracking_method=Exact())
-    ele_bend_quad = LineElement(L=1.0, g=0.01, K1=1.0, tracking_method=Exact())
+    ele_bend_quad = LineElement(L=1.0, g=0.01, Kn1=1.0, tracking_method=Exact())
     @test_throws ErrorException track!(b0, Beamline([ele_kick],       Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_bend],       Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_patch_bend], Brho_ref=Brho_ref))
