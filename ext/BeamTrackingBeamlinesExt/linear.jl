@@ -19,8 +19,8 @@ end
 @inline function thin_bdipole(tm::Linear, bunch, bmultipoleparams)
   if 2 in bmultipoleparams.order
     # This is a thin corrector coil with a quadrupole term
-    # In Fortran Bmad is g == 0 but dgL != 0 and K1L != 0
-    # In SciBmad this is g == 0 but Kn0L != 0 and K1L != 0
+    # In Fortran Bmad is g == 0 but dgL != 0 and Kn1L != 0
+    # In SciBmad this is g == 0 but Kn0L != 0 and Kn1L != 0
     error("Undefined for tracking method $tm")
   else # ignore higher order multipoles
     return thin_pure_bdipole(tm, bunch, bmultipoleparams[1])
@@ -68,8 +68,8 @@ end
 @inline function thick_bdipole(tm::Linear, bunch, bmultipoleparams, L)
   if 2 in bmultipoleparams.order
     # This is a thick corrector coil with a quadrupole term
-    # In Fortran Bmad is g == 0 but dg != 0 and K1 != 0
-    # In SciBmad this is g == 0 but Kn0 != 0 and K1 != 0
+    # In Fortran Bmad is g == 0 but dg != 0 and Kn1 != 0
+    # In SciBmad this is g == 0 but Kn0 != 0 and Kn1 != 0
     gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
     Kn0, Ks0 = get_strengths(bmultipoleparams[1], L, bunch.Brho_ref)
     Kn1, Ks1 = get_strengths(bmultipoleparams[2], L, bunch.Brho_ref) 
@@ -103,7 +103,7 @@ end
 @inline function thick_bend_no_field(tm::Linear, bunch, bendparams, L)
   # This has NO FIELD!
   # In Fortran Bmad it is like setting dg == -g
-  # Singularity for simutaneous`Kn0==0' and 'k1 = 0'
+  # Singularity for simutaneous`Kn0==0' and 'Kn1 = 0'
   error("Undefined for tracking method $tm")
 end
 
@@ -118,8 +118,8 @@ end
 @inline function thick_bend_bdipole(tm::Linear, bunch, bendparams, bmultipoleparams, L)   
   if 2 in bmultipoleparams.order
     # This is a thick combined function magnet
-    # In Fortran Bmad is g != 0, dg != 0, K1 != 0
-    # In SciBmad this is g != 0, Kn0 != 0, K1 != 0
+    # In Fortran Bmad is g != 0, dg != 0, Kn1 != 0
+    # In SciBmad this is g != 0, Kn0 != 0, Kn1 != 0
     gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
     Kn0, Ks0 = get_strengths(bmultipoleparams[1], L, bunch.Brho_ref)
     Kn1, Ks1 = get_strengths(bmultipoleparams[2], L, bunch.Brho_ref)
@@ -133,10 +133,10 @@ end
 
 @inline function thick_bend_pure_bquadrupole(tm::Linear, bunch, bendparams, bm2, L) 
   # This is a quadrupole with a g, I think your code should be able to handle this
-  # In Fortran Bmad it would be like dg == -g, K1 != 0.
+  # In Fortran Bmad it would be like dg == -g, Kn1 != 0.
   gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
   Kn1 = get_strengths(bm2, L, bunch.Brho_ref)
-  mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g, bendparams.e1, bendparams.e2, 0, K1, gamma_0, L)
+  mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g, bendparams.e1, bendparams.e2, 0, Kn1, gamma_0, L)
   return KernelCall(LinearTracking.linear_coast_uncoupled!, (mx, my, r56, d, t))
 end
 
