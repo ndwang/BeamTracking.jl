@@ -127,8 +127,8 @@ end
 
 
 function linear_dipole_matrices(g, e1, e2, K0, K1, gamma_0, L)
-    if g != 0 && g ≈ K0
-      if K1 != 0
+    if !(g ≈ 0) && g ≈ K0
+      if !(K1 ≈ 0)
         wy = sqrt(abs(K1))
         wyL = wy * L
         if K1 >= 0
@@ -138,7 +138,7 @@ function linear_dipole_matrices(g, e1, e2, K0, K1, gamma_0, L)
         else
           cy  = cos(wyL)
           syc = sincu(wyL) * L 
-          sgny = - 1
+          sgny = -1
         end
 
         kx = K1 + K0 * K0 
@@ -191,7 +191,7 @@ function linear_dipole_matrices(g, e1, e2, K0, K1, gamma_0, L)
       end
     else
         wy = sqrt(abs(K1))
-        sgny = copysign(1,K1)
+        sgny = sign(K1)
         wyL = wy * L
         if (wyL < 1e-6)
           cy = 1 + sgny * wyL^2 / 2
@@ -207,7 +207,7 @@ function linear_dipole_matrices(g, e1, e2, K0, K1, gamma_0, L)
         kx = K1 + g * K0 
 
         wx = sqrt(abs(kx))
-        sgnx = - copysign(1,kx)
+        sgnx = -sign(kx)
         wxL = wx * L 
         if (wxL < 1e-6)
           sxc = (1 + sgnx * wxL^2 / 6) * L
@@ -246,14 +246,14 @@ function linear_dipole_matrices(g, e1, e2, K0, K1, gamma_0, L)
 
     end
 
-    if !isnothing(e1) && e1 != 0
+    if !(e1 ≈ 0)
       me1 = K0*tan(e1)
       mx = mx*SA[1 0; me1  1]
       my = my*SA[1 0;-me1  1]
       t = SA[t[1]+me1*t[2], t[2], 0, 0]
     end
   
-    if !isnothing(e2) && e2 != 0
+    if !(e2 ≈ 0)
       me2 = K0*tan(e2)
       mx = SA[1 0; me2  1]*mx
       my = SA[1 0;-me2 1]*my
