@@ -26,10 +26,10 @@ function universal!(
   tm,
   bunch,
   L, 
-  alignmentparams::Union{AlignmentParams,Nothing}, 
-  bendparams::Union{BendParams,Nothing},
-  bmultipoleparams::Union{BMultipoleParams,Nothing},
-  patchparams::Union{PatchParams,Nothing};
+  alignmentparams, 
+  bendparams,
+  bmultipoleparams,
+  patchparams;
   kwargs...
 ) 
   kc = KernelChain(Val{1}())
@@ -53,7 +53,7 @@ function universal!(
       # Bend no field
       kc = push(kc, @inline(bend_no_field(tm, bunch, bendparams, L)))
     else
-      n_multipoles = length(bmultipoleparams)
+      n_multipoles = get_n_multipoles(bmultipoleparams)
       if 0 in bmultipoleparams.order # Bend-solenoid
         if n_multipoles == 1
           bm0 = first(bmultipoleparams)
@@ -94,7 +94,7 @@ function universal!(
     end
   elseif isactive(bmultipoleparams)
     # BMultipole
-    n_multipoles = length(bmultipoleparams)
+    n_multipoles = get_n_multipoles(bmultipoleparams)
     if 0 in bmultipoleparams.order # Solenoid
       if n_multipoles == 1
         # Pure solenoid
