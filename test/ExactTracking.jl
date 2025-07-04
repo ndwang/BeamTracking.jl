@@ -813,7 +813,7 @@ pzf_mn1 = [ 0.,  1.e-3,                  -1.e-3,                  1.e-3,        
     track!(b0, bl)
 
     @test GTPSA.jacobian(b0.v) ≈ exact_bend_7
-    end
+  end
 
   @testset "Utility functions" begin
     dx_rot = -0.1
