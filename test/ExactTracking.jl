@@ -851,7 +851,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
         0.4814390079976891E+00 0.1323261942503324E+00 0.0000000000000000E+00  0.1302787444884016E-03 0.1000000000000000E+01 -0.1960162611913873E-01 
         0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00  0.0000000000000000E+00 0.0000000000000000E+00  0.1000000000000000E+01 ]
     Brho_ref = BeamTracking.calc_Brho(ELECTRON, sqrt(p0c^2 + BeamTracking.massof(ELECTRON)^2))
-    ele_bend = LineElement(L=0.5, g=-1, K0 = -0.9, tracking_method=Exact())
+    ele_bend = LineElement(L=0.5, g=-1, Kn0 = -0.9, tracking_method=Exact())
     ps = [0.1, -7.5e-4, 0.1, -3e-4 , 0.1, -1e-3]
     b0 = Bunch(collect(transpose(@vars(D1) + ps)), Brho_ref=Brho_ref)
     bl = Beamline([ele_bend], Brho_ref=Brho_ref)

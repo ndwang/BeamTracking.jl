@@ -117,7 +117,7 @@
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Thick pure bend:
-    ele_bend = LineElement(L=0.5, g=1, K0 = 1.001, tracking_method=Exact())
+    ele_bend = LineElement(L=0.5, g=1, Kn0 = 1.001, tracking_method=Exact())
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
     bl = Beamline([ele_bend], Brho_ref=Brho_ref)
     track!(b0, bl)
@@ -131,7 +131,7 @@
     @test GTPSA.jacobian(b0.v) ≈ M_bend
 
     # Thick pure dipole:
-    ele_thick_dipole = LineElement(L=0.5, K0 = 0.001, tracking_method=Exact())
+    ele_thick_dipole = LineElement(L=0.5, Kn0 = 0.001, tracking_method=Exact())
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
     bl = Beamline([ele_thick_dipole], Brho_ref=Brho_ref)
     track!(b0, bl)
@@ -145,7 +145,7 @@
     @test GTPSA.jacobian(b0.v) ≈ M_thick_dipole
 
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
-    ele_kick = LineElement(L=1.0, K0L=1.0, tracking_method=Exact())
+    ele_kick = LineElement(L=1.0, Kn0L=1.0, tracking_method=Exact())
     track!(b0, Beamline([ele_kick],       Brho_ref=Brho_ref))
     @test b0.state[1] == State.Lost
 
@@ -154,7 +154,7 @@
     ele_bend = LineElement(L=1.0, g=0.01, tracking_method=Exact())
     ele_patch_bend = LineElement(L=1.0, g=0.01, dy=3.0, dz_rot=0.3, tracking_method=Exact())
     ele_patch_sol = LineElement(L=1.0, Ks=1.0, dt=1.0, tracking_method=Exact())
-    ele_bend_quad = LineElement(L=1.0, g=0.01, K1=1.0, tracking_method=Exact())
+    ele_bend_quad = LineElement(L=1.0, g=0.01, Kn1=1.0, tracking_method=Exact())
     @test_throws ErrorException track!(b0, Beamline([ele_bend],       Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_patch_bend], Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_patch_sol],  Brho_ref=Brho_ref))

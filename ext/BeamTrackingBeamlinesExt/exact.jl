@@ -19,13 +19,13 @@ end
 @inline function thick_bend_pure_bdipole(tm::Exact, bunch, bendparams, bm1, L)
   g = bendparams.g
   theta = g * L
-  k0 = get_thick_strength(bm1, L, bunch.Brho_ref)
+  k0, _ = get_strengths(bm1, L, bunch.Brho_ref)
   tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
   return KernelCall(ExactTracking.exact_bend!, (theta, g, k0, tilde_m, beta_0, L))
 end
 
 @inline function thick_pure_bdipole(tm::Exact, bunch, bm1, L)
-  k0 = get_thick_strength(bm1, L, bunch.Brho_ref)
+  k0, _ = get_strengths(bm1, L, bunch.Brho_ref)
   tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
   return KernelCall(ExactTracking.exact_bend!, (0, 0, k0, tilde_m, beta_0, L))
 end
