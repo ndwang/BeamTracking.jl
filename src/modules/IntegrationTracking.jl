@@ -1,6 +1,6 @@
 #=
 
-Tracking using symplectic integration.
+Tracking using symplectic integration with splits.
 
 =#
 
@@ -34,7 +34,7 @@ macro def_integrator_struct(name)
   end
 end
 
-@def_integrator_struct(Standard)
+@def_integrator_struct(SplitIntegration)
 @def_integrator_struct(MKM)
 @def_integrator_struct(BKB)
 @def_integrator_struct(SKS)
@@ -48,14 +48,14 @@ using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel, BunchView
 # ===============  I N T E G R A T O R S  ===============
 #
 
-@makekernel function order_two_integrator!(i, b::BunchView, ker, params, ds_step, num_steps, L)
+@makekernel fastgtpsa=true function order_two_integrator!(i, b::BunchView, ker, params, ds_step, num_steps, L)
   for _ in 1:num_steps
     ker(i, b, params..., ds_step)
   end
 end
 
 
-@makekernel function order_four_integrator!(i, b::BunchView, ker, params, ds_step, num_steps, L)
+@makekernel fastgtpsa=true function order_four_integrator!(i, b::BunchView, ker, params, ds_step, num_steps, L)
   w0 = 1.3512071919596577718181151794851757586002349853515625*ds_step
   w1 = -1.7024143839193153215916254339390434324741363525390625*ds_step
   for _ in 1:num_steps
@@ -66,7 +66,7 @@ end
 end
 
 
-@makekernel function order_six_integrator!(i, b, ker, params, ds_step, num_steps, L)
+@makekernel fastgtpsa=true function order_six_integrator!(i, b, ker, params, ds_step, num_steps, L)
   w0 = 1.3151863206857402*ds_step
   w1 = -1.17767998417887*ds_step
   w2 = 0.235573213359*ds_step
@@ -83,7 +83,7 @@ end
 end
 
 
-@makekernel function order_eight_integrator!(i, b, ker, params, ds_step, num_steps, L)
+@makekernel fastgtpsa=true function order_eight_integrator!(i, b, ker, params, ds_step, num_steps, L)
   w0 = -1.7808286265894515*ds_step
   w1 = -1.61582374150097*ds_step
   w2 = -2.44699182370524*ds_step
@@ -120,31 +120,25 @@ mkm_quadrupole!()
 
 This integrator uses Matrix-Kick-Matrix to implement a quadrupole
 integrator accurate though second-order in the integration step-size. The vectors
-kn and ks contain the normal and skew multipole strengths,
-excluding the quadrupole component.
+kn and ks contain the normal and skew multipole strengths.
 
 Arguments
 —————————
 beta_0:   β_0 = (βγ)_0 / √(γ_0^2)
 gamsqr_0: γ_0^2 = 1 + (βγ)_0^2
 tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
-k1:   g / Bρ0 = g / (p0 / q)
-          where g and Bρ0 respectively denote the quadrupole gradient
-          and (signed) reference magnetic rigidity.
 mm: vector of m values for non-zero multipole coefficients
 kn: vector of normal multipole strengths scaled by Bρ0
-sn: vector of skew multipole strengths scaled by Bρ0
+ks: vector of skew multipole strengths scaled by Bρ0
 L: element length
 """
-@makekernel fastgtpsa=true function mkm_quadrupole!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, k1, mm, kn, sn, L)
+@makekernel fastgtpsa=true function mkm_quadrupole!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, mm, kn, ks, L)
+  k1 = kn[1]
+  kn[1] = 0
   quadrupole_matrix!(i, b, k1, L / 2)
-  if length(mm) > 0
-    quadrupole_kick!(  i, b, beta_0, gamsqr_0, tilde_m, L/2)
-    ExactTracking.multipole_kick!(i, b, mm, kn * L, sn * L)
-    quadrupole_kick!(  i, b, beta_0, gamsqr_0, tilde_m, L/2)
-  else
-    quadrupole_kick!(  i, b, beta_0, gamsqr_0, tilde_m, L)
-  end
+  quadrupole_kick!(  i, b, beta_0, gamsqr_0, tilde_m, L / 2)
+  ExactTracking.multipole_kick!(i, b, mm, kn * L, ks * L)
+  quadrupole_kick!(  i, b, beta_0, gamsqr_0, tilde_m, L / 2)
   quadrupole_matrix!(i, b, k1, L / 2)
 end 
 
@@ -275,7 +269,7 @@ starting with the dipole component.
 
 Arguments
 —————————
-ks: solenoid strength
+Ksol: solenoid strength
 beta_0:   β_0 = (βγ)_0 / √(γ_0^2)
 gamsqr_0: γ_0^2 = 1 + (βγ)_0^2
 tilde_m:  1 / (βγ)_0  # mc^2 / p0·c
@@ -284,10 +278,10 @@ kn: vector of normal multipole strengths scaled by Bρ0
 sn: vector of skew multipole strengths scaled by Bρ0
 L:  element length
 """
-@makekernel fastgtpsa=true function sks_multipole!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, mm, kn, sn, L)
-  ExactTracking.exact_solenoid!(i, b, ks, beta_0, gamsqr_0, tilde_m, L / 2)
+@makekernel fastgtpsa=true function sks_multipole!(i, b::BunchView, Ksol, beta_0, gamsqr_0, tilde_m, mm, kn, sn, L)
+  ExactTracking.exact_solenoid!(i, b, Ksol, beta_0, gamsqr_0, tilde_m, L / 2)
   ExactTracking.multipole_kick!(i, b, mm, kn * L, sn * L)
-  ExactTracking.exact_solenoid!(i, b, ks, beta_0, gamsqr_0, tilde_m, L / 2)
+  ExactTracking.exact_solenoid!(i, b, Ksol, beta_0, gamsqr_0, tilde_m, L / 2)
 end 
 
 
