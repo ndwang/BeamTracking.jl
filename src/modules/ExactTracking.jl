@@ -113,8 +113,9 @@ properties, though I've not seen a proof of that claim.
     ai = (ar * v[i,YI] + ai * v[i,XI]) / m
     ar = t
     add = (0 < jm && m == ms[jm]) # branchless
-    ar += knl[jm] * add
-    ai += ksl[jm] * add
+    idx = max(1, jm) # branchless trickery
+    ar += knl[idx] * add
+    ai += ksl[idx] * add
     jm -= add
   end
   v[i,PXI] -= ar
