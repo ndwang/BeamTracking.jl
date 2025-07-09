@@ -35,10 +35,10 @@ macro def_integrator_struct(name)
 end
 
 @def_integrator_struct(SplitIntegration)
-@def_integrator_struct(MKM)
-@def_integrator_struct(BKB)
-@def_integrator_struct(SKS)
-@def_integrator_struct(DKD)
+@def_integrator_struct(MatrixKick)
+@def_integrator_struct(BendKick)
+@def_integrator_struct(SolenoidKick)
+@def_integrator_struct(DriftKick)
 
 module IntegrationTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays, ..KernelAbstractions

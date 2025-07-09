@@ -200,55 +200,55 @@
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Solenoid with quadrupole:
-    ele = LineElement(L=2.0, Ks=0.1, Kn1=0.1, tracking_method=SKS())
+    ele = LineElement(L=2.0, Ks=0.1, Kn1=0.1, tracking_method=SolenoidKick())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/sol_quad.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
-    # SKS multiple steps:
-    ele = LineElement(L=2.0, Ks=0.1, Kn1=0.1, tracking_method=SKS(order=4, num_steps=2))
+    # SK multiple steps:
+    ele = LineElement(L=2.0, Ks=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=4, num_steps=2))
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/sks_multistep.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
-    # Pure quadrupole (MKM):
-    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MKM())
+    # Pure quadrupole (MK):
+    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/quadrupole_mkm.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
-    # Pure quadrupole (DKD):
-    ele = LineElement(L=2.0, Kn1=0.1, tilt1=0.1*pi, tracking_method=DKD())
+    # Pure quadrupole (DK):
+    ele = LineElement(L=2.0, Kn1=0.1, tilt1=0.1*pi, tracking_method=DriftKick())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/quadrupole_dkd.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
-    # Quadrupole with octupole (MKM):
-    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MKM())
+    # Quadrupole with octupole (MK):
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/quad_oct_mkm.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
-    # MKM multiple steps:
-    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MKM(num_steps=2))
+    # MK multiple steps:
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick(num_steps=2))
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/mkm_multistep.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
-    # Quadrupole with octupole (DKD):
-    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=DKD())
+    # Quadrupole with octupole (DK):
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=DriftKick())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
@@ -263,7 +263,7 @@
     v_expected = read_map("bmad_maps/sextupole.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-9)
 
-    # DKD multiple steps:
+    # DK multiple steps:
     ele = LineElement(L=2.0, Kn2=10.0, tracking_method=SplitIntegration(order=4, num_steps=2))
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
@@ -312,9 +312,9 @@
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Errors:
-    @test_throws ErrorException MKM(ds_step = 0.1, num_steps = 2)
-    @test_throws ErrorException DKD(ds_step = -0.1)
-    @test_throws ErrorException SKS(num_steps = -2)
+    @test_throws ErrorException MatrixKick(ds_step = 0.1, num_steps = 2)
+    @test_throws ErrorException DriftKick(ds_step = -0.1)
+    @test_throws ErrorException SolenoidKick(num_steps = -2)
     @test_throws ErrorException SplitIntegration(order=5)
   end
 
