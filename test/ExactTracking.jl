@@ -1,7 +1,7 @@
 c_light = 299792458.0
 degree = π / 180
 
-#=
+
 # ========== define element paameters ==========
 
 # -- drifts
@@ -359,10 +359,10 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
 #pyf_sb1 = [ 0.,  0.,                      0.,                    -2.8691666098954356e-2, -2.8653744321335432e-2,  2.8653744321335432e-2 ]
 #zf_sb1  = [ 0.,  4.903428155019947e-5,   -4.903711865613486e-5,  -4.8701323139842656e-5, -5.1605970700562340e-5, -5.1605970700562340e-5 ]
 
-=#
+
 # test individual elements
 @testset "ExactTracking" begin
-  #=@testset "Particles" begin
+  @testset "Particles" begin
 
     # ===  D R I F T  ===
     #
@@ -405,7 +405,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     @test v[:,BeamTracking.PXI] == pxi
     @test v[:,BeamTracking.PYI] == pyi
     @test v[:,BeamTracking.PZI] == pzi
-
+#=
     # ===  Q U A D R U P O L E  ===
     #
     # 5 keV electron
@@ -479,7 +479,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     @test v[:,BeamTracking.PXI] ≈  pxf_qd4 (rtol=5.e-13)
     @test v[:,BeamTracking.PYI] ≈  pyf_qd4 (rtol=5.e-13)
     @test v[:,BeamTracking.PZI] == pzi
-
+=#
     # ===  T H I N - L E N S   K I C K  ===
     #
     # 5 keV electron
@@ -760,7 +760,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     @test v[:,BeamTracking.PZI] == pzf_sb4
 =#
 end
-=#
+
   @testset "Utility functions" begin
     dx_rot = -0.1
     dy_rot = -0.1
