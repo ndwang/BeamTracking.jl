@@ -136,10 +136,20 @@
     Brho_ref = BeamTracking.calc_Brho(ELECTRON, sqrt(p0c^2 + BeamTracking.massof(ELECTRON)^2))
 
     # Thin pure dipole:
-    # TO BE ADDED...
+    ele = LineElement(L=0.0, Kn0L=1.0, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/thin_pure_dipole.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 1e-14)
 
     # Thin dipole:
-    # TO BE ADDED...
+    ele = LineElement(L=0.0, Kn0L=1.0, Kn5L=1000.0, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/thin_dipole.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 1e-14)
 
     # Thin pure quadrupole:
     ele = LineElement(L=0.0, Kn1L=1.0, tilt1 = pi, tracking_method=SplitIntegration())
@@ -197,11 +207,24 @@
     v_expected = read_map("bmad_maps/sol_quad.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
+    # SKS multiple steps:
+    ele = LineElement(L=2.0, Ks=0.1, Kn1=0.1, tracking_method=SKS(order=4, num_steps=2))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/sks_multistep.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
     # Pure quadrupole (MKM):
-    # TO BE ADDED...
+    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MKM())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/quadrupole_mkm.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Pure quadrupole (DKD):
-    ele = LineElement(L=2.0, Kn1=0.1, tilt1 = 0.1*pi, tracking_method=DKD())
+    ele = LineElement(L=2.0, Kn1=0.1, tilt1=0.1*pi, tracking_method=DKD())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
@@ -209,7 +232,20 @@
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Quadrupole with octupole (MKM):
-    # TO BE ADDED...
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MKM())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/quad_oct_mkm.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # MKM multiple steps:
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MKM(num_steps=2))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/mkm_multistep.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Quadrupole with octupole (DKD):
     ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=DKD())
@@ -227,6 +263,14 @@
     v_expected = read_map("bmad_maps/sextupole.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-9)
 
+    # DKD multiple steps:
+    ele = LineElement(L=2.0, Kn2=10.0, tracking_method=SplitIntegration(order=4, num_steps=2))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/dkd_multistep.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
     # Sextupole with decapole:
     ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
@@ -236,13 +280,28 @@
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Order 4:
-    # TO BE ADDED...
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=4))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/order_four.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Order 6:
-    # TO BE ADDED...
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=6))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/order_six.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-9)
 
     # Order 8:
-    # TO BE ADDED...
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=8))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/order_eight.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-9)
 
     # Patch:
     ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
@@ -251,6 +310,12 @@
     track!(b0, bl)
     v_expected = read_map("bmad_maps/patch.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Errors:
+    @test_throws ErrorException MKM(ds_step = 0.1, num_steps = 2)
+    @test_throws ErrorException DKD(ds_step = -0.1)
+    @test_throws ErrorException SKS(num_steps = -2)
+    @test_throws ErrorException SplitIntegration(order=5)
   end
 
 end

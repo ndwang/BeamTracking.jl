@@ -112,11 +112,10 @@ properties, though I've not seen a proof of that claim.
     t  = (ar * v[i,XI] - ai * v[i,YI]) / m
     ai = (ar * v[i,YI] + ai * v[i,XI]) / m
     ar = t
-    if 0 < jm && m == ms[jm]
-      ar += knl[jm]
-      ai += ksl[jm]
-      jm -= 1
-    end
+    add = (0 < jm && m == ms[jm]) # branchless
+    ar += knl[jm] * add
+    ai += ksl[jm] * add
+    jm -= add
   end
   v[i,PXI] -= ar
   v[i,PYI] += ai

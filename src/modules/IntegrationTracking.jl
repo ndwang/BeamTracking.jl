@@ -56,21 +56,21 @@ end
 
 
 @makekernel fastgtpsa=true function order_four_integrator!(i, b::BunchView, ker, params, ds_step, num_steps, L)
-  w0 = 1.3512071919596577718181151794851757586002349853515625*ds_step
-  w1 = -1.7024143839193153215916254339390434324741363525390625*ds_step
+  w0 = -1.7024143839193153215916254339390434324741363525390625*ds_step
+  w1 = 1.3512071919596577718181151794851757586002349853515625*ds_step
   for _ in 1:num_steps
-    ker(i, b, params..., w0)
     ker(i, b, params..., w1)
     ker(i, b, params..., w0)
+    ker(i, b, params..., w1)
   end
 end
 
 
-@makekernel fastgtpsa=true function order_six_integrator!(i, b, ker, params, ds_step, num_steps, L)
-  w0 = 1.3151863206857402*ds_step
-  w1 = -1.17767998417887*ds_step
-  w2 = 0.235573213359*ds_step
-  w3 = 0.784513610477*ds_step
+@makekernel fastgtpsa=true function order_six_integrator!(i, b::BunchView, ker, params, ds_step, num_steps, L)
+  w0 = 1.315186320683911169737712043570355*ds_step
+  w1 = -1.17767998417887100694641568096432*ds_step
+  w2 = 0.235573213359358133684793182978535*ds_step
+  w3 = 0.784513610477557263819497633866351*ds_step
   for _ in 1:num_steps
     ker(i, b, params..., w3)
     ker(i, b, params..., w2)
@@ -83,15 +83,15 @@ end
 end
 
 
-@makekernel fastgtpsa=true function order_eight_integrator!(i, b, ker, params, ds_step, num_steps, L)
-  w0 = -1.7808286265894515*ds_step
-  w1 = -1.61582374150097*ds_step
-  w2 = -2.44699182370524*ds_step
-  w3 = -0.716989419708120e-2*ds_step
-  w4 = 2.44002732616735*ds_step
-  w5 = 0.157739928123617*ds_step
-  w6 = 1.82020630970714*ds_step
-  w7 = 1.04242620869991*ds_step
+@makekernel fastgtpsa=true function order_eight_integrator!(i, b::BunchView, ker, params, ds_step, num_steps, L)
+  w0 = 1.7084530707869978*ds_step
+  w1 = 0.102799849391985*ds_step
+  w2 = -1.96061023297549*ds_step
+  w3 = 1.93813913762276*ds_step
+  w4 = -0.158240635368243*ds_step
+  w5 = -1.44485223686048*ds_step
+  w6 = 0.253693336566229*ds_step
+  w7 = 0.914844246229740*ds_step
   for _ in 1:num_steps
     ker(i, b, params..., w7)
     ker(i, b, params..., w6)
@@ -134,12 +134,13 @@ L: element length
 """
 @makekernel fastgtpsa=true function mkm_quadrupole!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, mm, kn, ks, L)
   k1 = kn[1]
-  kn[1] = 0
-  quadrupole_matrix!(i, b, k1, L / 2)
+  kn_new = copy(kn)
+  kn_new[1] = 0
+  ExactTracking.multipole_kick!(i, b, mm, kn_new * L / 2, ks * L / 2)
   quadrupole_kick!(  i, b, beta_0, gamsqr_0, tilde_m, L / 2)
-  ExactTracking.multipole_kick!(i, b, mm, kn * L, ks * L)
+  quadrupole_matrix!(i, b, k1, L)
   quadrupole_kick!(  i, b, beta_0, gamsqr_0, tilde_m, L / 2)
-  quadrupole_matrix!(i, b, k1, L / 2)
+  ExactTracking.multipole_kick!(i, b, mm, kn_new * L / 2, ks * L / 2)
 end 
 
 
@@ -158,16 +159,22 @@ s: element length
 @makekernel fastgtpsa=true function quadrupole_matrix!(i, b::BunchView, k1, s)
   v = b.v
 
-  sgn = sign(k1)
   focus = k1 >= 0  # horizontally focusing if positive
+  defocus = k1 < 0 
 
-  xp = v[i,PXI] / (1 + v[i,PZI])  # x'
-  yp = v[i,PYI] / (1 + v[i,PZI])  # y'
-  sqrtks = sqrt(abs(k1 / (1 + v[i,PZI]))) * s  # |κ|s
-  cx = focus ? cos(sqrtks) : cosh(sqrtks)
-  cy = focus ? cosh(sqrtks) : cos(sqrtks)
-  sx = focus ? sincu(sqrtks) : sinhcu(sqrtks)
-  sy = focus ? sinhcu(sqrtks) : sincu(sqrtks)
+  rel_p = 1 + v[i,PZI]
+  xp = v[i,PXI] / rel_p  # x'
+  yp = v[i,PYI] / rel_p  # y'
+  sqrtks = sqrt(abs(k1 / rel_p)) * s  # |κ|s
+
+  cosine = cos(sqrtks) # precompute trig for branchless but still fast
+  coshine = cosh(sqrtks)
+  sinecu = sincu(sqrtks)
+  shinecu = sinhcu(sqrtks)
+  cx = focus * cosine  + defocus * coshine # branchless
+  cy = focus * coshine + defocus * cosine
+  sx = focus * sinecu  + defocus * shinecu
+  sy = focus * shinecu + defocus * sinecu
 
   v[i,PXI] = v[i,PXI] * cx - k1 * s * v[i,XI] * sx
   v[i,PYI] = v[i,PYI] * cy + k1 * s * v[i,YI] * sy
@@ -177,7 +184,7 @@ s: element length
                                         * ( v[i,XI]^2 * (1 - sx * cx)
                                           - v[i,YI]^2 * (1 - sy * cy) )
                                   )
-                      + sgn * ( v[i,XI] * xp * (sqrtks * sx)^2
+                      + sign(k1) * ( v[i,XI] * xp * (sqrtks * sx)^2
                               - v[i,YI] * yp * (sqrtks * sy)^2 ) / 2
               )
   v[i,XI]  = v[i,XI] * cx + xp * s * sx
@@ -206,19 +213,20 @@ s: element length
 """
 @makekernel fastgtpsa=true function quadrupole_kick!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, s)
   v = b.v
-  rP0 = 1 + v[i,PZI]              # reduced total momentum,  P/P0 = 1 + δ
-  sqrPt = v[i,PXI]^2 + v[i,PYI]^2   # (transverse momentum)^2, P⟂^2 = (Px^2 + Py^2) / P0^2
-  Ps = sqrt(rP0^2 - sqrPt)          # longitudinal momentum,   Ps = √[(1 + δ)^2 - P⟂^2]
-  v[i,XI] = v[i,XI] + s * v[i,PXI] / rP0 * sqrPt / (Ps * (rP0 + Ps))
-  v[i,YI] = v[i,YI] + s * v[i,PYI] / rP0 * sqrPt / (Ps * (rP0 + Ps))
-  v[i,ZI] = v[i,ZI] - s * ( rP0
-                              * (sqrPt - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
-                                / ( beta_0 * sqrt(rP0^2 + tilde_m^2) * Ps
-                                    * (beta_0 * sqrt(rP0^2 + tilde_m^2) + Ps)
+
+  P     = 1 + v[i,PZI]             # [scaled] total momentum, P/P0 = 1 + δ
+  PtSqr = v[i,PXI]^2 + v[i,PYI]^2  # (transverse momentum)^2, P⟂^2 = (Px^2 + Py^2) / P0^2
+  Ps    = sqrt(P^2 - PtSqr)        # longitudinal momentum,   Ps   = √[(1 + δ)^2 - P⟂^2]
+
+  v[i,XI] = v[i,XI] + s * v[i,PXI] * PtSqr / (P * Ps * (P + Ps))
+  v[i,YI] = v[i,YI] + s * v[i,PYI] * PtSqr / (P * Ps * (P + Ps))
+  v[i,ZI] = v[i,ZI] - s * ( P * (PtSqr - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
+                                / ( beta_0 * sqrt(P^2 + tilde_m^2) * Ps
+                                    * (beta_0 * sqrt(P^2 + tilde_m^2) + Ps)
                                   )
-                            - sqrPt / (2 * rP0^2)
+                            - PtSqr / (2 * P^2)
                           )
-end
+end # function quadrupole_kick!()
 
 
 #

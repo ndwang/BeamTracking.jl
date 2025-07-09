@@ -4,7 +4,7 @@
   ds_step = tm.ds_step
   num_steps = tm.num_steps
   if ds_step < 0
-    ds_step = L / tm.num_steps
+    ds_step = L / num_steps
   else
     num_steps = Int(ceil(L / ds_step))
     ds_step = L / num_steps
@@ -79,7 +79,6 @@ end
   mm = bm.order
   kn, ks = get_strengths(bm, L, brho_0)
   kn = @MArray [kn]
-  ks = @SArray [ks]
   params = (beta_0, gamsqr_0, tilde_m, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, L)
 end
@@ -93,17 +92,16 @@ end
   return integration_launcher!(IntegrationTracking.dkd_multipole!, params, tm, L)
 end
 
-@inline thick_bquadrupole(tm::Union{SplitIntegration,MKM}, bunch, bm, L) = 
-  thick_pure_bquadrupole(tm, bunch, bm, L)
-
-@inline function thick_bquadrupole(tm::DKD, bunch, bm, L)
+@inline function thick_bquadrupole(tm::Union{SplitIntegration,MKM}, bunch, bm, L)
   brho_0 = bunch.Brho_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
   mm = bm.order
   kn, ks = get_strengths(bm, L, brho_0)
   params = (beta_0, gamsqr_0, tilde_m, mm, kn, ks)
-  return integration_launcher!(IntegrationTracking.dkd_multipole!, params, tm, L)
+  return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, L)
 end
+
+@inline thick_bquadrupole(tm::DKD, bunch, bm, L) = thick_pure_bquadrupole(tm, bunch, bm, L)
 
 @inline thick_pure_bmultipole(tm::Union{SplitIntegration,DKD}, bunch, bm, L) = 
   thick_pure_bquadrupole(DKD(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
