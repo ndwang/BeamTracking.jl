@@ -215,6 +215,14 @@
     v_expected = read_map("bmad_maps/sks_multistep.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
+    # Step size:
+    ele = LineElement(L=2.0, Ks=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=4, ds_step=1.0))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/sks_multistep.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
     # Pure quadrupole (MK):
     ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)

@@ -228,7 +228,7 @@ s: element length
                           )
 end # function quadrupole_kick!()
 
-
+#=
 #
 # ===============  B E N D  ===============
 #
@@ -260,7 +260,7 @@ L:  element arc length
   ExactTracking.multipole_kick!(i, b, mm, kn * L, sn * L)
   ExactTracking.exact_sbend!(   i, b, beta_0, brho_0, hc, b0, e1, e2, L / 2)
 end 
-
+=#
 
 #
 # ===============  S O L E N O I D  ===============
