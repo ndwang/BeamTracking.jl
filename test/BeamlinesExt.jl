@@ -130,12 +130,12 @@
     @test_throws ErrorException track!(b0, Beamline([ele_bend_quad],  Brho_ref=Brho_ref))
   end
 
-  @testset "Integration" begin
+  @testset "SplitIntegration" begin
     p0c = 10e6
     # E to Brho
     Brho_ref = BeamTracking.calc_Brho(ELECTRON, sqrt(p0c^2 + BeamTracking.massof(ELECTRON)^2))
 
-    # Thin pure dipole:
+    # Thin straight pure dipole:
     ele = LineElement(L=0.0, Kn0L=1.0, tracking_method=SplitIntegration())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
@@ -143,7 +143,7 @@
     v_expected = read_map("bmad_maps/thin_pure_dipole.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 1e-14)
 
-    # Thin dipole:
+    # Thin straight dipole:
     ele = LineElement(L=0.0, Kn0L=1.0, Kn5L=1000.0, tracking_method=SplitIntegration())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
