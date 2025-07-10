@@ -212,7 +212,7 @@
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/sks_multistep.jl")
+    v_expected = read_map("bmad_maps/sk_multistep.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Step size:
@@ -220,7 +220,23 @@
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/sks_multistep.jl")
+    v_expected = read_map("bmad_maps/sk_multistep.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Straight pure dipole (DK):
+    ele = LineElement(L=2.0, Kn0=0.1, tilt0=pi/3, tracking_method=DriftKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/straight_pure_dipole_dk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Straight dipole with quadrupole (DK):
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.03, tracking_method=DriftKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/straight_dipole_dk.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Pure quadrupole (MK):
@@ -228,7 +244,15 @@
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/quadrupole_mkm.jl")
+    v_expected = read_map("bmad_maps/quadrupole_mk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Skew quadrupole (MK):
+    ele = LineElement(L=2.0, Kn1=0.1, tilt1=pi/4, tracking_method=MatrixKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/skew_quad_mk.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Pure quadrupole (DK):
@@ -236,7 +260,7 @@
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/quadrupole_dkd.jl")
+    v_expected = read_map("bmad_maps/quadrupole_dk.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Quadrupole with octupole (MK):
@@ -244,7 +268,7 @@
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/quad_oct_mkm.jl")
+    v_expected = read_map("bmad_maps/quad_oct_mk.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # MK multiple steps:
@@ -252,7 +276,7 @@
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/mkm_multistep.jl")
+    v_expected = read_map("bmad_maps/mk_multistep.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Quadrupole with octupole (DK):
@@ -260,7 +284,7 @@
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/quad_oct_dkd.jl")
+    v_expected = read_map("bmad_maps/quad_oct_dk.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Pure sextupole:
@@ -276,7 +300,7 @@
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele], Brho_ref=Brho_ref)
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/dkd_multistep.jl")
+    v_expected = read_map("bmad_maps/dk_multistep.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
     # Sextupole with decapole:
@@ -321,9 +345,10 @@
 
     # Errors:
     @test_throws ErrorException MatrixKick(ds_step = 0.1, num_steps = 2)
+    @test_throws ErrorException BendKick(order = 2, num_steps = -2)
     @test_throws ErrorException DriftKick(ds_step = -0.1)
     @test_throws ErrorException SolenoidKick(num_steps = -2)
-    @test_throws ErrorException SplitIntegration(order=5)
+    @test_throws ErrorException SplitIntegration(order = 5)
   end
 
 end

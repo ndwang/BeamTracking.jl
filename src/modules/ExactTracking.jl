@@ -99,20 +99,21 @@ properties, though I've not seen a proof of that claim.
        Moreover, and this is essential, the multipole
        coefficients must appear in ascending order.
 """
-@makekernel fastgtpsa=true function multipole_kick!(i, b::BunchView, ms, knl, ksl)
+@makekernel fastgtpsa=true function multipole_kick!(i, b::BunchView, ms, knl, ksl; start = 1)
   v = b.v
 
   jm = length(ms)
   m  = ms[jm]
-  ar = knl[jm]
-  ai = ksl[jm]
+  add = (start <= m)
+  ar = knl[jm] * add
+  ai = ksl[jm] * add
   jm -= 1
   while 2 <= m
     m -= 1
     t  = (ar * v[i,XI] - ai * v[i,YI]) / m
     ai = (ar * v[i,YI] + ai * v[i,XI]) / m
     ar = t
-    add = (0 < jm && m == ms[jm]) # branchless
+    add = (0 < jm && m == ms[jm]) && (start <= m) # branchless
     idx = max(1, jm) # branchless trickery
     ar += knl[idx] * add
     ai += ksl[idx] * add
