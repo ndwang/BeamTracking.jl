@@ -255,6 +255,14 @@
     v_expected = read_map("bmad_maps/skew_quad_mk.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
 
+    # Skew quadrupole another way (MK):
+    ele = LineElement(L=2.0, Ks1=-0.1, tracking_method=MatrixKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/skew_quad_mk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
     # Pure quadrupole (DK):
     ele = LineElement(L=2.0, Kn1=0.1, tilt1=0.1*pi, tracking_method=DriftKick())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)

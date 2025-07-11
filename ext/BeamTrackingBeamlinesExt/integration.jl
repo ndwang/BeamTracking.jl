@@ -92,9 +92,9 @@ end
   mm = bm.order
   kn, ks = get_strengths(bm, L, brho_0)
   k1 = sqrt(kn[1]^2 + ks[1]^2)
-  tilt = bm.tilt[1]
-  w = ExactTracking.w_matrix(0,0,-tilt)
-  w_inv = ExactTracking.w_inv_matrix(0,0,-tilt)
+  tilt = atan(ks[1],kn[1]) / 2
+  w = ExactTracking.w_matrix(0,0,tilt)
+  w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
   params = (beta_0, gamsqr_0, tilde_m, w, w_inv, k1, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, L)
 end
