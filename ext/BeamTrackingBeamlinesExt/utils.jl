@@ -23,6 +23,9 @@ function get_n_multipoles(b::Beamlines.BitsBMultipoleParams{T,N}) where {T,N}
   return n
 end
 
+make_static(a::StaticArray) = SVector(a)
+make_static(a) = a
+
 """
 
 (Kn' + im*Ks') = (Kn + im*Ks)*exp(-im*order*tilt)
@@ -35,8 +38,8 @@ This works for both BMultipole and BMultipoleParams. Branchless bc SIMD -> basic
 no loss in computing both but benefit of branchless.
 """
 @inline function get_strengths(bm, L, Brho_ref)
-  n = bm.n
-  s = bm.s
+  n = make_static(bm.n)
+  s = make_static(bm.s)
   tilt = bm.tilt
   order = bm.order
   normalized = bm.normalized
@@ -54,8 +57,8 @@ no loss in computing both but benefit of branchless.
 end
 
 @inline function get_integrated_strengths(bm, L, Brho_ref)
-  n = bm.n
-  s = bm.s
+  n = make_static(bm.n)
+  s = make_static(bm.s)
   tilt = bm.tilt
   order = bm.order
   normalized = bm.normalized
