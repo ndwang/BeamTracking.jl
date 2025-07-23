@@ -145,9 +145,11 @@
     @test GTPSA.jacobian(b0.v) ≈ M_thick_dipole
 
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
+    v_init = copy(b0.v)
     ele_kick = LineElement(L=1.0, Kn0L=1.0, tracking_method=Exact())
     track!(b0, Beamline([ele_kick],       Brho_ref=Brho_ref))
     @test b0.state[1] == State.Lost
+    @test v_init == b0.v
 
     # Errors:
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
