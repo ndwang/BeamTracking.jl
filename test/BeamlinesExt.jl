@@ -21,7 +21,7 @@
     @test GTPSA.jacobian(b0.v) ≈ M_ESR
 
     #combined
-    ring2 = Beamline([SBend(Kn0 = 0.24, g = 0.25, Kn1 = 0.25, L = 1.0, e1 = 0.5, e2 = 0.2)], Brho_ref = -0.0017045090263411496)
+    ring2 = Beamline([SBend(Kn0 = 0.24, g_ref = 0.25, Kn1 = 0.25, L = 1.0, e1 = 0.5, e2 = 0.2)], Brho_ref = -0.0017045090263411496)
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=-0.0017045090263411496)
     foreach(t -> t.tracking_method = Linear(), ring2.line)
     track!(b0, ring2)
@@ -40,10 +40,10 @@
     track!(b0, bblring)
     @test GTPSA.jacobian(b0.v) ≈ M_combined
 
-    #g=0, dg!=0 thin corrector coil
+    #g_ref=0, dg!=0 thin corrector coil
 
-    #SBend(Kn0=0.17, g=0, L = 1.1), line #L72 - L76
-    ring3 = Beamline([SBend(Kn0=0.17,g=0,Kn1=-0.20,L=1.1)], Brho_ref = -0.0017045090263411496)
+    #SBend(Kn0=0.17, g_ref=0, L = 1.1), line #L72 - L76
+    ring3 = Beamline([SBend(Kn0=0.17,g_ref=0,Kn1=-0.20,L=1.1)], Brho_ref = -0.0017045090263411496)
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=-0.0017045090263411496)
     foreach(t -> t.tracking_method = Linear(), ring3.line)
     track!(b0, ring3)
@@ -65,7 +65,7 @@
 
     #thick_bend_no_field line 103-104 --> singularity
     #L132 - L134
-    ring4 = Beamline([SBend(Kn0=0.0, g=0.005, L = 1.1, Kn1 = 0.05, e1 = 0.1, e2 = 0.2)], Brho_ref = -0.0017045090263411496)
+    ring4 = Beamline([SBend(Kn0=0.0, g_ref=0.005, L = 1.1, Kn1 = 0.05, e1 = 0.1, e2 = 0.2)], Brho_ref = -0.0017045090263411496)
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=-0.0017045090263411496)
     foreach(t -> t.tracking_method = Linear(), ring4.line)
     track!(b0, ring4)
@@ -109,7 +109,7 @@
 
 
     # Thick solenoid:
-    ele_sol = LineElement(L=1.0, Ks=2.0, tracking_method=Exact())
+    ele_sol = LineElement(L=1.0, Ksol=2.0, tracking_method=Exact())
     b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
     bl = Beamline([ele_sol], Brho_ref=Brho_ref)
     track!(b0, bl)
@@ -147,19 +147,244 @@
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
     v_init = copy(b0.v)
     ele_kick = LineElement(L=1.0, Kn0L=1.0, tracking_method=Exact())
-    track!(b0, Beamline([ele_kick],       Brho_ref=Brho_ref))
-    @test b0.state[1] == State.Lost
-    @test v_init == b0.v
-
-    # Errors:
-    b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
-    ele_bend = LineElement(L=1.0, g=0.01, tracking_method=Exact())
-    ele_patch_bend = LineElement(L=1.0, g=0.01, dy=3.0, dz_rot=0.3, tracking_method=Exact())
-    ele_patch_sol = LineElement(L=1.0, Ks=1.0, dt=1.0, tracking_method=Exact())
-    ele_bend_quad = LineElement(L=1.0, g=0.01, Kn1=1.0, tracking_method=Exact())
+    ele_bend = LineElement(L=1.0, g_ref=0.01, tracking_method=Exact())
+    ele_patch_bend = LineElement(L=1.0, g_ref=0.01, dy=3.0, dz_rot=0.3, tracking_method=Exact())
+    ele_patch_sol = LineElement(L=1.0, Ksol=1.0, dt=1.0, tracking_method=Exact())
+    ele_bend_quad = LineElement(L=1.0, g_ref=0.01, Kn1=1.0, tracking_method=Exact())
+    @test_throws ErrorException track!(b0, Beamline([ele_kick],       Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_bend],       Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_patch_bend], Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_patch_sol],  Brho_ref=Brho_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_bend_quad],  Brho_ref=Brho_ref))
   end
+
+  @testset "SplitIntegration" begin
+    p0c = 10e6
+    # E to Brho
+    Brho_ref = BeamTracking.calc_Brho(ELECTRON, sqrt(p0c^2 + BeamTracking.massof(ELECTRON)^2))
+
+    # Thin straight pure dipole:
+    ele = LineElement(L=0.0, Kn0L=1.0, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/thin_pure_dipole.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 1e-14)
+
+    # Thin straight dipole:
+    ele = LineElement(L=0.0, Kn0L=1.0, Kn5L=1000.0, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/thin_dipole.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 1e-14)
+
+    # Thin pure quadrupole:
+    ele = LineElement(L=0.0, Kn1L=1.0, tilt1 = pi, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/thin_pure_quadrupole.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 1e-14)
+
+    # Thin quadrupole:
+    ele = LineElement(L=0.0, Kn1L=1.0, tilt1 = pi, Kn5L=100.0, tilt5=-0.1*pi, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/thin_quadrupole.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 1e-14)
+
+    # Thin pure multipole:
+    ele = LineElement(L=0.0, Kn3L=10.0, tilt3=0.5*pi, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/thin_pure_multipole.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 1e-14)
+
+    # Thin multipole:
+    ele = LineElement(L=0.0, Kn2L=1.0, tilt2=0.3*pi, Kn6L=100.0, tilt6=0.15*pi, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/thin_multipole.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 1e-14)
+
+    # Drift: 
+    ele = LineElement(L=1.0, tracking_method=SplitIntegration())   
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/drift.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Pure solenoid:
+    ele = LineElement(L=1.0, Ksol=2.0, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/solenoid.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Solenoid with quadrupole:
+    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/sol_quad.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # SK multiple steps:
+    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=4, num_steps=2))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/sk_multistep.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Step size:
+    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=4, ds_step=1.0))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/sk_multistep.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Straight pure dipole (DK):
+    ele = LineElement(L=2.0, Kn0=0.1, tilt0=pi/3, tracking_method=DriftKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/straight_pure_dipole_dk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Straight dipole with quadrupole (DK):
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.03, tracking_method=DriftKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/straight_dipole_dk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Pure quadrupole (MK):
+    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/quadrupole_mk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Skew quadrupole (MK):
+    ele = LineElement(L=2.0, Kn1=0.1, tilt1=pi/4, tracking_method=MatrixKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/skew_quad_mk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Skew quadrupole another way (MK):
+    ele = LineElement(L=2.0, Ks1=-0.1, tracking_method=MatrixKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/skew_quad_mk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Pure quadrupole (DK):
+    ele = LineElement(L=2.0, Kn1=0.1, tilt1=0.1*pi, tracking_method=DriftKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/quadrupole_dk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Quadrupole with octupole (MK):
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/quad_oct_mk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # MK multiple steps:
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick(num_steps=2))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/mk_multistep.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Quadrupole with octupole (DK):
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=DriftKick())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/quad_oct_dk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Pure sextupole:
+    ele = LineElement(L=2.0, Kn2=10.0, tilt2=0.2*pi, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/sextupole.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-9)
+
+    # DK multiple steps:
+    ele = LineElement(L=2.0, Kn2=10.0, tracking_method=SplitIntegration(order=4, num_steps=2))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/dk_multistep.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Sextupole with decapole:
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/sex_dec.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Order 4:
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=4))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/order_four.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Order 6:
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=6))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/order_six.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-9)
+
+    # Order 8:
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=8))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/order_eight.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-9)
+
+    # Patch:
+    ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele_patch], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/patch.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Errors:
+    @test_throws ErrorException MatrixKick(ds_step = 0.1, num_steps = 2)
+    @test_throws ErrorException BendKick(order = 2, num_steps = -2)
+    @test_throws ErrorException DriftKick(ds_step = -0.1)
+    @test_throws ErrorException SolenoidKick(num_steps = -2)
+    @test_throws ErrorException SplitIntegration(order = 5)
+  end
+
 end
