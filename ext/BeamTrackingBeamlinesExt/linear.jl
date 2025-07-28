@@ -111,7 +111,7 @@ end
   gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
   Kn0, Ks0 = get_strengths(bm1, L, bunch.Brho_ref)
   Ks0 ≈ 0 || error("Skew/tilt multipoles not implemented yet for tracking method $tm")
-  mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g, bendparams.e1, bendparams.e2, Kn0, 0, gamma_0, L)
+  mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g_ref, bendparams.e1, bendparams.e2, Kn0, 0, gamma_0, L)
   return KernelCall(LinearTracking.linear_coast_uncoupled!, (mx, my, r56, d, t))
 end
 
@@ -124,7 +124,7 @@ end
     Kn0, Ks0 = get_strengths(bmultipoleparams[1], L, bunch.Brho_ref)
     Kn1, Ks1 = get_strengths(bmultipoleparams[2], L, bunch.Brho_ref)
     (Ks0 ≈ 0 && Ks1 ≈ 0) || error("Skew/tilt multipoles not implemented yet for tracking method $tm")
-    mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g, bendparams.e1, bendparams.e2, Kn0, Kn1, gamma_0, L)
+    mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g_ref, bendparams.e1, bendparams.e2, Kn0, Kn1, gamma_0, L)
     return KernelCall(LinearTracking.linear_coast_uncoupled!, (mx, my, r56, d, t))
   else # ignore higher order multipoles
     return thick_bend_pure_bdipole(tm, bunch, bendparams, bmultipoleparams[1], L)
@@ -137,7 +137,7 @@ end
   gamma_0 = calc_gamma(bunch.species, bunch.Brho_ref)
   Kn1, Ks1 = get_strengths(bm2, L, bunch.Brho_ref)
   Ks1 ≈ 0 || error("Skew/tilt multipoles not implemented yet for tracking method $tm")
-  mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g, bendparams.e1, bendparams.e2, 0, Kn1, gamma_0, L)
+  mx, my, r56, d, t = LinearTracking.linear_dipole_matrices(bendparams.g_ref, bendparams.e1, bendparams.e2, 0, Kn1, gamma_0, L)
   return KernelCall(LinearTracking.linear_coast_uncoupled!, (mx, my, r56, d, t))
 end
 
