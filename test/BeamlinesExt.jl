@@ -1,6 +1,5 @@
 @testset "Beamlines" begin
-  #=include("lattices/esr.jl")
-
+  include("lattices/esr.jl")
 
   @testset "Linear" begin
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=ring.Brho_ref)
@@ -84,7 +83,7 @@
     track!(b0, bblring)
     @test GTPSA.jacobian(b0.v) ≈ M_combined
 
-  end=#
+  end
 
   @testset "Exact" begin
     p0c = 10e6
@@ -301,7 +300,7 @@
     @test_throws ErrorException track!(b0, Beamline([ele_bend_quad],  Brho_ref=Brho_ref))
   end
 
-  #=@testset "SplitIntegration" begin
+  @testset "SplitIntegration" begin
     p0c = 10e6
     # E to Brho
     Brho_ref = BeamTracking.calc_Brho(ELECTRON, sqrt(p0c^2 + BeamTracking.massof(ELECTRON)^2))
@@ -529,5 +528,5 @@
     @test_throws ErrorException SolenoidKick(num_steps = -2)
     @test_throws ErrorException SplitIntegration(order = 5)
   end
-=#
+
 end
