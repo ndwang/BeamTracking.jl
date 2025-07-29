@@ -202,41 +202,63 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
 #Arguments
 - 'theta'    -- 'g' * 'L'
 - 'g'        -- curvature
-- 'k0'       -- normalized dipole field
+- 'Kn0'      -- normalized dipole field
+- 'w'        -- rotation matrix into curvature/field plane
+- 'w_inv'    -- rotation matrix out of curvature/field plane
 - 'tilde_m'  -- mc2/p0c
 - 'beta_0'   -- p0c/E0
 - 'L'        -- length
 """
-@inline function exact_bend!(i, b::BunchView, theta, g, k0, tilde_m, beta_0, L)
+@makekernel fastgtpsa=false function exact_bend!(i, b::BunchView, theta, g, Kn0, w::Union{StaticMatrix{3,3},Nothing}, w_inv::Union{StaticMatrix{3,3},Nothing}, tilde_m, beta_0, L)
+  if !isnothing(w)
+    patch_rotation!(i, b, w, 0)
+  end
+
   v = b.v
   rel_p = 1 + v[i,PZI]
-  pt = sqrt(rel_p^2 - v[i,PYI]^2) 
-  phi1 = theta + asin(v[i,PXI] / pt) 
-  gp = k0 / pt 
-  h = 1+g*v[i,XI] 
-  cplus = cos(phi1) #cos(theta + phi1)
+ 
+  pt2 = rel_p^2 - v[i,PYI]^2
+  b.state[i] = ifelse(pt2 <= 0 && b.state[i] == State.Alive, State.Lost, b.state[i])
+  alive = ifelse(b.state[i]==State.Alive, 1, 0) 
+  
+  pt = sqrt(pt2 + (alive-1)*(pt2-1))
+  arg = v[i,PXI] / pt
+  b.state[i] = ifelse(abs(arg) > 1 && b.state[i] == State.Alive, State.Lost, b.state[i])
+  # The above comparison does not work with FastGTPSA (currently)
+  alive = ifelse(b.state[i]==State.Alive, 1, 0) 
+
+  phi1 = theta + asin(alive * arg)
+  gp = Kn0 / pt
+  h = 1 + g*v[i,XI] 
+  cplus = cos(phi1) 
+  splus = sin(phi1)
   sinc_theta = sincu(theta)
-  alpha = 2*h*sin(phi1)*abs(L)*sinc_theta- gp*h^2*L^2*(sinc_theta)^2 
+  cosc_theta = (sincu(theta/2)/2)^2
+  alpha = 2*h*splus*abs(L)*sinc_theta - gp*(h*L*sinc_theta)^2
 
   cond = cplus^2 + gp*alpha
-  b.state[i] = ifelse(cond <= 0 && b.state[i] == State.Alive, State.Lost, b.state[i]) 
+  b.state[i] = ifelse(cond <= 0 && b.state[i] == State.Alive, State.Lost, b.state[i]) # particle does not intersect the exit face
   alive = ifelse(b.state[i]==State.Alive, 1, 0) 
   nasty_sqrt = alive * sqrt(cond + (alive-1)*(cond-1))
-  #particle does not intersect the exit face
-  if abs(phi1) < π/2
-      xi = alpha/(nasty_sqrt + cplus) 
+
+  if cplus > 0 || gp ≈ 0
+    xi = alpha/(nasty_sqrt + cplus)
   else
-      xi = (nasty_sqrt - cplus) / gp 
+    xi = (nasty_sqrt - cplus)/gp
   end
-  Lcv = -L*sinc_theta-sign(L)*v[i,XI]*sin(theta) 
+  Lcv = -L*sinc_theta - sign(L)*v[i,XI]*sin(theta) 
   thetap = 2 * (phi1 - sign(L)*atan(xi, -Lcv)) 
   Lp = sign(L)*sqrt(Lcv^2 + xi^2) / sincu(thetap/2) 
 
-  v[i,XI] = alive*(v[i,XI]*cos(theta) - g/2*L^2*(sincu(theta/2))^2 + xi) - (alive - 1) * v[i,XI]
+  v[i,XI] = alive*(v[i,XI]*cos(theta) - L^2*g*cosc_theta + xi) - (alive - 1) * v[i,XI]
   v[i,PXI] = alive*(pt*sin(phi1 - thetap)) - (alive - 1) * v[i,PXI]
   v[i,YI] = alive*(v[i,YI] + v[i,PYI]*Lp/pt) - (alive - 1) * v[i,YI]
   v[i,ZI] = alive*(v[i,ZI] - rel_p*Lp/pt + 
-                  abs(L)*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0) - (alive - 1) * v[i,YI]
+                  abs(L)*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0) - (alive - 1) * v[i,ZI]
+
+  if !isnothing(w_inv)
+    patch_rotation!(i, b, w_inv, 0)
+  end
 end
 
 @makekernel fastgtpsa=true function exact_solenoid!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, L)
@@ -272,16 +294,19 @@ end
 
 @makekernel fastgtpsa=true function patch_rotation!(i, b::BunchView, winv::StaticMatrix{3,3}, dz)
   v = b.v
-  ps_0 = sqrt((1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2)
+  cond = (1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2
+  b.state[i] = ifelse(cond <= 0 && b.state[i] == State.Alive, State.Lost, b.state[i])
+  alive = ifelse(b.state[i]==State.Alive, 1, 0) 
+  ps_0 = alive * sqrt(cond + (alive-1)*(cond-1))
   x_0 = v[i,XI]
   y_0 = v[i,YI]
-  v[i,XI]   = winv[1,1]*x_0 + winv[1,2]*y_0 - winv[1,3]*dz
-  v[i,YI]   = winv[2,1]*x_0 + winv[2,2]*y_0 - winv[2,3]*dz
+  v[i,XI]   = alive*(winv[1,1]*x_0 + winv[1,2]*y_0 - winv[1,3]*dz) - (alive - 1)*v[i,XI]
+  v[i,YI]   = alive*(winv[2,1]*x_0 + winv[2,2]*y_0 - winv[2,3]*dz) - (alive - 1)*v[i,YI]
 
   px_0 = v[i,PXI]
   py_0 = v[i,PYI]
-  v[i,PXI] = winv[1,1]*px_0 + winv[1,2]*py_0 + winv[1,3]*ps_0
-  v[i,PYI] = winv[2,1]*px_0 + winv[2,2]*py_0 + winv[2,3]*ps_0
+  v[i,PXI] = alive*(winv[1,1]*px_0 + winv[1,2]*py_0 + winv[1,3]*ps_0) - (alive - 1)*v[i,PXI]
+  v[i,PYI] = alive*(winv[2,1]*px_0 + winv[2,2]*py_0 + winv[2,3]*ps_0) - (alive - 1)*v[i,PYI]
 end
 
 @makekernel fastgtpsa=true function patch!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv::Union{StaticMatrix{3,3},Nothing}, L)
