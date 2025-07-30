@@ -61,6 +61,27 @@
       return beta_0, gamsqr_0, tilde_m, mm, kn, ks, L
     end
 
+    function bk_straight_args(::Type{T}) where {T}
+      L = T(2)
+      mm = SA[1, 2]
+      Kn0 = T(0.1)
+      Ks0 = T(0)
+      Kn1 = T(0.1)
+      Ks1 = T(0)
+      kn = SA[Kn0, Kn1]
+      ks = SA[Ks0, Ks1]
+      w = w_inv = SA[1 0 0; 0 1 0; 0 0 1]
+      p0c = T(10e6)
+      mc2 = T(ELECTRON.mass)
+      tilde_m = mc2/p0c
+      beta_0 = 1/sqrt(1 + tilde_m^2)
+      params = (tilde_m, beta_0, 0, 0, w, w_inv, Kn0, mm, kn, ks)
+      ker = IntegrationTracking.bkb_multipole!
+      num_steps = 10
+      ds_step = T(0.2)
+      return ker, params, ds_step, num_steps, L
+    end
+
     function integrator_args(::Type{T}) where {T}
       L = T(2)
       mm = SA[3, 5]
@@ -91,6 +112,7 @@
     test_map("bmad_maps/order_four.jl", KernelCall(IntegrationTracking.order_four_integrator!, integrator_args(Float64)); tol=5e-10, no_scalar_allocs=true)
     test_map("bmad_maps/order_six.jl", KernelCall(IntegrationTracking.order_six_integrator!, integrator_args(Float64)); tol=5e-9, no_scalar_allocs=true)
     test_map("bmad_maps/order_eight.jl", KernelCall(IntegrationTracking.order_eight_integrator!, integrator_args(Float64)); tol=5e-9, no_scalar_allocs=true)
+    test_map("bmad_maps/straight_dipole_bk.jl", KernelCall(IntegrationTracking.order_six_integrator!, bk_straight_args(Float64)); tol=2e-6, no_scalar_allocs=true)
 
     # GTPSA parameters
     test_map("bmad_maps/thin_dipole.jl", KernelCall(ExactTracking.multipole_kick!, multipole_args(TPS64{D10})); tol=1e-14)
@@ -101,5 +123,6 @@
     test_map("bmad_maps/order_four.jl", KernelCall(IntegrationTracking.order_four_integrator!, integrator_args(TPS64{D10})); tol=5e-10)
     test_map("bmad_maps/order_six.jl", KernelCall(IntegrationTracking.order_six_integrator!, integrator_args(TPS64{D10})); tol=5e-9)
     test_map("bmad_maps/order_eight.jl", KernelCall(IntegrationTracking.order_eight_integrator!, integrator_args(TPS64{D10})); tol=5e-9)
+    test_map("bmad_maps/straight_dipole_bk.jl", KernelCall(IntegrationTracking.order_six_integrator!, bk_straight_args(TPS64{D10})); tol=2e-6)
   end
 end

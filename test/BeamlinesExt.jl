@@ -264,6 +264,22 @@
 
     @test GTPSA.jacobian(b0.v) ≈ exact_bend_14
 
+    # With skew strength:
+    exact_bend_15 = 
+      [ 0.1000000000000000E+01 0.1362928135021343E+01 0.0000000000000000E+00 0.6415149876723009E-01 0.0000000000000000E+00 -0.1922017848558854E+00 
+        0.0000000000000000E+00 0.1000000000000000E+01 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 -0.1079213939202989E-30  
+        0.0000000000000000E+00 0.6415149876723000E-01 0.1000000000000000E+01 0.1513589055740098E+01 0.0000000000000000E+00 -0.5132119901378400E+00  
+        0.0000000000000000E+00 -0.2369523054950603E-15 0.0000000000000000E+00 0.1000000000000000E+01 0.0000000000000000E+00 0.1762490115442885E-14  
+        0.0000000000000000E+00 -0.1922017848558854E+00 0.0000000000000000E+00 -0.5132119901378409E+00 0.1000000000000000E+01 0.1999860793263922E+00  
+        0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.1000000000000000E+01 ] 
+    ele_bend = LineElement(L=2, Ks0=0.13, tracking_method=Exact())
+    ps9 = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+    b0 = Bunch(collect(transpose(@vars(D1) + ps9)), Brho_ref=Brho_ref)
+    bl = Beamline([ele_bend], Brho_ref=Brho_ref)
+    track!(b0, bl)
+
+    @test GTPSA.jacobian(b0.v) ≈ exact_bend_15
+
     # Particle lost (does not intersect exit face):
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
     v_init = copy(b0.v)
@@ -287,7 +303,6 @@
     track!(b0, Beamline([ele_bend], Brho_ref=Brho_ref))
     @test b0.state[1] == State.Lost
     @test v_init == b0.v
-
 
     # Errors:
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
@@ -408,6 +423,14 @@
     track!(b0, bl)
     v_expected = read_map("bmad_maps/straight_dipole_dk.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Straight dipole with quadrupole (BK):
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=BendKick(order=6,num_steps=10))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/straight_dipole_bk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 2e-6)
 
     # Pure quadrupole (MK):
     ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick())

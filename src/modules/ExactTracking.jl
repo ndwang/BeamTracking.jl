@@ -232,7 +232,8 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
   splus = sin(phi1)
   sinc_theta = sincu(theta)
   cosc_theta = (sincu(theta/2)/2)^2
-  alpha = 2*h*splus*abs(L)*sinc_theta - gp*(h*L*sinc_theta)^2
+  sgn = sign(L)
+  alpha = 2*h*splus*L*sinc_theta - gp*(h*L*sinc_theta)^2
 
   cond = cplus^2 + gp*alpha
   b.state[i] = ifelse(cond <= 0 && b.state[i] == State.Alive, State.Lost, b.state[i]) # particle does not intersect the exit face
@@ -241,15 +242,15 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
 
   xi = ifelse(cplus > 0 || gp ≈ 0, alpha/(nasty_sqrt + cplus), (nasty_sqrt - cplus)/(gp + ((abs(gp)>0)-1)*(gp-1)))
 
-  Lcv = -L*sinc_theta - sign(L)*v[i,XI]*sin(theta) 
-  thetap = 2 * (phi1 - sign(L)*atan(xi, -Lcv)) 
-  Lp = sign(L)*sqrt(Lcv^2 + xi^2) / sincu(thetap/2) 
+  Lcv = -sgn*(L*sinc_theta + v[i,XI]*sin(theta)) 
+  thetap = 2 * (phi1 - sgn*atan(xi, -Lcv)) 
+  Lp = sgn*sqrt(Lcv^2 + xi^2)/sincu(thetap/2) 
 
-  v[i,XI] = alive*(v[i,XI]*cos(theta) - L^2*g*cosc_theta + xi) - (alive - 1) * v[i,XI]
+  v[i,XI]  = alive*(v[i,XI]*cos(theta) - L^2*g*cosc_theta + xi) - (alive - 1) * v[i,XI]
   v[i,PXI] = alive*(pt*sin(phi1 - thetap)) - (alive - 1) * v[i,PXI]
-  v[i,YI] = alive*(v[i,YI] + v[i,PYI]*Lp/pt) - (alive - 1) * v[i,YI]
-  v[i,ZI] = alive*(v[i,ZI] - rel_p*Lp/pt + 
-                  abs(L)*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0) - (alive - 1) * v[i,ZI]
+  v[i,YI]  = alive*(v[i,YI] + v[i,PYI]*Lp/pt) - (alive - 1) * v[i,YI]
+  v[i,ZI]  = alive*(v[i,ZI] - rel_p*Lp/pt + 
+                  L*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0) - (alive - 1) * v[i,ZI]
 
   patch_rotation!(i, b, w_inv, 0)
 end

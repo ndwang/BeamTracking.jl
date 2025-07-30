@@ -5,10 +5,9 @@
 end
 
 @inline function thick_pure_bsolenoid(tm::Exact, bunch, bm0, L)
-  Ksn, Kss = get_strengths(bm0, L, bunch.Brho_ref)
-  Ks = sqrt(Ksn^2 + Kss^2)
+  Ksol, _ = get_strengths(bm0, L, bunch.Brho_ref)
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
-  return KernelCall(ExactTracking.exact_solenoid!, (Ks, beta_0, gamsqr_0, tilde_m, L))
+  return KernelCall(ExactTracking.exact_solenoid!, (Ksol, beta_0, gamsqr_0, tilde_m, L))
 end
 
 @inline function drift(tm::Exact, bunch, L)
@@ -30,10 +29,12 @@ end
 
 @inline function thick_pure_bdipole(tm::Exact, bunch, bm1, L)
   Kn0, Ks0 = get_strengths(bm1, L, bunch.Brho_ref)
-  Ks0 ≈ 0 || error("A skew dipole field cannot be used in an exact bend")
+  Kn = sqrt(Kn0^2 + Ks0^2)
+  tilt = atan(Ks0, Kn0)
+  w = ExactTracking.w_matrix(0,0,tilt)
+  w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
   tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, bunch.Brho_ref)
-  I = SA[1 0 0; 0 1 0; 0 0 1]
-  return KernelCall(ExactTracking.exact_bend!, (0, 0, Kn0, I, I, tilde_m, beta_0, L))
+  return KernelCall(ExactTracking.exact_bend!, (0, 0, Kn, w, w_inv, tilde_m, beta_0, L))
 end
 
 @inline function thick_bend_no_field(tm::Exact, bunch, bendparams, L)
