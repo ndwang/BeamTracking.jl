@@ -209,10 +209,8 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
 - 'beta_0'   -- p0c/E0
 - 'L'        -- length
 """
-@makekernel fastgtpsa=false function exact_bend!(i, b::BunchView, theta, g, Kn0, w::Union{StaticMatrix{3,3},Nothing}, w_inv::Union{StaticMatrix{3,3},Nothing}, tilde_m, beta_0, L)
-  if !isnothing(w)
-    patch_rotation!(i, b, w, 0)
-  end
+@makekernel fastgtpsa=false function exact_bend!(i, b::BunchView, theta, g, Kn0, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, tilde_m, beta_0, L)
+  patch_rotation!(i, b, w, 0)
 
   v = b.v
   rel_p = 1 + v[i,PZI]
@@ -241,11 +239,8 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
   alive = ifelse(b.state[i]==State.Alive, 1, 0) 
   nasty_sqrt = alive * sqrt(cond + (alive-1)*(cond-1))
 
-  if cplus > 0 || gp ≈ 0
-    xi = alpha/(nasty_sqrt + cplus)
-  else
-    xi = (nasty_sqrt - cplus)/gp
-  end
+  xi = ifelse(cplus > 0 || gp ≈ 0, alpha/(nasty_sqrt + cplus), (nasty_sqrt - cplus)/(gp + ((abs(gp)>0)-1)*(gp-1)))
+
   Lcv = -L*sinc_theta - sign(L)*v[i,XI]*sin(theta) 
   thetap = 2 * (phi1 - sign(L)*atan(xi, -Lcv)) 
   Lp = sign(L)*sqrt(Lcv^2 + xi^2) / sincu(thetap/2) 
@@ -256,9 +251,7 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
   v[i,ZI] = alive*(v[i,ZI] - rel_p*Lp/pt + 
                   abs(L)*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0) - (alive - 1) * v[i,ZI]
 
-  if !isnothing(w_inv)
-    patch_rotation!(i, b, w_inv, 0)
-  end
+  patch_rotation!(i, b, w_inv, 0)
 end
 
 @makekernel fastgtpsa=true function exact_solenoid!(i, b::BunchView, ks, beta_0, gamsqr_0, tilde_m, L)
