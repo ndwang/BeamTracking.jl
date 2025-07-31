@@ -195,11 +195,14 @@ to carry both reference and design values.
 end # function exact_sbend!()
 
 """
-    exact_bend!(i, b::BunchView, theta, g, k0, tilde_m, beta_0, L)
+    exact_bend!(i, b::BunchView, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
 
-Tracks a particle through a sector bend via exact tracking. (no edge angles)
+Tracks a particle through a sector bend via exact tracking. If edge angles are 
+provided, a linear hard-edge fringe map is applied at both ends.
 
 #Arguments
+- 'e1'       -- entrance face angle
+- 'e2'       -- exit face angle
 - 'theta'    -- 'g' * 'L'
 - 'g'        -- curvature
 - 'Kn0'      -- normalized dipole field
@@ -209,8 +212,16 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
 - 'beta_0'   -- p0c/E0
 - 'L'        -- length
 """
-@makekernel fastgtpsa=false function exact_bend!(i, b::BunchView, theta, g, Kn0, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, tilde_m, beta_0, L)
+@makekernel fastgtpsa=false function exact_bend!(i, b::BunchView, e1, e2, theta, g, Kn0, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, tilde_m, beta_0, L)
+  me1 = Kn0*tan(e1)
+  mx1 = SA[1 0; me1  1]
+  my1 = SA[1 0;-me1  1]
+  me2 = Kn0*tan(e2)
+  mx2 = SA[1 0; me2  1]
+  my2 = SA[1 0;-me2 1]
+  
   patch_rotation!(i, b, w, 0)
+  LinearTracking.linear_coast_uncoupled!(i, b, mx1, my1, 0, nothing, nothing)
 
   v = b.v
   rel_p = 1 + v[i,PZI]
@@ -231,7 +242,7 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
   cplus = cos(phi1) 
   splus = sin(phi1)
   sinc_theta = sincu(theta)
-  cosc_theta = (sincu(theta/2)/2)^2
+  cosc_theta = (sincu(theta/2))^2 / 2
   sgn = sign(L)
   alpha = 2*h*splus*L*sinc_theta - gp*(h*L*sinc_theta)^2
 
@@ -252,6 +263,7 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
   v[i,ZI]  = alive*(v[i,ZI] - rel_p*Lp/pt + 
                   L*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0) - (alive - 1) * v[i,ZI]
 
+  LinearTracking.linear_coast_uncoupled!(i, b, mx2, my2, 0, nothing, nothing)
   patch_rotation!(i, b, w_inv, 0)
 end
 

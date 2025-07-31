@@ -69,7 +69,7 @@ end
 @inline thick_bdipole(tm::DriftKick, bunch, bm, L) = thick_pure_bdipole(tm, bunch, bm, L)
 
 @inline thick_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm1, L) = 
-  thick_pure_bdipole(Exact(), bunch, bm1, L)
+  thick_pure_bdipole(Exact(), bunch, bm1, L) # Have to add skew strengths
 
 @inline function thick_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm, L)
   brho_0 = bunch.Brho_ref
@@ -80,7 +80,7 @@ end
   tilt = atan(ks[1], kn[1])
   w = ExactTracking.w_matrix(0,0,tilt)
   w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
-  params = (tilde_m, beta_0, 0, 0, w, w_inv, k0, mm, kn, ks)
+  params = (tilde_m, beta_0, 0, 0, 0, 0, w, w_inv, k0, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
 end
 
