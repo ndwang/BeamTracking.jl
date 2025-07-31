@@ -69,7 +69,7 @@ end
 @inline thick_bdipole(tm::DriftKick, bunch, bm, L) = thick_pure_bdipole(tm, bunch, bm, L)
 
 @inline thick_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm1, L) = 
-  thick_pure_bdipole(Exact(), bunch, bm1, L) # Have to add skew strengths
+  thick_pure_bdipole(Exact(), bunch, bm1, L)
 
 @inline function thick_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm, L)
   brho_0 = bunch.Brho_ref
