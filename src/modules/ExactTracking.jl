@@ -217,10 +217,10 @@ provided, a linear hard-edge fringe map is applied at both ends.
 - 'L'        -- length
 """
 @makekernel fastgtpsa=false function exact_bend!(i, b::BunchView, e1, e2, theta, g, Kn0, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, tilde_m, beta_0, L)
-  me1 = Kn0*tan(e1)
+  me1 = Kn0*tan(e1)/(1 + b.v[i,PZI])
   mx1 = SA[1 0; me1  1]
   my1 = SA[1 0;-me1  1]
-  me2 = Kn0*tan(e2)
+  me2 = Kn0*tan(e2)/(1 + b.v[i,PZI])
   mx2 = SA[1 0; me2  1]
   my2 = SA[1 0;-me2 1]
   
