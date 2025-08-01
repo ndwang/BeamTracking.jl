@@ -133,13 +133,15 @@ ks: vector of skew multipole strengths scaled by Bρ0
 L: element length
 """
 @makekernel fastgtpsa=true function mkm_quadrupole!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, w, w_inv, k1, mm, kn, ks, L)
-  ExactTracking.multipole_kick!(i, b, mm, kn * L / 2, ks * L / 2, 3)
+  knl = kn * L / 2
+  ksl = ks * L / 2
+  ExactTracking.multipole_kick!(i, b, mm, knl, ksl, 3)
   quadrupole_kick!(             i, b, beta_0, gamsqr_0, tilde_m, L / 2)
   ExactTracking.patch_rotation!(i, b, w, 0)
   quadrupole_matrix!(           i, b, k1, L)
   ExactTracking.patch_rotation!(i, b, w_inv, 0)
   quadrupole_kick!(             i, b, beta_0, gamsqr_0, tilde_m, L / 2)
-  ExactTracking.multipole_kick!(i, b, mm, kn * L / 2, ks * L / 2, 3)
+  ExactTracking.multipole_kick!(i, b, mm, knl, ksl, 3)
 end 
 
 
@@ -227,7 +229,7 @@ s: element length
                           )
 end # function quadrupole_kick!()
 
-#=
+
 #
 # ===============  B E N D  ===============
 #
@@ -243,23 +245,26 @@ starting with the quadrupole component.
 
 Arguments
 —————————
-beta_0: β_0 = (βγ)_0 / √(γ_0^2)
-brho_0: Bρ_0,  reference magnetic rigidity
-hc: coordinate frame curvature
-b0: dipole field strength
-e1: entrance face angle (+ve angle <=> toward rbend)
-e2: exit face angle (+ve angle <=> toward rbend)
-mm: vector of m values for non-zero multipole coefficients
-kn: vector of normal multipole strengths scaled by Bρ0
-sn: vector of skew multipole strengths scaled by Bρ0
-L:  element arc length
+- 'tilde_m'  -- mc2/p0c
+- 'beta_0'   -- p0c/E0
+- 'theta'    -- 'g' * 'L'
+- 'g'        -- curvature
+- 'w'        -- rotation matrix into curvature/field plane
+- 'w_inv'    -- rotation matrix out of curvature/field plane
+- 'k0'       -- dipole strength
+- 'mm'       -- order of multipoles
+- 'kn'       -- normal multipole strengths 
+- 'ks'       -- skew multipole strengths 
+- 'L'        -- length
 """
-@makekernel fastgtpsa=true function bkb_multipole!(i, b::BunchView, beta_0, brho_0, hc, b0, e1, e2, mm, kn, sn, L)
-  ExactTracking.exact_sbend!(   i, b, beta_0, brho_0, hc, b0, e1, e2, L / 2)
-  ExactTracking.multipole_kick!(i, b, mm, kn * L, sn * L)
-  ExactTracking.exact_sbend!(   i, b, beta_0, brho_0, hc, b0, e1, e2, L / 2)
+@makekernel fastgtpsa=false function bkb_multipole!(i, b::BunchView, tilde_m, beta_0, e1, e2, theta, g, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, k0, mm, kn, ks, L)
+  knl = kn * L / 2
+  ksl = ks * L / 2
+  ExactTracking.multipole_kick!(i, b, mm, knl, ksl, 2)
+  ExactTracking.exact_bend!(    i, b, e1, e2, theta, g, k0, w, w_inv, tilde_m, beta_0, L)
+  ExactTracking.multipole_kick!(i, b, mm, knl, ksl, 2)
 end 
-=#
+
 
 #
 # ===============  S O L E N O I D  ===============

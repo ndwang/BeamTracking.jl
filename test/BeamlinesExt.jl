@@ -264,6 +264,22 @@
 
     @test GTPSA.jacobian(b0.v) ≈ exact_bend_14
 
+    # With skew strength:
+    exact_bend_15 = 
+      [ 0.1000000000000000E+01 0.1362928135021343E+01 0.0000000000000000E+00 0.6415149876723009E-01 0.0000000000000000E+00 -0.1922017848558854E+00 
+        0.0000000000000000E+00 0.1000000000000000E+01 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 -0.1079213939202989E-30  
+        0.0000000000000000E+00 0.6415149876723000E-01 0.1000000000000000E+01 0.1513589055740098E+01 0.0000000000000000E+00 -0.5132119901378400E+00  
+        0.0000000000000000E+00 -0.2369523054950603E-15 0.0000000000000000E+00 0.1000000000000000E+01 0.0000000000000000E+00 0.1762490115442885E-14  
+        0.0000000000000000E+00 -0.1922017848558854E+00 0.0000000000000000E+00 -0.5132119901378409E+00 0.1000000000000000E+01 0.1999860793263922E+00  
+        0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.1000000000000000E+01 ] 
+    ele_bend = LineElement(L=2, Ks0=0.13, tracking_method=Exact())
+    ps9 = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+    b0 = Bunch(collect(transpose(@vars(D1) + ps9)), Brho_ref=Brho_ref)
+    bl = Beamline([ele_bend], Brho_ref=Brho_ref)
+    track!(b0, bl)
+
+    @test GTPSA.jacobian(b0.v) ≈ exact_bend_15
+
     # Particle lost (does not intersect exit face):
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
     v_init = copy(b0.v)
@@ -288,7 +304,6 @@
     @test b0.state[1] == State.Lost
     @test v_init == b0.v
 
-
     # Errors:
     b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=Brho_ref)
     v_init = copy(b0.v)
@@ -301,6 +316,18 @@
   end
 
   @testset "SplitIntegration" begin
+    b0 = Bunch(collect(transpose(@vars(D1))), Brho_ref=ring.Brho_ref)
+    foreach(t->t.tracking_method=SplitIntegration(), ring.line)
+    track!(b0, ring)
+    M_ESR = [  0.8763088913632391E+00  0.2842332738570903E+00 -0.9233408598814828E-06 -0.1104742931103878E-06  0.0000000000000000E+00 -0.8843595261589663E-07
+              -0.8165279324836310E+00  0.8763069736287854E+00 -0.1898521129265218E-05 -0.1113630193834745E-06  0.0000000000000000E+00 -0.1417461685411299E-06
+               0.1352460571822227E-07 -0.2969583000777938E-07  0.6374265424413608E+00  0.4391919124687460E-01  0.0000000000000000E+00  0.5592919170820314E-14
+              -0.4079601917518316E-05  0.1052556482124766E-05 -0.1351773220872402E+02  0.6374258159142916E+00  0.0000000000000000E+00 -0.4735132312703365E-13
+               0.1964238541540386E-06 -0.3720806396318763E-07 -0.8403098936929155E-14 -0.1661103086541925E-15  0.1000000000000000E+01 -0.2358669003370585E+01
+               0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01  ]
+
+    @test GTPSA.jacobian(b0.v) ≈ M_ESR
+
     p0c = 10e6
     # E to Brho
     Brho_ref = BeamTracking.calc_Brho(ELECTRON, sqrt(p0c^2 + BeamTracking.massof(ELECTRON)^2))
@@ -408,6 +435,14 @@
     track!(b0, bl)
     v_expected = read_map("bmad_maps/straight_dipole_dk.jl")
     @test coeffs_approx_equal(v_expected, b0.v, 5e-10)
+
+    # Straight dipole with quadrupole (BK):
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=BendKick(order=6,num_steps=10))
+    b0 = Bunch(collect(transpose(@vars(D10))), Brho_ref=Brho_ref)
+    bl = Beamline([ele], Brho_ref=Brho_ref)
+    track!(b0, bl)
+    v_expected = read_map("bmad_maps/straight_dipole_bk.jl")
+    @test coeffs_approx_equal(v_expected, b0.v, 2e-6)
 
     # Pure quadrupole (MK):
     ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick())

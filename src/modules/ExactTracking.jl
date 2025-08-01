@@ -195,11 +195,14 @@ to carry both reference and design values.
 end # function exact_sbend!()
 
 """
-    exact_bend!(i, b::BunchView, theta, g, k0, tilde_m, beta_0, L)
+    exact_bend!(i, b::BunchView, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
 
-Tracks a particle through a sector bend via exact tracking. (no edge angles)
+Tracks a particle through a sector bend via exact tracking. If edge angles are 
+provided, a linear hard-edge fringe map is applied at both ends.
 
 #Arguments
+- 'e1'       -- entrance face angle
+- 'e2'       -- exit face angle
 - 'theta'    -- 'g' * 'L'
 - 'g'        -- curvature
 - 'Kn0'      -- normalized dipole field
@@ -209,8 +212,16 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
 - 'beta_0'   -- p0c/E0
 - 'L'        -- length
 """
-@makekernel fastgtpsa=false function exact_bend!(i, b::BunchView, theta, g, Kn0, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, tilde_m, beta_0, L)
+@makekernel fastgtpsa=false function exact_bend!(i, b::BunchView, e1, e2, theta, g, Kn0, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, tilde_m, beta_0, L)
+  me1 = Kn0*tan(e1)/(1 + b.v[i,PZI])
+  mx1 = SA[1 0; me1  1]
+  my1 = SA[1 0;-me1  1]
+  me2 = Kn0*tan(e2)/(1 + b.v[i,PZI])
+  mx2 = SA[1 0; me2  1]
+  my2 = SA[1 0;-me2 1]
+  
   patch_rotation!(i, b, w, 0)
+  LinearTracking.linear_coast_uncoupled!(i, b, mx1, my1, 0, nothing, nothing)
 
   v = b.v
   rel_p = 1 + v[i,PZI]
@@ -231,8 +242,9 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
   cplus = cos(phi1) 
   splus = sin(phi1)
   sinc_theta = sincu(theta)
-  cosc_theta = (sincu(theta/2)/2)^2
-  alpha = 2*h*splus*abs(L)*sinc_theta - gp*(h*L*sinc_theta)^2
+  cosc_theta = (sincu(theta/2))^2 / 2
+  sgn = sign(L)
+  alpha = 2*h*splus*L*sinc_theta - gp*(h*L*sinc_theta)^2
 
   cond = cplus^2 + gp*alpha
   b.state[i] = ifelse(cond <= 0 && b.state[i] == State.Alive, State.Lost, b.state[i]) # particle does not intersect the exit face
@@ -241,16 +253,17 @@ Tracks a particle through a sector bend via exact tracking. (no edge angles)
 
   xi = ifelse(cplus > 0 || gp ≈ 0, alpha/(nasty_sqrt + cplus), (nasty_sqrt - cplus)/(gp + ((abs(gp)>0)-1)*(gp-1)))
 
-  Lcv = -L*sinc_theta - sign(L)*v[i,XI]*sin(theta) 
-  thetap = 2 * (phi1 - sign(L)*atan(xi, -Lcv)) 
-  Lp = sign(L)*sqrt(Lcv^2 + xi^2) / sincu(thetap/2) 
+  Lcv = -sgn*(L*sinc_theta + v[i,XI]*sin(theta)) 
+  thetap = 2 * (phi1 - sgn*atan(xi, -Lcv)) 
+  Lp = sgn*sqrt(Lcv^2 + xi^2)/sincu(thetap/2) 
 
-  v[i,XI] = alive*(v[i,XI]*cos(theta) - L^2*g*cosc_theta + xi) - (alive - 1) * v[i,XI]
+  v[i,XI]  = alive*(v[i,XI]*cos(theta) - L^2*g*cosc_theta + xi) - (alive - 1) * v[i,XI]
   v[i,PXI] = alive*(pt*sin(phi1 - thetap)) - (alive - 1) * v[i,PXI]
-  v[i,YI] = alive*(v[i,YI] + v[i,PYI]*Lp/pt) - (alive - 1) * v[i,YI]
-  v[i,ZI] = alive*(v[i,ZI] - rel_p*Lp/pt + 
-                  abs(L)*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0) - (alive - 1) * v[i,ZI]
+  v[i,YI]  = alive*(v[i,YI] + v[i,PYI]*Lp/pt) - (alive - 1) * v[i,YI]
+  v[i,ZI]  = alive*(v[i,ZI] - rel_p*Lp/pt + 
+                  L*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0) - (alive - 1) * v[i,ZI]
 
+  LinearTracking.linear_coast_uncoupled!(i, b, mx2, my2, 0, nothing, nothing)
   patch_rotation!(i, b, w_inv, 0)
 end
 

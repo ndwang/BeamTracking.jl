@@ -52,12 +52,12 @@ end
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
   mm = bm.order
   kn, ks = get_strengths(bm, L, brho_0)
-  Ksol = sqrt(kn[1]^2 + ks[1]^2)
+  Ksol = kn[1]
   params = (beta_0, gamsqr_0, tilde_m, Ksol, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.sks_multipole!, params, tm, L)
 end
 
-@inline function thick_pure_bdipole(tm::Union{SplitIntegration,DriftKick}, bunch, bm, L)
+@inline function thick_pure_bdipole(tm::DriftKick, bunch, bm, L)
   brho_0 = bunch.Brho_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
   mm = bm.order
@@ -66,33 +66,31 @@ end
   return integration_launcher!(IntegrationTracking.dkd_multipole!, params, tm, L)
 end
 
-@inline thick_bdipole(tm::Union{SplitIntegration,DriftKick}, bunch, bm, L) = 
-  thick_pure_bdipole(tm, bunch, bm, L)
+@inline thick_bdipole(tm::DriftKick, bunch, bm, L) = thick_pure_bdipole(tm, bunch, bm, L)
 
-#=
-@inline function thick_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm1, L)
-  brho_0 = bunch.Brho_ref
-  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
-  b0 = brho_0 * get_thick_strength(bm1, L, brho_0)
-  return KernelCall(ExactTracking.exact_sbend!, (beta_0, brho_0, 0, b0, 0, 0, L))
-end
+@inline thick_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm1, L) = 
+  thick_pure_bdipole(Exact(), bunch, bm1, L)
 
 @inline function thick_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm, L)
   brho_0 = bunch.Brho_ref
-  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
-  b0 = brho_0 * get_thick_strength(bm[1], L, brho_0)
-  mm, kn, sn = get_thick_multipoles_no_dipole(bunch, bm, L)
-  params = (beta_0, brho_0, 0, b0, 0, 0, mm, kn, sn)
+  tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
+  mm = bm.order
+  kn, ks = get_strengths(bm, L, brho_0)
+  k0 = sqrt(kn[1]^2 + ks[1]^2)
+  tilt = atan(ks[1], kn[1])
+  w = ExactTracking.w_matrix(0,0,tilt)
+  w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
+  params = (tilde_m, beta_0, 0, 0, 0, 0, w, w_inv, k0, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
 end
-=#
+
 @inline function thick_pure_bquadrupole(tm::Union{SplitIntegration,MatrixKick}, bunch, bm, L)
   brho_0 = bunch.Brho_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
   mm = bm.order
   kn, ks = get_strengths(bm, L, brho_0)
   k1 = sqrt(kn[1]^2 + ks[1]^2)
-  tilt = atan(ks[1],kn[1]) / 2
+  tilt = atan(ks[1], kn[1]) / 2
   w = ExactTracking.w_matrix(0,0,tilt)
   w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
   params = (beta_0, gamsqr_0, tilde_m, w, w_inv, k1, mm, kn, ks)
@@ -115,56 +113,11 @@ end
 
 
 # =========== BENDING ELEMENTS ============= #
-#=@inline function thick_bend_no_field(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, L)
-  brho_0 = bunch.Brho_ref
-  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
-  hc, e1, e2 = bendparams.g_ref, bendparams.e1, bendparams.e2
-  return KernelCall(ExactTracking.exact_sbend!, (beta_0, brho_0, hc, 0, e1, e2, L))
-end
+@inline thick_bend_no_field(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, L) = 
+  thick_bend_no_field(Exact(), bunch, bendparams, L)
 
-@inline function thick_bend_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm1, L)
-  brho_0 = bunch.Brho_ref
-  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
-  b0 = brho_0 * get_thick_strength(bm1, L, brho_0)
-  hc, e1, e2 = bendparams.g_ref, bendparams.e1, bendparams.e2
-  return KernelCall(ExactTracking.exact_sbend!, (beta_0, brho_0, hc, b0, e1, e2, L))
-end
-
-@inline function thick_bend_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm, L)
-  brho_0 = bunch.Brho_ref
-  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
-  b0 = brho_0 * get_thick_strength(bm.bdict[1], L, brho_0)
-  hc, e1, e2 = bendparams.g_ref, bendparams.e1, bendparams.e2
-  mm, kn, sn = get_thick_multipoles_no_dipole(bunch, bm, L)
-  params = (beta_0, brho_0, hc, b0, e1, e2, mm, kn, sn)
-  return integration_launcher!(EIntegrationTracking.bkb_multipole!, params, tm, L)
-end
-
-@inline function thick_bend_pure_bquadrupole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm2, L)
-  brho_0 = bunch.Brho_ref
-  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
-  hc, e1, e2 = bendparams.g_ref, bendparams.e1, bendparams.e2
-  K1 = get_thick_strength(bm2, L, brho_0)
-  mm = @SArray [bm2.order]
-  kn = @SArray [K1 * cos(-bm2.order*bm2.tilt)]
-  sn = @SArray [K1 * sin(-bm2.order*bm2.tilt)]
-  params = (beta_0, brho_0, hc, 0, e1, e2, mm, kn, sn)
-  return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
-end
-
-@inline function thick_bend_bquadrupole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm, L)
-  brho_0 = bunch.Brho_ref
-  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
-  hc, e1, e2 = bendparams.g_ref, bendparams.e1, bendparams.e2
-  mm, kn, sn = get_thick_multipoles(bunch, bm, L)
-  params = (beta_0, brho_0, hc, 0, e1, e2, mm, kn, sn)
-  return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
-end
-
-@inline thick_bend_pure_bmultipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm1, L) = thick_bend_pure_bquadrupole(tm, bunch, bendparams, bm1, L)
-
-@inline thick_bend_bmultipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bdict, L) = thick_bend_bquadrupole(tm, bunch, bendparams, bdict, L)
-=#
+@inline thick_bend_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm1, L) = 
+  thick_bend_pure_bdipole(Exact(), bunch, bendparams, bm1, L)
 
 # =========== PATCH ============= #
 @inline pure_patch(tm::SplitIntegration, bunch, patchparams, L)  = 
