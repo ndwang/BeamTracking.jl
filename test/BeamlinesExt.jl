@@ -296,11 +296,27 @@
     @test b0.state[1] == State.Lost
     @test v_init == b0.v
 
-    # Particle lost (momentum is too small):
+    # Particle lost in bend (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], Brho_ref=Brho_ref)
     v_init = copy(b0.v)
     ele_bend = LineElement(L=1.0, g_ref=0.01, Kn0=0.01, tracking_method=Exact())
     track!(b0, Beamline([ele_bend], Brho_ref=Brho_ref))
+    @test b0.state[1] == State.Lost
+    @test v_init == b0.v
+
+    # Particle lost in drift (momentum is too small):
+    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], Brho_ref=Brho_ref)
+    v_init = copy(b0.v)
+    ele_drift = LineElement(L=1.0, tracking_method=Exact())
+    track!(b0, Beamline([ele_drift], Brho_ref=Brho_ref))
+    @test b0.state[1] == State.Lost
+    @test v_init == b0.v
+
+    # Particle lost in solenoid (momentum is too small):
+    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], Brho_ref=Brho_ref)
+    v_init = copy(b0.v)
+    ele_sol = LineElement(L=1.0, Ksol=1.0, tracking_method=Exact())
+    track!(b0, Beamline([ele_sol], Brho_ref=Brho_ref))
     @test b0.state[1] == State.Lost
     @test v_init == b0.v
 

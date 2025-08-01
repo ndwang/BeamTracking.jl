@@ -52,17 +52,21 @@ values of ``ε``.
 @makekernel fastgtpsa=true function exact_drift!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, L)
   v = b.v
 
-  P_s = sqrt((1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2))
-  v[i,XI] = v[i,XI] + v[i,PXI] * L / P_s
-  v[i,YI] = v[i,YI] + v[i,PYI] * L / P_s
+  P_s2 = (1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)
+  b.state[i] = ifelse(P_s2 <= 0 && b.state[i] == State.Alive, State.Lost, b.state[i])
+  alive = ifelse(b.state[i]==State.Alive, 1, 0) 
+  P_s = sqrt(P_s2 + (alive-1)*(P_s2-1))
+
+  v[i,XI] = alive*(v[i,XI] + v[i,PXI] * L / P_s) - (alive - 1) * v[i,XI]
+  v[i,YI] = alive*(v[i,YI] + v[i,PYI] * L / P_s) - (alive - 1) * v[i,YI]
   # high-precision computation of z_final:
   #   vf.z = vi.z - (1 + δ) * L * (1 / Ps - 1 / (β0 * sqrt((1 + δ)^2 + tilde_m^2)))
-  v[i,ZI] = v[i,ZI] - ( (1 + v[i,PZI]) * L
+  v[i,ZI] = alive*(v[i,ZI] - ( (1 + v[i,PZI]) * L
                 * ((v[i,PXI]^2 + v[i,PYI]^2) - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
                 / ( beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) * P_s
                     * (beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) + P_s)
                   )
-              )
+              )) - (alive - 1) * v[i,ZI]
 end # function exact_drift!()
 
 
@@ -272,7 +276,11 @@ end
 
   # Recurring variables
   rel_p = 1 + v[i,PZI]
-  pr = sqrt(rel_p^2 - (v[i,PXI] + v[i,YI] * ks / 2)^2 - (v[i,PYI] - v[i,XI] * ks / 2)^2)
+  pr2 = rel_p^2 - (v[i,PXI] + v[i,YI] * ks / 2)^2 - (v[i,PYI] - v[i,XI] * ks / 2)^2
+  b.state[i] = ifelse(pr2 <= 0 && b.state[i] == State.Alive, State.Lost, b.state[i])
+  alive = ifelse(b.state[i]==State.Alive, 1, 0) 
+  pr = sqrt(pr2 + (alive-1)*(pr2-1))
+
   s = sin(ks * L / pr)
   cp = 1 + cos(ks * L / pr)
   cm = 2 - cp
@@ -280,14 +288,16 @@ end
   x_0 = v[i,XI]
   px_0 = v[i,PXI]
   y_0 = v[i,YI]
+  
   # Update
-  v[i,ZI]  -= rel_p * L *
+  v[i,ZI]  = (alive*(v[i,ZI] - rel_p * L *
                 ((v[i,PXI] + v[i,YI] * ks / 2)^2 + (v[i,PYI] - v[i,XI] * ks / 2)^2 - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0) /
-                ( beta_0 * sqrt(rel_p^2 + tilde_m^2) * pr * (beta_0 * sqrt(rel_p^2 + tilde_m^2) + pr) )
-  v[i,XI] = cp * x_0 / 2 + s * (px_0 / ks + y_0 / 2) + cm * v[i,PYI] / ks
-  v[i,PXI] = s * (v[i,PYI] / 2 - ks * x_0 / 4) + cp * px_0 / 2 - ks * cm * y_0 / 4
-  v[i,YI] = s * (v[i,PYI] / ks - x_0 / 2) + cp * y_0 / 2 - cm * px_0 / ks
-  v[i,PYI]  = ks * cm * x_0 / 4 - s * (px_0 / 2 + ks * y_0 / 4) + cp * v[i,PYI] / 2
+                ( beta_0 * sqrt(rel_p^2 + tilde_m^2) * pr * (beta_0 * sqrt(rel_p^2 + tilde_m^2) + pr) )) 
+                - (alive - 1) * v[i,ZI])
+  v[i,XI] = alive*(cp * x_0 / 2 + s * (px_0 / ks + y_0 / 2) + cm * v[i,PYI] / ks) - (alive - 1) * v[i,XI]
+  v[i,PXI] = alive*(s * (v[i,PYI] / 2 - ks * x_0 / 4) + cp * px_0 / 2 - ks * cm * y_0 / 4) - (alive - 1) * v[i,PXI]
+  v[i,YI] = alive*(s * (v[i,PYI] / ks - x_0 / 2) + cp * y_0 / 2 - cm * px_0 / ks) - (alive - 1) * v[i,YI]
+  v[i,PYI]  = alive*(ks * cm * x_0 / 4 - s * (px_0 / 2 + ks * y_0 / 4) + cp * v[i,PYI] / 2) - (alive - 1) * v[i,PYI]
 end
 
 @makekernel fastgtpsa=true function patch_offset!(i, b::BunchView, tilde_m, dx, dy, dt)
