@@ -216,7 +216,7 @@ provided, a linear hard-edge fringe map is applied at both ends.
   me1 = Kn0*tan(e1)/(1 + b.v[i,PZI])
   mx1 = SA[1 0; me1  1]
   my1 = SA[1 0;-me1  1]
-  me2 = Kn0*tan(e2)/(1+v[i,PZI])
+  me2 = Kn0*tan(e2)/(1 + b.v[i,PZI])
   mx2 = SA[1 0; me2  1]
   my2 = SA[1 0;-me2 1]
   
