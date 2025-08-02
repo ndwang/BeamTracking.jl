@@ -40,7 +40,7 @@ function track!(
     return bunch
   end
 
-  check_Brho(bl.Brho_ref, bunch)
+  check_rigidity!(bl.rigidity, bunch)
 
   if !outer_particle_loop
     for ele in bl.line
@@ -65,7 +65,7 @@ function track!(
     return bunch
   end
   
-  check_Brho(NaN, bunch)
+  check_rigidity!(NaN, bunch)
 
   if !outer_particle_loop
     if !isnothing(bbl.rep)
@@ -118,7 +118,7 @@ function _track!(
 end
 =#
 include("unpack.jl")
-include("SciBmadStandard.jl")
+include("scibmadstandard.jl")
 include("linear.jl")
 include("exact.jl")
 include("integration.jl")
