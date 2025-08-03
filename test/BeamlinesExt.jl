@@ -588,6 +588,14 @@
     @test b0.state[1] == State.Lost
     @test v_init == b0.v
 
+    # Particle lost in patch (momentum is too small):
+    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], Brho_ref=Brho_ref)
+    v_init = copy(b0.v)
+    ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
+    track!(b0, Beamline([ele_patch], Brho_ref=Brho_ref))
+    @test b0.state[1] == State.Lost
+    @test v_init == b0.v
+
     # Errors:
     @test_throws ErrorException MatrixKick(ds_step = 0.1, num_steps = 2)
     @test_throws ErrorException BendKick(order = 2, num_steps = -2)
