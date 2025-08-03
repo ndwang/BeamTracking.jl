@@ -103,12 +103,13 @@ properties, though I've not seen a proof of that claim.
        Moreover, and this is essential, the multipole
        coefficients must appear in ascending order.
 """
-@makekernel fastgtpsa=true function multipole_kick!(i, b::BunchView, ms, knl, ksl, start)
+@makekernel fastgtpsa=true function multipole_kick!(i, b::BunchView, ms, knl, ksl, excluding)
   v = b.v
+  alive = (b.state[i] == State.Alive)
 
   jm = length(ms)
   m  = ms[jm]
-  add = (start <= m)
+  add = alive && (m != excluding)
   ar = knl[jm] * add
   ai = ksl[jm] * add
   jm -= 1
@@ -117,7 +118,7 @@ properties, though I've not seen a proof of that claim.
     t  = (ar * v[i,XI] - ai * v[i,YI]) / m
     ai = (ar * v[i,YI] + ai * v[i,XI]) / m
     ar = t
-    add = (0 < jm && m == ms[jm]) && (start <= m) # branchless
+    add = alive && (0 < jm && m == ms[jm]) && (m != excluding) # branchless
     idx = max(1, jm) # branchless trickery
     ar += knl[idx] * add
     ai += ksl[idx] * add
@@ -288,7 +289,7 @@ end
   x_0 = v[i,XI]
   px_0 = v[i,PXI]
   y_0 = v[i,YI]
-  
+
   # Update
   v[i,ZI]  = (alive*(v[i,ZI] - rel_p * L *
                 ((v[i,PXI] + v[i,YI] * ks / 2)^2 + (v[i,PYI] - v[i,XI] * ks / 2)^2 - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0) /
@@ -302,10 +303,11 @@ end
 
 @makekernel fastgtpsa=true function patch_offset!(i, b::BunchView, tilde_m, dx, dy, dt)
   v = b.v
+  alive = ifelse(b.state[i]==State.Alive, 1, 0) 
   rel_p = 1 + v[i,PZI]
-  v[i,XI] -= dx
-  v[i,YI] -= dy
-  v[i,ZI] += rel_p/sqrt(rel_p^2+tilde_m^2)*C_LIGHT*dt
+  v[i,XI] -= alive*dx
+  v[i,YI] -= alive*dy
+  v[i,ZI] += alive*rel_p/sqrt(rel_p^2+tilde_m^2)*C_LIGHT*dt
 end
 
 @makekernel fastgtpsa=true function patch_rotation!(i, b::BunchView, winv::StaticMatrix{3,3}, dz)
@@ -328,17 +330,21 @@ end
 @makekernel fastgtpsa=true function patch!(i, b::BunchView, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv::Union{StaticMatrix{3,3},Nothing}, L)
   v = b.v
   rel_p = 1 + v[i,PZI]
+  cond = (1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2
+  b.state[i] = ifelse(cond <= 0 && b.state[i] == State.Alive, State.Lost, b.state[i])
+  alive = ifelse(b.state[i]==State.Alive, 1, 0) 
+  ps_0 = alive * sqrt(cond + (alive-1)*(cond-1))
   # Only apply rotations if needed
   if isnothing(winv)
     patch_offset!(i, b, tilde_m, dx, dy, dt)
     exact_drift!(i, b, beta_0, gamsqr_0, tilde_m, L)
-    v[i,ZI] -= (dz-L) * rel_p / sqrt(rel_p^2 - v[i,PXI]^2 - v[i,PYI]^2)
+    v[i,ZI] -= alive*((dz-L) * rel_p / ps_0)
   else
     patch_offset!(i, b, tilde_m, dx, dy, dt)
     s_f = winv[3,1]*v[i,XI] + winv[3,2]*v[i,YI] - winv[3,3]*dz
     patch_rotation!(i, b, winv, dz)
     exact_drift!(i, b, beta_0, gamsqr_0, tilde_m, -s_f)
-    v[i,ZI] += (s_f + L) * rel_p * sqrt((1 + tilde_m^2)/(rel_p^2 + tilde_m^2))
+    v[i,ZI] += alive*((s_f + L) * rel_p * sqrt((1 + tilde_m^2)/(rel_p^2 + tilde_m^2)))
   end
 end
 
