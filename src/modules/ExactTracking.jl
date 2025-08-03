@@ -103,12 +103,13 @@ properties, though I've not seen a proof of that claim.
        Moreover, and this is essential, the multipole
        coefficients must appear in ascending order.
 """
-@makekernel fastgtpsa=true function multipole_kick!(i, b::BunchView, ms, knl, ksl, start)
+@makekernel fastgtpsa=true function multipole_kick!(i, b::BunchView, ms, knl, ksl, excluding)
   v = b.v
+  alive = (b.state[i] == State.Alive)
 
   jm = length(ms)
   m  = ms[jm]
-  add = (start <= m)
+  add = alive && (m != excluding)
   ar = knl[jm] * add
   ai = ksl[jm] * add
   jm -= 1
@@ -117,7 +118,7 @@ properties, though I've not seen a proof of that claim.
     t  = (ar * v[i,XI] - ai * v[i,YI]) / m
     ai = (ar * v[i,YI] + ai * v[i,XI]) / m
     ar = t
-    add = (0 < jm && m == ms[jm]) && (start <= m) # branchless
+    add = alive && (0 < jm && m == ms[jm]) && (m != excluding) # branchless
     idx = max(1, jm) # branchless trickery
     ar += knl[idx] * add
     ai += ksl[idx] * add
@@ -288,7 +289,7 @@ end
   x_0 = v[i,XI]
   px_0 = v[i,PXI]
   y_0 = v[i,YI]
-  
+
   # Update
   v[i,ZI]  = (alive*(v[i,ZI] - rel_p * L *
                 ((v[i,PXI] + v[i,YI] * ks / 2)^2 + (v[i,PYI] - v[i,XI] * ks / 2)^2 - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0) /
