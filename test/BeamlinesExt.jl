@@ -462,7 +462,7 @@
 
    # Straight dipole with quadrupole (MK):
     ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=SplitIntegration(order=6,num_steps=10))
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref)
+    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/straight_dipole_bk.jl")

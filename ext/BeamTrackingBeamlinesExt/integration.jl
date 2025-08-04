@@ -27,7 +27,7 @@ end
   R_ref = bunch.R_ref
   mm = bm.order
   knl, ksl = get_integrated_strengths(bm, 0, R_ref)
-  return KernelCall(ExactTracking.multipole_kick!, (mm, knl, ksl, 1))
+  return KernelCall(ExactTracking.multipole_kick!, (mm, knl, ksl, -1))
 end
 
 @inline thin_bdipole(tm::SplitIntegration, bunch, bm) = thin_pure_bdipole(tm, bunch, bm)
