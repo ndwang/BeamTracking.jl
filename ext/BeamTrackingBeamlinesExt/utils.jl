@@ -1,34 +1,40 @@
-function check_bl_bunch!(bl::Beamline, bunch::Bunch)
+function check_bl_bunch!(bl::Beamline, bunch::Bunch, notify::Bool=true)
   R_ref = getfield(bl, :R_ref)
   species_ref = getfield(bl, :species_ref)
-  check_species!(species_ref, bunch)
-  check_R_ref!(R_ref, bunch)
+  check_species!(species_ref, bunch, notify)
+  check_R_ref!(R_ref, bunch, notify)
   return
 end
 
-function check_species!(species_ref::Species, bunch::Bunch)
+function check_species!(species_ref::Species, bunch::Bunch, notify)
   if isnullspecies(bunch.species)
     if isnullspecies(species_ref)
       error("Bunch species has not been set")
     else
-      @info "Setting bunch.species = $species_ref (reference species from the Beamline)"
+      if notify
+        @info "Setting bunch.species = $species_ref (reference species from the Beamline)"
+      end
       setfield!(bunch, :species, species_ref)
     end
-  elseif !isnullspecies(species_ref) && species_ref != bunch.species
+  elseif !isnullspecies(species_ref) && species_ref != bunch.species && notify
     @warn "The species of the bunch does NOT equal the reference species of the Beamline."
   end
   return
 end
 
-function check_R_ref!(R_ref, bunch::Bunch)
+function check_R_ref!(R_ref, bunch::Bunch, notify)
   if isnan(bunch.R_ref)
     if isnothing(R_ref)
-      @warn "Both the bunch and beamline do not have any set R_ref. If any LineElements have unnormalized fields stored as independent variables, there will be an error."
+      if notify
+        @warn "Both the bunch and beamline do not have any set R_ref. If any LineElements have unnormalized fields stored as independent variables, there will be an error."
+      end
     else
-      @info "Setting bunch.R_ref = $R_ref (reference R_ref from the Beamline)"
+      if notify
+        @info "Setting bunch.R_ref = $R_ref (reference R_ref from the Beamline)"
+      end
       setfield!(bunch, :R_ref, typeof(bunch.R_ref)(R_ref)) #R_ref = R_ref
     end
-  elseif !isnothing(R_ref)  && !(R_ref ≈ bunch.R_ref)
+  elseif !isnothing(R_ref)  && !(R_ref ≈ bunch.R_ref) && notify
     @warn "The reference energy of the bunch does NOT equal the reference energy of the Beamline. 
     Normalized field strengths in tracking ALWAYS use the reference energy of the bunch."
   end

@@ -85,10 +85,10 @@ end
 end
 
 @inline function thick_bdipole(tm::MatrixKick, bunch, bm, L)
-  brho_0 = bunch.Brho_ref
-  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, brho_0)
+  R_ref = bunch.R_ref
+  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
   mm = bm.order
-  kn, ks = get_strengths(bm, L, brho_0)
+  kn, ks = get_strengths(bm, L, R_ref)
   k1 = sqrt(kn[2]^2 + ks[2]^2) * (mm[2] == 2)
   tilt = (atan(ks[2], kn[2]) / 2) * (mm[2] == 2)
   w = ExactTracking.w_matrix(0,0,tilt)
