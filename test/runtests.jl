@@ -96,20 +96,20 @@ function test_map(
 
 
   #= LineElement tracking test
-    if haskey(kwargs, :rigidity) && haskey(kwargs, :species)
-      rigidity = kwargs[:rigidity]
+    if haskey(kwargs, :R_ref) && haskey(kwargs, :species)
+      R_ref = kwargs[:R_ref]
     elseif haskey(kwargs, :E) && haskey(kwargs, :species)
-      rigidity = BeamTracking.calc_rigidity(kwargs[:species], kwargs[:E])
+      R_ref = BeamTracking.calc_R_ref(kwargs[:species], kwargs[:E])
     elseif haskey(kwargs, :p0c) && haskey(kwargs, :species)
-      rigidity = BeamTracking.calc_rigidity(kwargs[:species], sqrt(kwargs[:p0c]^2 + BeamTracking.massof(kwargs[:species])^2))
+      R_ref = BeamTracking.calc_R_ref(kwargs[:species], sqrt(kwargs[:p0c]^2 + BeamTracking.massof(kwargs[:species])^2))
     else
-      error("`rigidity`, `E` or `p0c`, as well as `species` must both be provided as keyword arguments")
+      error("`R_ref`, `E` or `p0c`, as well as `species` must both be provided as keyword arguments")
     end
     
     if !haskey(kwargs, :ele)
       error("ele must be provided as a keyword argument")
     else
-      b = Bunch(v, species=kwargs[:species], rigidity=rigidity)
+      b = Bunch(v, species=kwargs[:species], R_ref=R_ref)
       v = track!(b, kwargs[:ele]).v
       @test coeffs_approx_equal(v_expected, v, tol)
     end

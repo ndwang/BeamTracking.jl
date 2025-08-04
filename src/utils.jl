@@ -130,12 +130,12 @@ massof(s::Species) = s.mass
 chargeof(s::Species) = s.charge
 
 # Particle energy conversions =============================================================
-calc_rigidity(species::Species, E) = @FastGTPSA sqrt(E^2-massof(species)^2)/C_LIGHT/chargeof(species)
-calc_E(species::Species, rigidity) = @FastGTPSA sqrt((rigidity*C_LIGHT*chargeof(species))^2 + massof(species)^2)
-calc_gamma(species::Species, rigidity) = @FastGTPSA sqrt((rigidity*C_LIGHT/massof(species))^2+1)
+calc_R_ref(species::Species, E) = @FastGTPSA sqrt(E^2-massof(species)^2)/C_LIGHT/chargeof(species)
+calc_E(species::Species, R_ref) = @FastGTPSA sqrt((R_ref*C_LIGHT*chargeof(species))^2 + massof(species)^2)
+calc_gamma(species::Species, R_ref) = @FastGTPSA sqrt((R_ref*C_LIGHT/massof(species))^2+1)
 
-calc_p0c(species::Species, rigidity) = @FastGTPSA rigidity*C_LIGHT*chargeof(species)
-calc_beta_gamma(species::Species, rigidity) = @FastGTPSA rigidity*chargeof(species)*C_LIGHT/massof(species)
+calc_p0c(species::Species, R_ref) = @FastGTPSA R_ref*C_LIGHT*chargeof(species)
+calc_beta_gamma(species::Species, R_ref) = @FastGTPSA R_ref*chargeof(species)*C_LIGHT/massof(species)
 
 
 
@@ -211,14 +211,14 @@ end
 
 
 """
-    rigidity(e_rest, beta_gamma, ne = 1)
+    R_ref(e_rest, beta_gamma, ne = 1)
 
 For a particle with a given rest energy and relativistic parameter
-``\\beta\\gamma``, compute the magnetic rigidity, ``B\\rho = p / q``.
+``\\beta\\gamma``, compute the magnetic R_ref, ``B\\rho = p / q``.
 
 DTA: Need to handle energy units other than ``\\mathrm{eV}``..
 """
-function rigidity(e_rest, beta_gamma, ne = 1)
+function R_ref(e_rest, beta_gamma, ne = 1)
   return (sr_pc(e_rest, beta_gamma) / (ne * C_LIGHT))
 end
 ## If given ``E_\text{kin}`` instead of ``\beta\gamma``,
@@ -249,7 +249,7 @@ end
 #  return e_rest + e_kin
 #end
 #
-#function rigidity(e_rest, e_kin, ne = 1)
+#function R_ref(e_rest, e_kin, ne = 1)
 #  return sr_pc(e_rest, e_kin) / (ne * clight)
 #end
 

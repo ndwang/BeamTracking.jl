@@ -154,7 +154,7 @@ Arguments
 —————————
 k1:  g / Bρ0 = g / (p0 / q)
          where g and Bρ0 respectively denote the quadrupole gradient
-         and (signed) reference magnetic rigidity.
+         and (signed) reference magnetic R_ref.
 s: element length
 """
 @makekernel fastgtpsa=true function quadrupole_matrix!(i, b::BunchView, k1, s)
