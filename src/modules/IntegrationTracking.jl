@@ -135,13 +135,15 @@ L: element length
 @makekernel fastgtpsa=true function mkm_quadrupole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, w, w_inv, k1, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
-  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 3)
+  Ps2 = (1+b.v[i,PZI])^2 - b.v[i,PXI]^2 - b.v[i,PYI]^2        
+  coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])  
+  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
   ExactTracking.patch_rotation!(i, coords, w, 0)
   quadrupole_matrix!(           i, coords, k1, L)
   ExactTracking.patch_rotation!(i, coords, w_inv, 0)
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
-  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 3)
+  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
 end 
 
 
@@ -159,6 +161,7 @@ s: element length
 """
 @makekernel fastgtpsa=true function quadrupole_matrix!(i, coords::Coords, k1, s)
   v = coords.v
+  alive = ifelse(coords.state[i] == State.Alive, 1, 0)
 
   focus = k1 >= 0  # horizontally focusing if positive
   defocus = k1 < 0 
@@ -177,9 +180,9 @@ s: element length
   sx = focus * sinecu  + defocus * shinecu
   sy = focus * shinecu + defocus * sinecu
 
-  v[i,PXI] = v[i,PXI] * cx - k1 * s * v[i,XI] * sx
-  v[i,PYI] = v[i,PYI] * cy + k1 * s * v[i,YI] * sy
-  v[i,ZI]  = (v[i,ZI] - (s / 4) * (  xp^2 * (1 + sx * cx)
+  v[i,PXI] = alive*(v[i,PXI] * cx - k1 * s * v[i,XI] * sx) - (alive-1) * v[i,PXI]
+  v[i,PYI] = alive*(v[i,PYI] * cy + k1 * s * v[i,YI] * sy) - (alive-1) * v[i,PYI]
+  v[i,ZI]  = (alive*((v[i,ZI] - (s / 4) * (  xp^2 * (1 + sx * cx)
                                     + yp^2 * (1 + sy * cy)
                                     + k1 / (1 + v[i,PZI])
                                         * ( v[i,XI]^2 * (1 - sx * cx)
@@ -187,9 +190,9 @@ s: element length
                                   )
                       + sign(k1) * ( v[i,XI] * xp * (sqrtks * sx)^2
                               - v[i,YI] * yp * (sqrtks * sy)^2 ) / 2
-              )
-  v[i,XI]  = v[i,XI] * cx + xp * s * sx
-  v[i,YI]  = v[i,YI] * cy + yp * s * sy
+              )) - (alive-1) * v[i,ZI])
+  v[i,XI]  = alive*(v[i,XI] * cx + xp * s * sx) - (alive-1) * v[i,XI]
+  v[i,YI]  = alive*(v[i,YI] * cy + yp * s * sy) - (alive-1) * v[i,YI]
 end 
 
 
@@ -215,18 +218,23 @@ s: element length
 @makekernel fastgtpsa=true function quadrupole_kick!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, s)
   v = coords.v
 
-  P     = 1 + v[i,PZI]             # [scaled] total momentum, P/P0 = 1 + δ
-  PtSqr = v[i,PXI]^2 + v[i,PYI]^2  # (transverse momentum)^2, P⟂^2 = (Px^2 + Py^2) / P0^2
-  Ps    = sqrt(P^2 - PtSqr)        # longitudinal momentum,   Ps   = √[(1 + δ)^2 - P⟂^2]
+  P      = 1 + v[i,PZI]             # [scaled] total momentum, P/P0 = 1 + δ
+  PtSqr  = v[i,PXI]^2 + v[i,PYI]^2  # (transverse momentum)^2, P⟂^2 = (Px^2 + Py^2) / P0^2
+  Ps2    = P^2 - PtSqr        
+  coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
+  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+  Ps = sqrt(Ps2 + (alive-1)*(Ps2-1)) # longitudinal momentum,   Ps   = √[(1 + δ)^2 - P⟂^2]
 
-  v[i,XI] = v[i,XI] + s * v[i,PXI] * PtSqr / (P * Ps * (P + Ps))
-  v[i,YI] = v[i,YI] + s * v[i,PYI] * PtSqr / (P * Ps * (P + Ps))
-  v[i,ZI] = v[i,ZI] - s * ( P * (PtSqr - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
+  v[i,XI] = (alive*(v[i,XI] + s * v[i,PXI] * PtSqr / (P * Ps * (P + Ps)))
+            - (alive - 1) * v[i,XI])
+  v[i,YI] = (alive*(v[i,YI] + s * v[i,PYI] * PtSqr / (P * Ps * (P + Ps)))
+            - (alive - 1) * v[i,YI])
+  v[i,ZI] = (alive*(v[i,ZI] - s * ( P * (PtSqr - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
                                 / ( beta_0 * sqrt(P^2 + tilde_m^2) * Ps
                                     * (beta_0 * sqrt(P^2 + tilde_m^2) + Ps)
                                   )
                             - PtSqr / (2 * P^2)
-                          )
+                          )) - (alive - 1) * v[i,ZI])
 end # function quadrupole_kick!()
 
 
@@ -260,9 +268,9 @@ Arguments
 @makekernel fastgtpsa=false function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, e1, e2, theta, g, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, k0, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
-  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
+  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
   ExactTracking.exact_bend!(    i, coords, e1, e2, theta, g, k0, w, w_inv, tilde_m, beta_0, L)
-  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
+  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
 end 
 
 
@@ -292,7 +300,7 @@ L:  element length
 """
 @makekernel fastgtpsa=true function sks_multipole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, Ksol, mm, kn, sn, L)
   ExactTracking.exact_solenoid!(i, coords, Ksol, beta_0, gamsqr_0, tilde_m, L / 2)
-  ExactTracking.multipole_kick!(i, coords, mm, kn * L, sn * L, 1)
+  ExactTracking.multipole_kick!(i, coords, mm, kn * L, sn * L, -1)
   ExactTracking.exact_solenoid!(i, coords, Ksol, beta_0, gamsqr_0, tilde_m, L / 2)
 end 
 
@@ -323,7 +331,7 @@ L:  element length
 """
 @makekernel fastgtpsa=true function dkd_multipole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, mm, kn, ks, L)
   ExactTracking.exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
-  ExactTracking.multipole_kick!(i, coords, mm, kn * L, ks * L, 1)
+  ExactTracking.multipole_kick!(i, coords, mm, kn * L, ks * L, -1)
   ExactTracking.exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
 end
 
