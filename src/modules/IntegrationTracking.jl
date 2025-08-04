@@ -135,7 +135,7 @@ L: element length
 @makekernel fastgtpsa=true function mkm_quadrupole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, w, w_inv, k1, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
-  Ps2 = (1+b.v[i,PZI])^2 - b.v[i,PXI]^2 - b.v[i,PYI]^2        
+  Ps2 = (1+coords.v[i,PZI])^2 - coords.v[i,PXI]^2 - coords.v[i,PYI]^2        
   coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])  
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
