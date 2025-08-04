@@ -93,49 +93,14 @@ function sincuc(x)
   return y
 end
 
-# Fake APC ====================================================================
-const Q = 1.602176634e-19 # C
-const C_LIGHT = 2.99792458e8 # m/s
-const M_ELECTRON = 0.51099895069e6 # eV/c^2
-const M_PROTON = 9.3827208943e8 # eV/c^2
-
-struct Species
-  name::String
-  mass::Float64   # in eV/c^2
-  charge::Float64 # in Coulomb
-end
-
-const ELECTRON = Species("electron", M_ELECTRON,-1)
-const POSITRON = Species("positron", M_ELECTRON,1)
-
-const PROTON = Species("proton", M_PROTON,1)
-const ANTIPROTON = Species("antiproton", M_PROTON,-1)
-
-
-function Species(name)
-  if name == "electron"
-    return ELECTRON
-  elseif name == "positron"
-    return POSITRON
-  elseif name == "proton"
-    return PROTON
-  elseif name == "ANTIPROTON"
-    return ANTIPROTON
-  else
-    error("BeamTracking.jl's fake APC does not support species $name")
-  end
-end
-
-massof(s::Species) = s.mass
-chargeof(s::Species) = s.charge
-
 # Particle energy conversions =============================================================
-calc_R_ref(species::Species, E) = @FastGTPSA sqrt(E^2-massof(species)^2)/C_LIGHT/chargeof(species)
-calc_E(species::Species, R_ref) = @FastGTPSA sqrt((R_ref*C_LIGHT*chargeof(species))^2 + massof(species)^2)
-calc_gamma(species::Species, R_ref) = @FastGTPSA sqrt((R_ref*C_LIGHT/massof(species))^2+1)
+R_to_E(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT*chargeof(species))^2 + massof(species)^2)
+E_to_R(species::Species, E) = @FastGTPSA massof(species)*sinh(acosh(E/massof(species)))/C_LIGHT/chargeof(species) 
+pc_to_R(species::Species, pc) = @FastGTPSA pc/C_LIGHT/chargeof(species)
 
-calc_p0c(species::Species, R_ref) = @FastGTPSA R_ref*C_LIGHT*chargeof(species)
-calc_beta_gamma(species::Species, R_ref) = @FastGTPSA R_ref*chargeof(species)*C_LIGHT/massof(species)
+R_to_gamma(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT/massof(species))^2+1)
+R_to_pc(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT
+R_to_beta_gamma(species::Species, R_ref) = @FastGTPSA R_ref*chargeof(species)*C_LIGHT/massof(species)
 
 
 

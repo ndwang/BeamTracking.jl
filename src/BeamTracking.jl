@@ -15,7 +15,12 @@ using KernelAbstractions
 import GTPSA: sincu, sinhcu
 import Base: setproperty!
 
-export Bunch, Species, State, ParticleView, ELECTRON, POSITRON, PROTON, ANTIPROTON, sincu, sinhcu, sincuc
+# Put AtomicAndPhysicalConstants in a box for now for safety
+include("Constants.jl")
+using .Constants: Constants, Species, massof, chargeof, C_LIGHT, isnullspecies
+export Species
+
+export Bunch, State, ParticleView, sincu, sinhcu, sincuc
 export LinearTracking, Linear
 export ExactTracking, Exact
 export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
@@ -35,7 +40,6 @@ include("modules/IntegrationTracking.jl") #; TRACKING_METHOD(::LinearTracking) =
 # Empty tracking method to be imported+implemented by package extensions
 function track! end
 
-function MAX_TEMPS end
 # --------------------------------------------------
 
 

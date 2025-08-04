@@ -35,7 +35,7 @@ end
   beta_gamma_ref = 1.0
   gamma_ref = sr_gamma(beta_gamma_ref)
   species = Species("electron")
-  R_ref_ref = R_ref(massof(species), beta_gamma_ref, chargeof(species)) 
+  R_ref_ref = R_ref(BeamTracking.massof(species), beta_gamma_ref, chargeof(species)) 
   tol = 1e-14 
 
   # Linear drift test:

@@ -1,15 +1,38 @@
+function check_bl_bunch!(bl::Beamline, bunch::Bunch)
+  R_ref = getfield(bl, :R_ref)
+  species_ref = getfield(bl, :species_ref)
+  check_species!(species_ref, bunch)
+  check_R_ref!(R_ref, bunch)
+  return
+end
+
+function check_species!(species_ref::Species, bunch::Bunch)
+  if isnullspecies(bunch.species)
+    if isnullspecies(species_ref)
+      error("Bunch species has not been set")
+    else
+      @info "Setting bunch.species = $species_ref (reference species from the Beamline)"
+      setfield!(bunch, :species, species_ref)
+    end
+  elseif !isnullspecies(species_ref) && species_ref != bunch.species
+    @warn "The species of the bunch does NOT equal the reference species of the Beamline."
+  end
+  return
+end
+
 function check_R_ref!(R_ref, bunch::Bunch)
   if isnan(bunch.R_ref)
-    if isnan(R_ref)
-      @warn "Both the bunch and beamline do not have any set R_ref. If any LineElements have unnormalized fields stored as independent variables, tracking results will be NaNs"
+    if isnothing(R_ref)
+      @warn "Both the bunch and beamline do not have any set R_ref. If any LineElements have unnormalized fields stored as independent variables, there will be an error."
     else
-      @info "Setting bunch.R_ref = $R_ref (from the Beamline)"
+      @info "Setting bunch.R_ref = $R_ref (reference R_ref from the Beamline)"
       setfield!(bunch, :R_ref, typeof(bunch.R_ref)(R_ref)) #R_ref = R_ref
     end
-  elseif !isnan(R_ref)  && !(R_ref ≈ bunch.R_ref)
+  elseif !isnothing(R_ref)  && !(R_ref ≈ bunch.R_ref)
     @warn "The reference energy of the bunch does NOT equal the reference energy of the Beamline. 
     Normalized field strengths in tracking ALWAYS use the reference energy of the bunch."
   end
+  return
 end
 
 get_n_multipoles(::BMultipoleParams{T,N}) where {T,N} = N
