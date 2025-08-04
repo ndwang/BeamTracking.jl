@@ -6,7 +6,7 @@ function check_bl_bunch!(bl::Beamline, bunch::Bunch, notify::Bool=true)
   return
 end
 
-function check_species!(species_ref::Species, bunch::Bunch, notify)
+function check_species!(species_ref::Species, bunch::Bunch, notify=true)
   if isnullspecies(bunch.species)
     if isnullspecies(species_ref)
       error("Bunch species has not been set")
@@ -22,7 +22,7 @@ function check_species!(species_ref::Species, bunch::Bunch, notify)
   return
 end
 
-function check_R_ref!(R_ref, bunch::Bunch, notify)
+function check_R_ref!(R_ref, bunch::Bunch, notify=true)
   if isnan(bunch.R_ref)
     if isnothing(R_ref)
       if notify

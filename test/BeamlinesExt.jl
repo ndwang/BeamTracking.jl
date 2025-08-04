@@ -466,7 +466,7 @@
     bl = Beamline([ele], R_ref=R_ref)
     track!(b0, bl)
     v_expected = read_map("bmad_maps/straight_dipole_bk.jl")
-    @test coeffs_approx_equal(v_expected, b0.v, 4e-7)
+    @test coeffs_approx_equal(v_expected, b0.coords.v, 4e-7)
 
     # Pure quadrupole (MK):
     ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick())
@@ -582,19 +582,19 @@
 
     # Particle lost in quadrupole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], R_ref=R_ref)
-    v_init = copy(b0.v)
+    v_init = copy(b0.coords.v)
     ele_quad = LineElement(L=1.0, Kn1=1e-8, tracking_method=MatrixKick())
     track!(b0, Beamline([ele_quad], R_ref=R_ref))
     @test b0.state[1] == State.Lost
-    @test v_init == b0.v
+    @test v_init == b0.coords.v
 
     # Particle lost in patch (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], R_ref=R_ref)
-    v_init = copy(b0.v)
+    v_init = copy(b0.coords.v)
     ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
     track!(b0, Beamline([ele_patch], R_ref=R_ref))
     @test b0.state[1] == State.Lost
-    @test v_init == b0.v
+    @test v_init == b0.coords.v
 
     # Errors:
     @test_throws ErrorException MatrixKick(ds_step = 0.1, num_steps = 2)
