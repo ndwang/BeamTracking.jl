@@ -581,7 +581,7 @@
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
 
     # Particle lost in quadrupole (momentum is too small):
-    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], R_ref=R_ref)
+    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
     ele_quad = LineElement(L=1.0, Kn1=1e-8, tracking_method=MatrixKick())
     track!(b0, Beamline([ele_quad], R_ref=R_ref))
@@ -589,7 +589,7 @@
     @test v_init == b0.coords.v
 
     # Particle lost in patch (momentum is too small):
-    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], R_ref=R_ref)
+    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
     ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
     track!(b0, Beamline([ele_patch], R_ref=R_ref))
