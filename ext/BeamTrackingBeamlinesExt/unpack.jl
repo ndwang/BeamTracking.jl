@@ -9,11 +9,11 @@ function _track!(
 )
   # Unpack the line element (type unstable)
   L = ele.L # Automatically calls deval (element-level get)
-  ap = deval(unsafe_getparams(ele, :AlignmentParams))
-  bp = deval(unsafe_getparams(ele, :BendParams))
-  bm = deval(unsafe_getparams(ele, :BMultipoleParams))
-  pp = deval(unsafe_getparams(ele, :PatchParams))
-  dp = deval(unsafe_getparams(ele, :ApertureParams))
+  ap = deval(ele.AlignmentParams)
+  bp = deval(ele.BendParams)
+  bm = deval(ele.BMultipoleParams)
+  pp = deval(ele.PatchParams)
+  dp = deval(ele.ApertureParams)
 
   # Function barrier
   universal!(i, coords, tm, bunch, L, ap, bp, bm, pp, dp; kwargs...)
