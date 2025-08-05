@@ -62,15 +62,15 @@ end
 ) where {V}
   v = coords.v
   N_particle = size(v, 1)
-  backend = get_backend(v)
+
   if use_KA && use_explicit_SIMD
     error("Cannot use both KernelAbstractions (KA) and explicit SIMD")
   end
-  
+#=  
   if !use_KA && backend isa GPU
     error("For GPU parallelized kernel launching, KernelAbstractions (KA) must be used")
   end
-
+=#
   if !use_KA
     if use_explicit_SIMD && V <: SIMD.FastContiguousArray && eltype(V) <: SIMD.ScalarTypes && VectorizationBase.pick_vector_width(eltype(V)) > 1 # do SIMD
       simd_lane_width = VectorizationBase.pick_vector_width(eltype(V))
@@ -107,6 +107,7 @@ end
       end
     end
   else
+    backend = get_backend(v)
     if isnothing(groupsize)
       kernel! = generic_kernel!(backend)
     else
