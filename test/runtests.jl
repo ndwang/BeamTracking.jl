@@ -6,7 +6,7 @@ using Test,
       GTPSA,
       StaticArrays
 
-using BeamTracking: BunchView, KernelCall
+using BeamTracking: Coords, KernelCall
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
 
@@ -25,10 +25,10 @@ function test_matrix(
   v = transpose(@vars(D1))
   state = similar(v, State.T, 1)
   state .= State.Alive
-  b = BunchView(state, v, nothing)
+  coords = Coords(state, v, nothing)
 
   # Set up kernel chain and launch!
-  BeamTracking.launch!(b, kernel_call)
+  BeamTracking.launch!(coords, kernel_call)
 
   # Set up tolerance kwargs
   kwargs = ()
@@ -40,16 +40,16 @@ function test_matrix(
   end
 
   # 1) Correctness
-  @test isapprox(GTPSA.jacobian(b.v)[1:6,1:6], scalar.(M_expected); kwargs...)
+  @test isapprox(GTPSA.jacobian(coords.v)[1:6,1:6], scalar.(M_expected); kwargs...)
   # 2) Type stability
   if type_stable
-    @test_opt kernel_call.kernel(1, b, kernel_call.args...)
+    @test_opt kernel_call.kernel(1, coords, kernel_call.args...)
   end
   # 3) No scalar allocations
   if no_scalar_allocs
     v = [0.1 0.2 0.3 0.4 0.5 0.6]
-    @test @ballocated(BeamTracking.launch!(b, $kernel_call; use_KA=false), 
-    setup=(b = BunchView(copy($state), copy($v), nothing))) == 0
+    @test @ballocated(BeamTracking.launch!(coords, $kernel_call; use_KA=false), 
+    setup=(coords = Coords(copy($state), copy($v), nothing))) == 0
   end
 end
 
@@ -76,41 +76,41 @@ function test_map(
   v = transpose(@vars(D10))
   state = similar(v, State.T, 1)
   state .= State.Alive
-  b = BunchView(state, v, nothing)
+  coords = Coords(state, v, nothing)
 
   # Set up kernel chain and launch!
-  BeamTracking.launch!(b, kernel_call)
+  BeamTracking.launch!(coords, kernel_call)
 
   # 1) Correctness
-  @test coeffs_approx_equal(v_expected, b.v, tol)
+  @test coeffs_approx_equal(v_expected, coords.v, tol)
   # 2) Type stability
   if type_stable
-    @test_opt kernel_call.kernel(1, b, kernel_call.args...)
+    @test_opt kernel_call.kernel(1, coords, kernel_call.args...)
   end
   # 3) No scalar allocations
   if no_scalar_allocs
     v = [0.1 0.2 0.3 0.4 0.5 6e16]
-    @test @ballocated(BeamTracking.launch!(b, $kernel_call; use_KA=false), 
-    setup=(b = BunchView(copy($state), copy($v), nothing))) == 0
+    @test @ballocated(BeamTracking.launch!(coords, $kernel_call; use_KA=false), 
+    setup=(coords = Coords(copy($state), copy($v), nothing))) == 0
   end
 
 
   #= LineElement tracking test
-    if haskey(kwargs, :Brho_ref) && haskey(kwargs, :species)
-      Brho_ref = kwargs[:Brho_ref]
+    if haskey(kwargs, :R_ref) && haskey(kwargs, :species)
+      R_ref = kwargs[:R_ref]
     elseif haskey(kwargs, :E) && haskey(kwargs, :species)
-      Brho_ref = BeamTracking.calc_Brho(kwargs[:species], kwargs[:E])
+      R_ref = BeamTracking.E_to_R(kwargs[:species], kwargs[:E])
     elseif haskey(kwargs, :p0c) && haskey(kwargs, :species)
-      Brho_ref = BeamTracking.calc_Brho(kwargs[:species], sqrt(kwargs[:p0c]^2 + BeamTracking.massof(kwargs[:species])^2))
+      R_ref = BeamTracking.E_to_R(kwargs[:species], sqrt(kwargs[:p0c]^2 + BeamTracking.BeamTracking.massof(kwargs[:species])^2))
     else
-      error("`Brho_ref`, `E` or `p0c`, as well as `species` must both be provided as keyword arguments")
+      error("`R_ref`, `E` or `p0c`, as well as `species` must both be provided as keyword arguments")
     end
     
     if !haskey(kwargs, :ele)
       error("ele must be provided as a keyword argument")
     else
-      b = Bunch(v, species=kwargs[:species], Brho_ref=Brho_ref)
-      v = track!(b, kwargs[:ele]).v
+      coords = Bunch(v, species=kwargs[:species], R_ref=R_ref)
+      v = track!(coords, kwargs[:ele]).v
       @test coeffs_approx_equal(v_expected, v, tol)
     end
 
@@ -140,7 +140,7 @@ function coeffs_approx_equal(v_expected, v_calculated, ϵ)
 end
 
 
-#include("LinearTracking.jl")
-#include("ExactTracking.jl")
-#include("IntegrationTracking.jl")
+include("LinearTracking.jl")
+include("ExactTracking.jl")
+include("IntegrationTracking.jl")
 include("BeamlinesExt.jl")

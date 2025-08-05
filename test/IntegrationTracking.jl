@@ -20,7 +20,7 @@
       kn = SA[Kn1]
       sn = SA[Ks1]
       p0c = T(10e6)
-      mc2 = T(ELECTRON.mass)
+      mc2 = T(BeamTracking.massof(Species("electron")))
       tilde_m = mc2/p0c
       gamsqr_0 = 1 + 1/tilde_m^2
       beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -37,7 +37,7 @@
       kn = SA[k1*cos(-2*tilt)]
       ks = SA[k1*sin(-2*tilt)]
       p0c = T(10e6)
-      mc2 = T(ELECTRON.mass)
+      mc2 = T(BeamTracking.massof(Species("electron")))
       tilde_m = mc2/p0c
       gamsqr_0 = 1 + 1/tilde_m^2
       beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -54,7 +54,7 @@
       kn = SA[Kn2, Kn4]
       ks = SA[Ks2, Ks4]
       p0c = T(10e6)
-      mc2 = T(ELECTRON.mass)
+      mc2 = T(BeamTracking.massof(Species("electron")))
       tilde_m = mc2/p0c
       gamsqr_0 = 1 + 1/tilde_m^2
       beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -72,7 +72,7 @@
       ks = SA[Ks0, Ks1]
       w = w_inv = SA[1 0 0; 0 1 0; 0 0 1]
       p0c = T(10e6)
-      mc2 = T(ELECTRON.mass)
+      mc2 = T(BeamTracking.massof(Species("electron")))
       tilde_m = mc2/p0c
       beta_0 = 1/sqrt(1 + tilde_m^2)
       params = (tilde_m, beta_0, 0, 0, 0, 0, w, w_inv, Kn0, mm, kn, ks)
@@ -92,7 +92,7 @@
       kn = SA[Kn2, Kn4]
       ks = SA[Ks2, Ks4]
       p0c = T(10e6)
-      mc2 = T(ELECTRON.mass)
+      mc2 = T(BeamTracking.massof(Species("electron")))
       tilde_m = mc2/p0c
       gamsqr_0 = 1 + 1/tilde_m^2
       beta_0 = 1/sqrt(1 + tilde_m^2)

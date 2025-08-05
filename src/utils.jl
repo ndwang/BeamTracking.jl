@@ -93,49 +93,14 @@ function sincuc(x)
   return y
 end
 
-# Fake APC ====================================================================
-const Q = 1.602176634e-19 # C
-const C_LIGHT = 2.99792458e8 # m/s
-const M_ELECTRON = 0.51099895069e6 # eV/c^2
-const M_PROTON = 9.3827208943e8 # eV/c^2
-
-struct Species
-  name::String
-  mass::Float64   # in eV/c^2
-  charge::Float64 # in Coulomb
-end
-
-const ELECTRON = Species("electron", M_ELECTRON,-1)
-const POSITRON = Species("positron", M_ELECTRON,1)
-
-const PROTON = Species("proton", M_PROTON,1)
-const ANTIPROTON = Species("antiproton", M_PROTON,-1)
-
-
-function Species(name)
-  if name == "electron"
-    return ELECTRON
-  elseif name == "positron"
-    return POSITRON
-  elseif name == "proton"
-    return PROTON
-  elseif name == "ANTIPROTON"
-    return ANTIPROTON
-  else
-    error("BeamTracking.jl's fake APC does not support species $name")
-  end
-end
-
-massof(s::Species) = s.mass
-chargeof(s::Species) = s.charge
-
 # Particle energy conversions =============================================================
-calc_Brho(species::Species, E) = @FastGTPSA sqrt(E^2-massof(species)^2)/C_LIGHT/chargeof(species)
-calc_E(species::Species, Brho) = @FastGTPSA sqrt((Brho*C_LIGHT*chargeof(species))^2 + massof(species)^2)
-calc_gamma(species::Species, Brho) = @FastGTPSA sqrt((Brho*C_LIGHT/massof(species))^2+1)
+R_to_E(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT*chargeof(species))^2 + massof(species)^2)
+E_to_R(species::Species, E) = @FastGTPSA massof(species)*sinh(acosh(E/massof(species)))/C_LIGHT/chargeof(species) 
+pc_to_R(species::Species, pc) = @FastGTPSA pc/C_LIGHT/chargeof(species)
 
-calc_p0c(species::Species, Brho) = @FastGTPSA Brho*C_LIGHT*chargeof(species)
-calc_beta_gamma(species::Species, Brho) = @FastGTPSA Brho*chargeof(species)*C_LIGHT/massof(species)
+R_to_gamma(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT/massof(species))^2+1)
+R_to_pc(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT
+R_to_beta_gamma(species::Species, R_ref) = @FastGTPSA R_ref*chargeof(species)*C_LIGHT/massof(species)
 
 
 
@@ -211,14 +176,14 @@ end
 
 
 """
-    brho(e_rest, beta_gamma, ne = 1)
+    R_ref(e_rest, beta_gamma, ne = 1)
 
 For a particle with a given rest energy and relativistic parameter
-``\\beta\\gamma``, compute the magnetic rigidity, ``B\\rho = p / q``.
+``\\beta\\gamma``, compute the magnetic R_ref, ``B\\rho = p / q``.
 
 DTA: Need to handle energy units other than ``\\mathrm{eV}``..
 """
-function brho(e_rest, beta_gamma, ne = 1)
+function R_ref(e_rest, beta_gamma, ne = 1)
   return (sr_pc(e_rest, beta_gamma) / (ne * C_LIGHT))
 end
 ## If given ``E_\text{kin}`` instead of ``\beta\gamma``,
@@ -249,7 +214,7 @@ end
 #  return e_rest + e_kin
 #end
 #
-#function brho(e_rest, e_kin, ne = 1)
+#function R_ref(e_rest, e_kin, ne = 1)
 #  return sr_pc(e_rest, e_kin) / (ne * clight)
 #end
 

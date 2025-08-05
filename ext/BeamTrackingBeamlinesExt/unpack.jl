@@ -1,29 +1,28 @@
 # Step 1: Unpack the element ---------------------------------------------
 function _track!(
   i,
-  b::BunchView,
+  coords::Coords,
   bunch::Bunch,
   ele::Union{LineElement,BitsLineElement}, 
   tm;
   kwargs...
 )
   # Unpack the line element (type unstable)
-  L = ele.L
-  ap = ele.AlignmentParams
-  bp = ele.BendParams
-  bm = ele.BMultipoleParams
-  pp = ele.PatchParams
-    # bc BitsLineElement does not support ApertureParams yet
-  dp = ele isa BitsLineElement ? nothing : ele.ApertureParams
+  L = ele.L # Automatically calls deval (element-level get)
+  ap = deval(ele.AlignmentParams)
+  bp = deval(ele.BendParams)
+  bm = deval(ele.BMultipoleParams)
+  pp = deval(ele.PatchParams)
+  dp = deval(ele.ApertureParams)
 
   # Function barrier
-  universal!(i, b, tm, bunch, L, ap, bp, bm, pp, dp; kwargs...)
+  universal!(i, coords, tm, bunch, L, ap, bp, bm, pp, dp; kwargs...)
 end
 
 # Step 2: Push particles through -----------------------------------------
 function universal!(
   i, 
-  b,
+  coords,
   tm,
   bunch,
   L, 
@@ -142,7 +141,7 @@ function universal!(
     kc = push(kc, @inline(misalign(tm, bunch, alignmentparams, false)))
   end
 
-  runkernels!(i, b, kc; kwargs...)
+  runkernels!(i, coords, kc; kwargs...)
   return nothing
 end
 
