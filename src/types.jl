@@ -33,12 +33,19 @@ function Bunch(N::Integer; R_ref=NaN, species=Species(), spin=false)
   return Bunch(species, R_ref, Coords(state, v, q))
 end
 
-function Bunch(v::AbstractArray, q=nothing; R_ref=NaN, species=Species())
+function Bunch(v::AbstractMatrix, q=nothing; R_ref=NaN, species=Species())
   size(v, 2) == 6 || error("The number of columns must be equal to 6")
   N_particle = size(v, 1)
   state = similar(v, State.T, N_particle)
   state .= State.Alive
   return Bunch(species, R_ref, Coords(state, v, q))
+end
+
+function Bunch(v::AbstractVector, q=nothing; R_ref=NaN, species=Species())
+  length(v) == 6 || error("Bunch accepts a N x 6 matrix of N particle coordinates,
+                            or alternatively a single particle as a vector. Received 
+                            a vector of length $(length(v))")
+  return Bunch(reshape(v, (1,6)), q; R_ref=R_ref, species=species)
 end
 
 struct ParticleView{B,S,V,Q}
