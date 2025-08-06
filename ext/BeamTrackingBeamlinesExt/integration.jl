@@ -110,8 +110,8 @@ end
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
   mm = bm.order
   kn, ks = get_strengths(bm, L, R_ref)
-  k1 = sqrt(kn[1]^2 + ks[1]^2)
-  tilt = atan(ks[1], kn[1]) / 2
+  k1 = sqrt(kn^2 + ks^2)
+  tilt = atan(ks, kn) / 2
   w = ExactTracking.w_matrix(0,0,tilt)
   w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
   params = (beta_0, gamsqr_0, tilde_m, w, w_inv, k1, mm, kn, ks)
