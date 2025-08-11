@@ -1,5 +1,6 @@
 using Beamlines
 
+@eles begin
 IP6__1 =  Marker()
 D000001__1 =  Drift( L = 5.3)
 Q1ER_6 =  Quadrupole( L = 1.8, Kn1 = -0.2291420342)
@@ -4891,7 +4892,7 @@ D000022__2 =  Drift( L = 3.76)
 Q0EF_6 =  Quadrupole( L = 1.2, Kn1 = -0.2168808898)
 D000023__2 =  Drift( L = 5.8)
 IP6__2 =  Marker()
-
+end
 
 
 ring = Beamline([ IP6__1, D000001__1, Q1ER_6, D000002__1, Q2ER_6, D000002__2, D2ER_6, D000003__1, Q3ER_6,
