@@ -268,6 +268,8 @@ Arguments
 @makekernel fastgtpsa=false function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, e1, e2, theta, g, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, k0, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
+  Ps2 = (1+coords.v[i,PZI])^2 - coords.v[i,PXI]^2 - coords.v[i,PYI]^2        
+  coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i]) 
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
   ExactTracking.exact_bend!(    i, coords, e1, e2, theta, g, k0, w, w_inv, tilde_m, beta_0, L)
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)

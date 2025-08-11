@@ -105,10 +105,10 @@ properties, though I've not seen a proof of that claim.
 """
 @makekernel fastgtpsa=true function multipole_kick!(i, coords::Coords, ms, knl, ksl, excluding)
   v = coords.v
-  alive = (coords.state[i] == State.Alive)
+  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
   jm = length(ms)
   m  = ms[jm]
-  add = alive && (m != excluding)
+  add = (m != excluding)
   ar = knl[jm] * add
   ai = ksl[jm] * add
   jm -= 1
@@ -117,14 +117,14 @@ properties, though I've not seen a proof of that claim.
     t  = (ar * v[i,XI] - ai * v[i,YI]) / m
     ai = (ar * v[i,YI] + ai * v[i,XI]) / m
     ar = t
-    add = alive && (0 < jm && m == ms[jm]) && (m != excluding) # branchless
+    add = (0 < jm && m == ms[jm]) && (m != excluding) # branchless
     idx = max(1, jm) # branchless trickery
     ar += knl[idx] * add
     ai += ksl[idx] * add
     jm -= add
   end
-  v[i,PXI] -= ar
-  v[i,PYI] += ai
+  v[i,PXI] -= ar * alive
+  v[i,PYI] += ai * alive
 end # function multipole_kick!()
 
 
@@ -217,10 +217,12 @@ provided, a linear hard-edge fringe map is applied at both ends.
 - 'L'        -- length
 """
 @makekernel fastgtpsa=false function exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, tilde_m, beta_0, L)
-  me1 = Kn0*tan(e1)/(1 + coords.v[i,PZI])
+  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+
+  me1 = Kn0*tan(e1)/(1 + coords.v[i,PZI]) * alive
   mx1 = SA[1 0; me1  1]
   my1 = SA[1 0;-me1  1]
-  me2 = Kn0*tan(e2)/(1 + coords.v[i,PZI])
+  me2 = Kn0*tan(e2)/(1 + coords.v[i,PZI]) * alive
   mx2 = SA[1 0; me2  1]
   my2 = SA[1 0;-me2 1]
   

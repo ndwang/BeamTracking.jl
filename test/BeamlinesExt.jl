@@ -580,6 +580,14 @@
     v_expected = read_map("bmad_maps/patch.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
 
+    # Particle lost in dipole (momentum is too small):
+    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], R_ref=R_ref, species=Species("electron"))
+    v_init = copy(b0.coords.v)
+    ele_dipole = LineElement(L=1.0, Kn0=1e-8, Kn1=1e-8, tracking_method=BendKick())
+    track!(b0, Beamline([ele_dipole], R_ref=R_ref))
+    @test b0.coords.state[1] == State.Lost
+    @test v_init == b0.coords.v
+
     # Particle lost in quadrupole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
