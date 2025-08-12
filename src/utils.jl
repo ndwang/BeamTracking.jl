@@ -93,6 +93,54 @@ function sincuc(x)
   return y
 end
 
+"""
+    sincus(x)
+
+Compute the unnormalized sinc square-root function 
+``\\operatorname{sincus}(x) = \\sin(\\sqrt(x)) / (\\sqrt(x))`` 
+with accuracy near the origin.
+"""
+sincus(x) = _sincus(float(x))
+function _sincus(x::Union{T,Complex{T}}) where {T}
+    nrm = Base.Math.fastabs(x)
+    if nrm >= 10.9*sqrt(eps(T))
+        return sin(sqrt(x))/(sqrt(x))
+    else
+        # |x| < sqrt(120*eps)
+        return 1 - x/6
+    end
+end
+
+"""
+    coss(x)
+
+Compute the cos square-root function 
+``\\operatorname{coss}(x) = \\cos(\\sqrt(x))`` 
+with differentiability near the origin.
+"""
+coss(x) = _coss(float(x))
+function _coss(x::Union{T,Complex{T}}) where {T}
+    nrm = Base.Math.fastabs(x)
+    if nrm >= 4.8*sqrt(eps(T))
+        return cos(sqrt(x))
+    else
+        # |x| < sqrt(24*eps)
+        return 1 - x/2
+    end
+end
+
+@inline function expq(v)
+  """
+  This function computes exp(i v⋅σ) as a quaternion, where σ is the 
+  vector of Pauli matrices.
+  """
+  n2 = v[1]^2 + v[2]^2 + v[3]^2
+  c = coss(n2)
+  s = sincus(n2)
+  v2 = s * v
+  return SA[-c, v2[1], v2[2], v2[3]]
+end
+
 # Particle energy conversions =============================================================
 R_to_E(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT*chargeof(species))^2 + massof(species)^2)
 E_to_R(species::Species, E) = @FastGTPSA massof(species)*sinh(acosh(E/massof(species)))/C_LIGHT/chargeof(species) 
@@ -102,6 +150,7 @@ R_to_gamma(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT/massof(species))^2+
 R_to_pc(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT
 R_to_beta_gamma(species::Species, R_ref) = @FastGTPSA R_ref*chargeof(species)*C_LIGHT/massof(species)
 
+anom(species::Species) = 1.15965218128E-3
 
 
 #=

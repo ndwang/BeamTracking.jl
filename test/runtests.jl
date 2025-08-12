@@ -4,7 +4,8 @@ using Test,
       JET,
       BenchmarkTools,
       GTPSA,
-      StaticArrays
+      StaticArrays,
+      ReferenceFrameRotations
 
 using BeamTracking: Coords, KernelCall
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
@@ -61,6 +62,17 @@ function read_map(bmad_map_file::AbstractString)
   d_z == D10 || error("Please use a 10th order map for test_map")
   v_z = getfield(mod, :v_z)
   return v_z
+end
+
+function read_spin_orbit_map(bmad_map_file::AbstractString)
+  # Load reference data from file in isolated module to avoid polluting global namespace
+  mod = Module()
+  Base.include(mod, bmad_map_file)
+  d_z = getfield(mod, :d_z)
+  d_z == D10 || error("Please use a 10th order map for test_map")
+  v_z = getfield(mod, :v_z)
+  q_z = getfield(mod, :q_z)
+  return (v_z, q_z)
 end
 
 function test_map(
@@ -140,7 +152,33 @@ function coeffs_approx_equal(v_expected, v_calculated, ϵ)
 end
 
 
-include("LinearTracking.jl")
-include("ExactTracking.jl")
-include("IntegrationTracking.jl")
+function quaternion_coeffs_approx_equal(q_expected, q_calculated, ϵ)
+  sgn = sign(q_expected.q0[[0,0,0,0,0,0]]* q_calculated.q0[[0,0,0,0,0,0]])
+  components = (:q0, :q1, :q2, :q3)
+  n = GTPSA.numcoefs(q_expected.q0)
+  all_ok = true
+    for cname in components
+      v_expected = getfield(q_expected, cname)
+      v_calculated = sgn * getfield(q_calculated, cname)
+      for j in 0:n-1
+          c1, c2 = v_expected[j], v_calculated[j]
+          if abs(c1 - c2) > max(ϵ, ϵ * (abs(c1) + abs(c2)))
+              println("Coefficients not equal: expected $cname[$j] = $c1, got $cname[$j] = $c2")
+              println("Difference: $(abs(c1 - c2))")
+              println("Tolerance:  $(max(ϵ, ϵ * (abs(c1) + abs(c2))))")
+              all_ok = false
+              break
+          end
+      end
+      if !all_ok
+          break
+      end
+  end
+  return all_ok
+end
+
+
+#include("LinearTracking.jl")
+#include("ExactTracking.jl")
+#include("IntegrationTracking.jl")
 include("BeamlinesExt.jl")

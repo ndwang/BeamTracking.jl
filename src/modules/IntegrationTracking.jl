@@ -42,7 +42,7 @@ end
 
 module IntegrationTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays, ..KernelAbstractions
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel, Coords
+using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, @makekernel, Coords
 
 #
 # ===============  I N T E G R A T O R S  ===============
@@ -57,7 +57,7 @@ end
 
 @makekernel fastgtpsa=true function order_four_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, L)
   w0 = -1.7024143839193153215916254339390434324741363525390625*ds_step
-  w1 = 1.3512071919596577718181151794851757586002349853515625*ds_step
+  w1 =  1.3512071919596577718181151794851757586002349853515625*ds_step
   for _ in 1:num_steps
     ker(i, coords, params..., w1)
     ker(i, coords, params..., w0)
@@ -67,10 +67,10 @@ end
 
 
 @makekernel fastgtpsa=true function order_six_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, L)
-  w0 = 1.315186320683911169737712043570355*ds_step
+  w0 =  1.315186320683911169737712043570355*ds_step
   w1 = -1.17767998417887100694641568096432*ds_step
-  w2 = 0.235573213359358133684793182978535*ds_step
-  w3 = 0.784513610477557263819497633866351*ds_step
+  w2 =  0.235573213359358133684793182978535*ds_step
+  w3 =  0.784513610477557263819497633866351*ds_step
   for _ in 1:num_steps
     ker(i, coords, params..., w3)
     ker(i, coords, params..., w2)
@@ -84,14 +84,14 @@ end
 
 
 @makekernel fastgtpsa=true function order_eight_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, L)
-  w0 = 1.7084530707869978*ds_step
-  w1 = 0.102799849391985*ds_step
+  w0 =  1.7084530707869978*ds_step
+  w1 =  0.102799849391985*ds_step
   w2 = -1.96061023297549*ds_step
-  w3 = 1.93813913762276*ds_step
+  w3 =  1.93813913762276*ds_step
   w4 = -0.158240635368243*ds_step
   w5 = -1.44485223686048*ds_step
-  w6 = 0.253693336566229*ds_step
-  w7 = 0.914844246229740*ds_step
+  w6 =  0.253693336566229*ds_step
+  w7 =  0.914844246229740*ds_step
   for _ in 1:num_steps
     ker(i, coords, params..., w7)
     ker(i, coords, params..., w6)
@@ -132,11 +132,17 @@ kn: vector of normal multipole strengths scaled by Bρ0
 ks: vector of skew multipole strengths scaled by Bρ0
 L: element length
 """
-@makekernel fastgtpsa=true function mkm_quadrupole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, w, w_inv, k1, mm, kn, ks, L)
+@makekernel fastgtpsa=true function mkm_quadrupole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, a, w, w_inv, k1, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
+
   Ps2 = (1+coords.v[i,PZI])^2 - coords.v[i,PXI]^2 - coords.v[i,PYI]^2        
   coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])  
+
+  if !isnothing(coords.q)
+    rotate_spin!(               i, coords, a, 0, tilde_m, mm, kn, ks, L / 2)
+  end
+
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
   ExactTracking.patch_rotation!(i, coords, w, 0)
@@ -144,6 +150,10 @@ L: element length
   ExactTracking.patch_rotation!(i, coords, w_inv, 0)
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
+
+  if !isnothing(coords.q)
+    rotate_spin!(               i, coords, a, 0, tilde_m, mm, kn, ks, L / 2)
+  end
 end 
 
 
@@ -300,9 +310,20 @@ kn: vector of normal multipole strengths scaled by Bρ0
 sn: vector of skew multipole strengths scaled by Bρ0
 L:  element length
 """
-@makekernel fastgtpsa=true function sks_multipole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, Ksol, mm, kn, sn, L)
+@makekernel fastgtpsa=true function sks_multipole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, a, Ksol, mm, kn, ks, L)
+  knl = kn * L / 2
+  ksl = ks * L / 2
+
   ExactTracking.exact_solenoid!(i, coords, Ksol, beta_0, gamsqr_0, tilde_m, L / 2)
-  ExactTracking.multipole_kick!(i, coords, mm, kn * L, sn * L, -1)
+
+  if isnothing(coords.q)
+    ExactTracking.multipole_kick!(i, coords, mm, knl * 2, ksl * 2, -1)
+  else
+    ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, -1)
+    rotate_spin!(                 i, coords, a, 0, tilde_m, mm, kn, ks, L)
+    ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, -1)
+  end
+
   ExactTracking.exact_solenoid!(i, coords, Ksol, beta_0, gamsqr_0, tilde_m, L / 2)
 end 
 
@@ -317,7 +338,7 @@ This integrator uses Drift-Kick-Drift to track a beam through
 a straight, finite-length multipole magnet. The method is
 accurate through second order in the step size. The vectors
 kn and ks contain the normal and skew multipole strengths,
-starting with the dipole component. (For example, coords[3] denotes
+starting with the dipole component. (For example, kn[3] denotes
 the normal sextupole strength in Tesla/m^2.) The argument ns
 denotes the number of slices.
 
@@ -331,10 +352,85 @@ kn: vector of normal multipole strengths scaled by Bρ0
 ks: vector of skew multipole strengths scaled by Bρ0
 L:  element length
 """
-@makekernel fastgtpsa=true function dkd_multipole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, mm, kn, ks, L)
-  ExactTracking.exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
-  ExactTracking.multipole_kick!(i, coords, mm, kn * L, ks * L, -1)
-  ExactTracking.exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
+@makekernel fastgtpsa=true function dkd_multipole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, a, mm, kn, ks, L)
+  knl = kn * L / 2
+  ksl = ks * L / 2
+
+  ExactTracking.exact_drift!(     i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
+
+  if isnothing(coords.q)
+    ExactTracking.multipole_kick!(i, coords, mm, knl * 2, ksl * 2, -1)
+  else
+    ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, -1)
+    rotate_spin!(                 i, coords, a, 0, tilde_m, mm, kn, ks, L)
+    ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, -1)
+  end
+
+  ExactTracking.exact_drift!(     i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
+end
+
+
+#
+# ===============  S P I N  ===============
+#
+@inline function omega(i, coords::Coords, a, g, tilde_m, mm, kn, ks)
+  """
+  This function computes the spin-precession vector using the multipole 
+  coefficients kn and ks indexed by mm, i.e., knl[i] is the normal 
+  coefficient of order mm[i].
+  """
+  v = coords.v
+
+  # kinetic momenta, not canonical momenta
+  px = v[i,PXI] + (v[i,YI] * kn[1] / 2) * (mm[1] == 0) 
+  py = v[i,PYI] - (v[i,XI] * kn[1] / 2) * (mm[1] == 0)
+
+  rel_p = 1 + v[i,PZI]
+  beta_gamma = rel_p / tilde_m
+  gamma = sqrt(1 + beta_gamma^2)
+  pl2 = rel_p^2 - px^2 - py^2
+  coords.state[i] = ifelse(pl2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
+  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+  pl = sqrt(pl2 + (alive-1)*(pl2-1))
+
+  beta_hat = SA[px, py, pl] / rel_p
+
+  bx, by = ExactTracking.normalized_field!(mm, kn, ks, v[i,XI], v[i,YI], -1)
+  bz = kn[1] * (mm[1] == 0)
+  b_field = SA[bx, by, bz]
+
+  dot = b_field[1]*beta_hat[1] + b_field[2]*beta_hat[2] + b_field[3]*beta_hat[3]
+  b_para = dot * beta_hat
+  b_perp = b_field - b_para
+  
+  omega = (1 + a*gamma)*b_perp + (1 + a)*b_para
+  omega = -(1 + g*v[i,XI])/pl * omega
+  omega = omega + SA[0, g, 0]
+  omega = alive * omega
+
+  return omega
+end
+
+
+@makekernel fastgtpsa=true function rotate_spin!(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
+  """
+  This function rotates particle i's quaternion according to the multipoles present.
+  """
+  q2 = coords.q
+  q1 = expq(-L/2 * omega(i, coords, a, g, tilde_m, mm, kn, ks))
+  a1, b1, c1, d1 = q1[Q0], q1[QX], q1[QY], q1[QZ]
+  a2, b2, c2, d2 = q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ]
+  q2[i,Q0] = a1*a2 - b1*b2 - c1*c2 - d1*d2
+  q2[i,QX] = a1*b2 + b1*a2 + c1*d2 - d1*c2
+  q2[i,QY] = a1*c2 - b1*d2 + c1*a2 + d1*b2
+  q2[i,QZ] = a1*d2 + b1*c2 - c1*b2 + d1*a2
+end
+
+
+@makekernel fastgtpsa=true function integrate_with_spin_thin!(i, coords::Coords, ker, params, a, g, tilde_m, mm, knl, ksl)
+  rotate_spin!(i, coords, a, g, tilde_m, mm, knl, ksl, 1/2)
+  ker(i, coords, params...)
+  rotate_spin!(i, coords, a, g, tilde_m, mm, knl, ksl, 1/2)
 end
 
 end

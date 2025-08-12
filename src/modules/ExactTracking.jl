@@ -83,7 +83,7 @@ lists the orders of the corresponding entries in knl and ksl.
 
 The algorithm used in this function takes advantage of the
 complex representation of the vector potential Az,
-  - ``-Re{ sum_m (b_m + i a_m) (x + i y)^m / m }``,
+  - ``-Re{ sum_m (b_m + i a_m) (x + i y)^m / m! }``,
 and uses a Horner-like scheme (see Shachinger and Talman
 [SSC-52]) to compute the transverse kicks induced by a pure
 multipole magnet. This method supposedly has good numerical
@@ -106,26 +106,36 @@ properties, though I've not seen a proof of that claim.
 @makekernel fastgtpsa=true function multipole_kick!(i, coords::Coords, ms, knl, ksl, excluding)
   v = coords.v
   alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+  bx, by = normalized_field!(ms, knl, ksl, v[i,XI], v[i,YI], excluding)
+  v[i,PXI] -= by * alive
+  v[i,PYI] += bx * alive
+end # function multipole_kick!()
+
+
+@inline function normalized_field!(ms, knl, ksl, x, y, excluding)
+  """
+  Returns (bx, by), the transverse components of the magnetic field divided
+  by the reference rigidty.
+  """
   jm = length(ms)
   m  = ms[jm]
-  add = (m != excluding)
-  ar = knl[jm] * add
-  ai = ksl[jm] * add
+  add = (m != excluding && m > 0)
+  by = knl[jm] * add
+  bx = ksl[jm] * add
   jm -= 1
   while 2 <= m
     m -= 1
-    t  = (ar * v[i,XI] - ai * v[i,YI]) / m
-    ai = (ar * v[i,YI] + ai * v[i,XI]) / m
-    ar = t
+    t  = (by * x - bx * y) / m
+    bx = (by * y + bx * x) / m
+    by = t
     add = (0 < jm && m == ms[jm]) && (m != excluding) # branchless
     idx = max(1, jm) # branchless trickery
-    ar += knl[idx] * add
-    ai += ksl[idx] * add
+    by += knl[idx] * add
+    bx += ksl[idx] * add
     jm -= add
   end
-  v[i,PXI] -= ar * alive
-  v[i,PYI] += ai * alive
-end # function multipole_kick!()
+  return bx, by
+end
 
 
 #function binom(m::Integer, x, y)
