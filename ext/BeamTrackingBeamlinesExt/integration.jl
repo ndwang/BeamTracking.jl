@@ -180,8 +180,26 @@ end
 @inline thick_bend_no_field(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, L) = 
   thick_bend_no_field(Exact(), bunch, bendparams, L)
 
-@inline thick_bend_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm1, L) = 
-  thick_bend_pure_bdipole(Exact(), bunch, bendparams, bm1, L)
+@inline function thick_bend_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm1, L)
+  if isnothing(bunch.coords.q)
+    return thick_bend_pure_bdipole(Exact(), bunch, bm1, L)
+  else
+    R_ref = bunch.R_ref
+    tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
+    g = bendparams.g_ref
+    tilt = bendparams.tilt_ref
+    e1 = bendparams.e1
+    e2 = bendparams.e2
+    theta = g * L
+    mm = bm1.order
+    Kn0, Ks0 = get_strengths(bm1, L, R_ref)
+    Ks0 ≈ 0 || error("A skew dipole field cannot yet be used in a bend")
+    w = ExactTracking.w_matrix(0,0,tilt)
+    w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
+    params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), e1, e2, theta, g, w, w_inv, Kn0, mm, Kn0, Ks0)
+    return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
+  end
+end
 
 # =========== PATCH ============= #
 @inline pure_patch(tm::SplitIntegration, bunch, patchparams, L)  = 

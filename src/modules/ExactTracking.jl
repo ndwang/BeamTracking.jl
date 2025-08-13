@@ -8,7 +8,7 @@ struct Exact end
 
 module ExactTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays, ..ReferenceFrameRotations, ..KernelAbstractions
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel, Coords
+using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, @makekernel, Coords
 using ..BeamTracking: C_LIGHT
 const TRACKING_METHOD = Exact
 
@@ -283,6 +283,18 @@ provided, a linear hard-edge fringe map is applied at both ends.
   patch_rotation!(i, coords, w_inv, 0)
 end
 
+
+# This is separate because the spin can be transported exactly here
+@makekernel fastgtpsa=true function exact_curved_drift!(i, coords::Coords, e1, e2, theta, g, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, a, tilde_m, beta_0, L)
+  exact_bend!(i, coords, 0, 0, theta, g, 0, w, w_inv, tilde_m, beta_0, L)
+  if !isnothing(coords.q)
+    patch_rotation!(i, coords, w, 0)
+    IntegrationTracking.rotate_spin!(i, coords, a, g, tilde_m, SA[0], SA[0], SA[0], L)
+    patch_rotation!(i, coords, w_inv, 0)
+  end
+end
+
+
 @makekernel fastgtpsa=true function exact_solenoid!(i, coords::Coords, ks, beta_0, gamsqr_0, tilde_m, L)
   v = coords.v
 
@@ -321,7 +333,7 @@ end
   v[i,ZI] += alive*rel_p/sqrt(rel_p^2+tilde_m^2)*C_LIGHT*dt
 end
 
-@makekernel fastgtpsa=true function patch_rotation!(i, coords::Coords, winv::StaticMatrix{3,3}, dz)
+@makekernel fastgtpsa=false function patch_rotation!(i, coords::Coords, winv::StaticMatrix{3,3}, dz)
   v = coords.v
   cond = (1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2
   coords.state[i] = ifelse(cond <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
@@ -336,6 +348,13 @@ end
   py_0 = v[i,PYI]
   v[i,PXI] = alive*(winv[1,1]*px_0 + winv[1,2]*py_0 + winv[1,3]*ps_0) - (alive - 1)*v[i,PXI]
   v[i,PYI] = alive*(winv[2,1]*px_0 + winv[2,2]*py_0 + winv[2,3]*ps_0) - (alive - 1)*v[i,PYI]
+
+  q1 = coords.q 
+  if !isnothing(q1)
+    q2 = Quaternion(q1[i,Q0], -q1[i,QX], -q1[i,QY], -q1[i,QZ]) # weird ReferenceFrameRotations convention
+    q_new = dcm_to_quat(winv ∘ q2)
+    q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ] = q_new.q0, -q_new.q1, -q_new.q2, -q_new.q3
+  end
 end
 
 @makekernel fastgtpsa=true function patch!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv::Union{StaticMatrix{3,3},Nothing}, L)

@@ -48,5 +48,5 @@ end
   w_inv = ExactTracking.w_inv_matrix(0,0,-tilt)
   theta = g * L
   tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, bunch.R_ref)
-  return KernelCall(ExactTracking.exact_bend!, (e1, e2, theta, g, 0, w, w_inv, tilde_m, beta_0, L))
+  return KernelCall(ExactTracking.exact_curved_drift!, (e1, e2, theta, g, w, w_inv, tilde_m, BeamTracking.anom(bunch.species), beta_0, L))
 end

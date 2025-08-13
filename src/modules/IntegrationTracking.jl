@@ -283,7 +283,9 @@ Arguments
   coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i]) 
 
   if !isnothing(coords.q)
-    rotate_spin!(               i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    ExactTracking.patch_rotation!(i, coords, w, 0)
+    rotate_spin!(                 i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    ExactTracking.patch_rotation!(i, coords, w_inv, 0)
   end
   
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
@@ -291,7 +293,9 @@ Arguments
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
 
   if !isnothing(coords.q)
-    rotate_spin!(               i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    ExactTracking.patch_rotation!(i, coords, w, 0)
+    rotate_spin!(                 i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    ExactTracking.patch_rotation!(i, coords, w_inv, 0)
   end
 end 
 

@@ -152,8 +152,20 @@ R_to_gamma(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT/massof(species))^2+
 R_to_pc(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT
 R_to_beta_gamma(species::Species, R_ref) = @FastGTPSA R_ref*chargeof(species)*C_LIGHT/massof(species)
 
-anom(species::Species) = 1.15965218059e-3
-
+# Fake APC because APC is not working for now :(
+function anom(species::Species) 
+  if nameof(species) == "electron"
+    return 0.00115965218046
+  elseif nameof(species) == "positron"
+    return 0.0011596521735304233
+  elseif nameof(species) == "proton"
+    return 1.7928473446300592
+  elseif nameof(species) == "proton"
+    return 1.7928473446300592
+  else
+    error("Your species is not in fake APC yet")
+  end
+end
 
 #=
 
