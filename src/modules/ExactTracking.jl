@@ -208,6 +208,7 @@ to carry both reference and design values.
                + (1 + v[i,PZI]) * Lr / (beta_0 * sqrt(1 / beta_0^2 + (2 + v[i,PZI]) * v[i,PZI])))
 end # function exact_sbend!()
 
+
 """
     exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
 
@@ -352,7 +353,7 @@ end
   q1 = coords.q 
   if !isnothing(q1)
     q2 = Quaternion(q1[i,Q0], -q1[i,QX], -q1[i,QY], -q1[i,QZ]) # weird ReferenceFrameRotations convention
-    q_new = dcm_to_quat(winv ∘ q2)
+    q_new = compose_rotation(q2, dcm_to_quat(winv))
     q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ] = q_new.q0, -q_new.q1, -q_new.q2, -q_new.q3
   end
 end

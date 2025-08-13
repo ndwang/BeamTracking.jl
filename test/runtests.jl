@@ -177,7 +177,7 @@ function quaternion_coeffs_approx_equal(q_expected, q_calculated, ϵ)
   return all_ok
 end
 
-
+# MAKE expq HORNER BEFORE PULL REQUEST!!!
 #include("LinearTracking.jl")
 #include("ExactTracking.jl")
 #include("IntegrationTracking.jl")
