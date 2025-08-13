@@ -87,8 +87,22 @@ end
 
 @inline thick_bdipole(tm::DriftKick, bunch, bm, L) = thick_pure_bdipole(tm, bunch, bm, L)
 
-@inline thick_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm1, L) = 
-  thick_pure_bdipole(Exact(), bunch, bm1, L)
+@inline function thick_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm1, L) 
+  if isnothing(bunch.coords.q)
+    return thick_pure_bdipole(Exact(), bunch, bm1, L)
+  else
+    R_ref = bunch.R_ref
+    tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
+    mm = bm.order
+    kn, ks = get_strengths(bm, L, R_ref)
+    k0 = sqrt(kn^2 + ks^2)
+    tilt = atan(ks, kn)
+    w = ExactTracking.w_matrix(0,0,tilt)
+    w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
+    params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, 0, w, w_inv, k0, mm, kn, ks)
+    return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
+  end
+end
 
 @inline function thick_bdipole(tm::BendKick, bunch, bm, L)
   R_ref = bunch.R_ref
@@ -99,7 +113,7 @@ end
   tilt = atan(ks[1], kn[1])
   w = ExactTracking.w_matrix(0,0,tilt)
   w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
-  params = (tilde_m, beta_0, 0, 0, 0, 0, w, w_inv, k0, mm, kn, ks)
+  params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, 0, w, w_inv, k0, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
 end
 

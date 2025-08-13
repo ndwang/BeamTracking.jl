@@ -153,7 +153,7 @@ end
 
 
 function quaternion_coeffs_approx_equal(q_expected, q_calculated, ϵ)
-  sgn = sign(q_expected.q0[[0,0,0,0,0,0]]* q_calculated.q0[[0,0,0,0,0,0]])
+  sgn = sign(q_expected.q0[[0,0,0,0,0,0]] * q_calculated.q0[[0,0,0,0,0,0]])
   components = (:q0, :q1, :q2, :q3)
   n = GTPSA.numcoefs(q_expected.q0)
   all_ok = true

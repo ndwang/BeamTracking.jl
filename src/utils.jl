@@ -103,11 +103,12 @@ with accuracy near the origin.
 sincus(x) = _sincus(float(x))
 function _sincus(x::Union{T,Complex{T}}) where {T}
     nrm = Base.Math.fastabs(x)
-    if nrm >= 10.9*sqrt(eps(T))
+    if nrm >= 109.018*eps(T)^(1/11)
         return sin(sqrt(x))/(sqrt(x))
     else
-        # |x| < sqrt(120*eps)
-        return 1 - x/6
+        return (1 - x/6 + x^2/120 - x^3/5040 + x^4/362880 - x^5/39916800 + 
+        x^6/6227020800 - x^7/1307674368000 + x^8/355687428096000 - 
+        x^9/12164510040883200000 + x^10/5109094217170944000000) # MAKE HORNER
     end
 end
 
@@ -121,11 +122,12 @@ with differentiability near the origin.
 coss(x) = _coss(float(x))
 function _coss(x::Union{T,Complex{T}}) where {T}
     nrm = Base.Math.fastabs(x)
-    if nrm >= 4.8*sqrt(eps(T))
+    if nrm >= 81.9796*eps(T)^(1/11)
         return cos(sqrt(x))
     else
-        # |x| < sqrt(24*eps)
-        return 1 - x/2
+        return (1 - x/2 + x^2/24 - x^3/720 + x^4/40320 - x^5/3628800 
+        + x^6/479001600 - x^7/87178291200 + x^8/20922789888000 - 
+        x^9/6402373705728000 + x^10/2432902008176640000) # MAKE HORNER
     end
 end
 
@@ -150,7 +152,7 @@ R_to_gamma(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT/massof(species))^2+
 R_to_pc(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT
 R_to_beta_gamma(species::Species, R_ref) = @FastGTPSA R_ref*chargeof(species)*C_LIGHT/massof(species)
 
-anom(species::Species) = 1.15965218128E-3
+anom(species::Species) = 1.15965218059e-3
 
 
 #=

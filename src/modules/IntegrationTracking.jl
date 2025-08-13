@@ -275,14 +275,24 @@ Arguments
 - 'ks'       -- skew multipole strengths 
 - 'L'        -- length
 """
-@makekernel fastgtpsa=false function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, e1, e2, theta, g, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, k0, mm, kn, ks, L)
+@makekernel fastgtpsa=false function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, a, e1, e2, theta, g, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, k0, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
-  Ps2 = (1+coords.v[i,PZI])^2 - coords.v[i,PXI]^2 - coords.v[i,PYI]^2        
+
+  Ps2 = (1+coords.v[i,PZI])^2 - coords.v[i,PXI]^2 - coords.v[i,PYI]^2 
   coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i]) 
+
+  if !isnothing(coords.q)
+    rotate_spin!(               i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+  end
+  
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
   ExactTracking.exact_bend!(    i, coords, e1, e2, theta, g, k0, w, w_inv, tilde_m, beta_0, L)
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
+
+  if !isnothing(coords.q)
+    rotate_spin!(               i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+  end
 end 
 
 
