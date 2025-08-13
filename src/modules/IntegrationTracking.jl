@@ -275,28 +275,28 @@ Arguments
 - 'ks'       -- skew multipole strengths 
 - 'L'        -- length
 """
-@makekernel fastgtpsa=false function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, a, e1, e2, theta, g, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, k0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, a, e1, e2, g, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, k0, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
   Ps2 = (1+coords.v[i,PZI])^2 - coords.v[i,PXI]^2 - coords.v[i,PYI]^2 
   coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i]) 
 
-  if !isnothing(coords.q)
-    ExactTracking.patch_rotation!(i, coords, w, 0)
-    rotate_spin!(                 i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
-    ExactTracking.patch_rotation!(i, coords, w_inv, 0)
-  end
-  
-  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
-  ExactTracking.exact_bend!(    i, coords, e1, e2, theta, g, k0, w, w_inv, tilde_m, beta_0, L)
-  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
+  ExactTracking.exact_bend!(      i, coords, e1, e2, g*L/2, g, k0, w, w_inv, tilde_m, beta_0, L / 2)
 
-  if !isnothing(coords.q)
+  if isnothing(coords.q)
     ExactTracking.patch_rotation!(i, coords, w, 0)
-    rotate_spin!(                 i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    ExactTracking.multipole_kick!(i, coords, mm, knl * 2, ksl * 2, -1)
+    ExactTracking.patch_rotation!(i, coords, w_inv, 0)
+  else
+    ExactTracking.patch_rotation!(i, coords, w, 0)
+    ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
+    rotate_spin!(                 i, coords, a, g, tilde_m, mm, kn, ks, L)
+    ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
     ExactTracking.patch_rotation!(i, coords, w_inv, 0)
   end
+
+  ExactTracking.exact_bend!(      i, coords, e1, e2, g*L/2, g, k0, w, w_inv, tilde_m, beta_0, L / 2)
 end 
 
 
@@ -432,12 +432,8 @@ end
   """
   q2 = coords.q
   q1 = expq(-L/2 * omega(i, coords, a, g, tilde_m, mm, kn, ks))
-  a1, b1, c1, d1 = q1[Q0], q1[QX], q1[QY], q1[QZ]
-  a2, b2, c2, d2 = q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ]
-  q2[i,Q0] = a1*a2 - b1*b2 - c1*c2 - d1*d2
-  q2[i,QX] = a1*b2 + b1*a2 + c1*d2 - d1*c2
-  q2[i,QY] = a1*c2 - b1*d2 + c1*a2 + d1*b2
-  q2[i,QZ] = a1*d2 + b1*c2 - c1*b2 + d1*a2
+  q3 = quat_mul(q1, q2[i,:])
+  q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ] = q3[Q0], q3[QX], q3[QY], q3[QZ]
 end
 
 

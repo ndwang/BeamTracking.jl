@@ -99,7 +99,7 @@ end
     tilt = atan(ks, kn)
     w = ExactTracking.w_matrix(0,0,tilt)
     w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
-    params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, 0, w, w_inv, k0, mm, kn, ks)
+    params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, w, w_inv, k0, mm, kn, ks)
     return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
   end
 end
@@ -113,7 +113,7 @@ end
   tilt = atan(ks[1], kn[1])
   w = ExactTracking.w_matrix(0,0,tilt)
   w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
-  params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, 0, w, w_inv, k0, mm, kn, ks)
+  params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, w, w_inv, k0, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
 end
 
@@ -182,7 +182,7 @@ end
 
 @inline function thick_bend_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm1, L)
   if isnothing(bunch.coords.q)
-    return thick_bend_pure_bdipole(Exact(), bunch, bm1, L)
+    return thick_bend_pure_bdipole(Exact(), bunch, bendparams, bm1, L)
   else
     R_ref = bunch.R_ref
     tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
@@ -196,7 +196,7 @@ end
     Ks0 ≈ 0 || error("A skew dipole field cannot yet be used in a bend")
     w = ExactTracking.w_matrix(0,0,tilt)
     w_inv = ExactTracking.w_inv_matrix(0,0,tilt)
-    params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), e1, e2, theta, g, w, w_inv, Kn0, mm, Kn0, Ks0)
+    params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), e1, e2, g, w, w_inv, Kn0, mm, Kn0, Ks0)
     return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
   end
 end

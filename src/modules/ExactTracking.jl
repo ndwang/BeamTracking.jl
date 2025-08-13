@@ -325,6 +325,7 @@ end
   v[i,PYI]  = alive*(ks * cm * x_0 / 4 - s * (px_0 / 2 + ks * y_0 / 4) + cp * v[i,PYI] / 2) - (alive - 1) * v[i,PYI]
 end
 
+
 @makekernel fastgtpsa=true function patch_offset!(i, coords::Coords, tilde_m, dx, dy, dt)
   v = coords.v
   alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
@@ -333,6 +334,7 @@ end
   v[i,YI] -= alive*dy
   v[i,ZI] += alive*rel_p/sqrt(rel_p^2+tilde_m^2)*C_LIGHT*dt
 end
+
 
 @makekernel fastgtpsa=false function patch_rotation!(i, coords::Coords, winv::StaticMatrix{3,3}, dz)
   v = coords.v
@@ -351,12 +353,13 @@ end
   v[i,PYI] = alive*(winv[2,1]*px_0 + winv[2,2]*py_0 + winv[2,3]*ps_0) - (alive - 1)*v[i,PYI]
 
   q1 = coords.q 
-  if !isnothing(q1)
+  if !isnothing(q1) && alive == 1
     q2 = Quaternion(q1[i,Q0], -q1[i,QX], -q1[i,QY], -q1[i,QZ]) # weird ReferenceFrameRotations convention
-    q_new = compose_rotation(q2, dcm_to_quat(winv))
+    q_new = dcm_to_quat(winv ∘ q2)
     q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ] = q_new.q0, -q_new.q1, -q_new.q2, -q_new.q3
   end
 end
+
 
 @makekernel fastgtpsa=true function patch!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv::Union{StaticMatrix{3,3},Nothing}, L)
   v = coords.v

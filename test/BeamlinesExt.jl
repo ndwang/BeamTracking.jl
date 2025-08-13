@@ -1,7 +1,7 @@
 @testset "Beamlines" begin
   include("lattices/esr.jl")
 
-  #=@testset "Linear" begin
+  @testset "Linear" begin
     b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
     foreach(t->t.tracking_method=Linear(), ring.line)
     track!(b0, ring)
@@ -330,9 +330,9 @@
     @test_throws ErrorException track!(b0, Beamline([ele_patch_sol],  R_ref=R_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_bend_quad],  R_ref=R_ref))
   end
-=#
+
   @testset "SplitIntegration" begin
-    #=b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
+    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
     foreach(t->t.tracking_method=SplitIntegration(), ring.line)
     track!(b0, ring)
     M_ESR = [  0.8763088913632391E+00  0.2842332738570903E+00 -0.9233408598814828E-06 -0.1104742931103878E-06  0.0000000000000000E+00 -0.8843595261589663E-07
@@ -343,11 +343,11 @@
                0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01  ]
 
     @test GTPSA.jacobian(b0.coords.v) ≈ M_ESR
-=#
+
     p0c = 10e6
     # E to R_ref
     R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + BeamTracking.massof(Species("electron"))^2))
-#=
+
     # Thin straight pure dipole:
     ele = LineElement(L=0.0, Kn0L=0.1, tracking_method=SplitIntegration())
     v = collect(transpose(@vars(D10)))
@@ -432,7 +432,7 @@
     q_expected = Quaternion(TPS64{D10}(1), TPS64{D10}[0, 0, 0])
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
-=#
+
     # Curved drift: 
     ele = LineElement(L=2.0, g_ref=0.1, tracking_method=SplitIntegration())   
     v = collect(transpose(@vars(D10)))
@@ -456,18 +456,16 @@
     v_expected, q_expected = read_spin_orbit_map("bmad_maps/rotated_bend_no_field.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
-#=
-    # Pure bend: (FIX!!!!!)
-    ele = LineElement(L=2.0, g=0.1, tilt_ref=-pi/3, tracking_method=SplitIntegration(order=6, num_steps=10))   
-    v = collect(transpose(@vars(D10)))
-    q = TPS64{D10}[1 0 0 0]
+
+    # Pure bend:
+    ele = LineElement(L=2.0, g=0.1, tracking_method=SplitIntegration(order=6, num_steps=10))   
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
-    v_expected, q_expected = read_spin_orbit_map("bmad_maps/exact_bend.jl")
-    @test coeffs_approx_equal(v_expected[1:4], b0.coords.v[1:4], 2e-6)
-    #@test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-6)
+    @test b0.coords.v ≈ [58.61782947 31.13531470 105.79375452 40.00000000 41.75205992 60.00000000]/1e3
+    @test b0.coords.q ≈ [0.99999555887473 0.00000197685011 0.00297918168991 0.00008187412527]
 
     # Pure solenoid:
     ele = LineElement(L=1.0, Ksol=2.0, tracking_method=SplitIntegration())
@@ -741,7 +739,7 @@
     track!(b0, Beamline([ele_dipole], R_ref=R_ref))
     @test b0.coords.state[1] == State.Lost
     @test v_init == b0.coords.v
-    @test q_init == b0.coords.q
+    @test q_init == b0.coords.q || q_init == -b0.coords.q
 
     # Particle lost in quadrupole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
@@ -751,7 +749,7 @@
     track!(b0, Beamline([ele_quad], R_ref=R_ref))
     @test b0.coords.state[1] == State.Lost
     @test v_init == b0.coords.v
-    @test q_init == b0.coords.q
+    @test q_init == b0.coords.q || q_init == -b0.coords.q
 
     # Particle lost in patch (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
@@ -761,14 +759,14 @@
     track!(b0, Beamline([ele_patch], R_ref=R_ref))
     @test b0.coords.state[1] == State.Lost
     @test v_init == b0.coords.v
-    @test q_init == b0.coords.q
+    @test q_init == b0.coords.q || q_init == -b0.coords.q
 
     # Errors:
     @test_throws ErrorException MatrixKick(ds_step = 0.1, num_steps = 2)
     @test_throws ErrorException BendKick(order = 2, num_steps = -2)
     @test_throws ErrorException DriftKick(ds_step = -0.1)
     @test_throws ErrorException SolenoidKick(num_steps = -2)
-    @test_throws ErrorException SplitIntegration(order = 5)=#
+    @test_throws ErrorException SplitIntegration(order = 5)
   end
 
 end

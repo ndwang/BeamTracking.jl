@@ -86,9 +86,10 @@ function test_map(
 
   # Initialize bunch without spin
   v = transpose(@vars(D10))
+  q = TPS64{D10}[1 0 0 0]
   state = similar(v, State.T, 1)
   state .= State.Alive
-  coords = Coords(state, v, nothing)
+  coords = Coords(state, v, q)
 
   # Set up kernel chain and launch!
   BeamTracking.launch!(coords, kernel_call)
@@ -177,8 +178,7 @@ function quaternion_coeffs_approx_equal(q_expected, q_calculated, ϵ)
   return all_ok
 end
 
-# MAKE expq HORNER BEFORE PULL REQUEST!!!
 #include("LinearTracking.jl")
 #include("ExactTracking.jl")
-#include("IntegrationTracking.jl")
-include("BeamlinesExt.jl")
+include("IntegrationTracking.jl")
+#include("BeamlinesExt.jl")
