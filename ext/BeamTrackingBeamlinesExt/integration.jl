@@ -93,8 +93,8 @@ end
   else
     R_ref = bunch.R_ref
     tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
-    mm = bm.order
-    kn, ks = get_strengths(bm, L, R_ref)
+    mm = bm1.order
+    kn, ks = get_strengths(bm1, L, R_ref)
     k0 = sqrt(kn^2 + ks^2)
     tilt = atan(ks, kn)
     w = ExactTracking.w_quaternion(0,0,tilt)

@@ -527,6 +527,18 @@
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
+    # Straight pure dipole (BK):
+    ele = LineElement(L=2.0, Kn0=0.1, tracking_method=BendKick(order=6, num_steps=10))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/straight_pure_dipole_bk.jl")
+    @test coeffs_approx_equal(v_expected, b0.coords.v, 2e-6)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-6)
+
     # Straight dipole with quadrupole (DK):
     ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.03, tracking_method=DriftKick())
     v = collect(transpose(@vars(D10)))
