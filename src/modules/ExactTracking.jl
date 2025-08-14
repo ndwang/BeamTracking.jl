@@ -395,13 +395,13 @@ end
 
 # Rotation matrix
 """
-  w_matrix(x_rot, y_rot, z_rot)
+  w_quaternion(x_rot, y_rot, z_rot)
 
 Constructs a rotation quaternion based on the given Bryan-Tait angles.
 
 Bmad/SciBmad follows the MAD convention of applying z, x, y rotations in that order.
 
-The inverse matrix reverses the order of operations and their signs.
+The inverse quaternion reverses the order of operations and their signs.
 
 
 Arguments:
@@ -409,8 +409,6 @@ Arguments:
 - `y_rot::Number`: Rotation angle around the y-axis.
 - `z_rot::Number`: Rotation angle around the z-axis.
 
-Returns:
-- `DCM{Float64}`: ReferenceFrameRotations.DCM (direct cosine matrix), rotation matrix.
 """
 function w_quaternion(x_rot, y_rot, z_rot)
   qz = SA[cos(z_rot/2) 0 0 sin(z_rot/2)]
