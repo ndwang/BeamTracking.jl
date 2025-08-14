@@ -275,7 +275,7 @@ Arguments
 - 'ks'       -- skew multipole strengths 
 - 'L'        -- length
 """
-@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, a, e1, e2, g, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, k0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, a, e1, e2, g, w, w_inv, k0, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
@@ -426,7 +426,7 @@ end
 end
 
 
-@makekernel fastgtpsa=true function rotate_spin!(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
+@makekernel fastgtpsa=false function rotate_spin!(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
   """
   This function rotates particle i's quaternion according to the multipoles present.
   """

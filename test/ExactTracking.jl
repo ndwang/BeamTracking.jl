@@ -851,19 +851,25 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     dy_rot = -0.1
     dz_rot = 0.2
 
-    W = [cos(dy_rot) 0 sin(dy_rot); 0 1 0; -sin(dy_rot) 0 cos(dy_rot)] *
-        [1 0 0; 0 cos(dx_rot) -sin(dx_rot); 0 sin(dx_rot) cos(dx_rot)] *
-        [cos(dz_rot) -sin(dz_rot) 0; sin(dz_rot) cos(dz_rot) 0; 0 0 1]
+    sx, cx = sincos(dx_rot/2)
+    sy, cy = sincos(dy_rot/2)
+    sz, cz = sincos(dz_rot/2)
 
-    # Test w_matrix function
-    @test all(ExactTracking.w_matrix(dx_rot, dy_rot, dz_rot) .== W)
+    W = SA[cx*cy*cz + sx*sy*sz, 
+           cy*cz*sx + cx*sy*sz,
+           cx*cz*sy - cy*sx*sz,
+           -cz*sx*sy + cx*cy*sz]'
 
-    Winv = [cos(dz_rot) sin(dz_rot) 0; -sin(dz_rot) cos(dz_rot) 0; 0 0 1] *
-            [1 0 0; 0 cos(dx_rot) sin(dx_rot); 0 -sin(dx_rot) cos(dx_rot)] *
-            [cos(dy_rot) 0 -sin(dy_rot); 0 1 0; sin(dy_rot) 0 cos(dy_rot)]
+    # Test w_quaternion function
+    @test ExactTracking.w_quaternion(dx_rot, dy_rot, dz_rot) ≈ W
 
-    # Test w_inv_matrix function
-    @test all(ExactTracking.w_inv_matrix(dx_rot, dy_rot, dz_rot) .== Winv)
+    Winv = SA[cx*cy*cz + sx*sy*sz,
+              -cy*cz*sx - cx*sy*sz,
+              -cx*cz*sy + cy*sx*sz,
+              cz*sx*sy - cx*cy*sz]'
+
+    # Test w_inv_quaternion function
+    @test ExactTracking.w_inv_quaternion(dx_rot, dy_rot, dz_rot) ≈ Winv
   end
 
   @testset "Kernels" begin
@@ -877,8 +883,11 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
         dx = T(2)
         dy = T(3)
         dz = T(4)
-        winv = ExactTracking.w_inv_matrix(T(-5),T(6),T(7))
-        L = winv[3,1]*dx + winv[3,2]*dy + winv[3,3]*dz
+        winv = ExactTracking.w_inv_quaternion(T(-5),T(6),T(7))
+        w31 = 2*(winv[QX]*winv[QZ] - winv[QY]*winv[Q0])
+        w32 = 2*(winv[QY]*winv[QZ] + winv[QX]*winv[Q0])
+        w33 = 1 - 2*(winv[QX]^2 + winv[QY]^2)
+        L = w31*dx + w32*dy + w33*dz
         return beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv, L
     end
 

@@ -173,7 +173,7 @@ end
   b3 = a1*b2 + b1*a2 + c1*d2 - d1*c2
   c3 = a1*c2 - b1*d2 + c1*a2 + d1*b2
   d3 = a1*d2 + b1*c2 - c1*b2 + d1*a2
-  return SA[a3, b3, c3, d3]
+  return SA[a3 b3 c3 d3]
 end
 
 # Particle energy conversions =============================================================

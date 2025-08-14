@@ -227,7 +227,7 @@ provided, a linear hard-edge fringe map is applied at both ends.
 - 'beta_0'   -- p0c/E0
 - 'L'        -- length
 """
-@makekernel fastgtpsa=false function exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, tilde_m, beta_0, L)
+@makekernel fastgtpsa=false function exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
   alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
 
   me1 = Kn0*tan(e1)/(1 + coords.v[i,PZI]) * alive
@@ -286,7 +286,7 @@ end
 
 
 # This is separate because the spin can be transported exactly here
-@makekernel fastgtpsa=true function exact_curved_drift!(i, coords::Coords, e1, e2, theta, g, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, a, tilde_m, beta_0, L)
+@makekernel fastgtpsa=true function exact_curved_drift!(i, coords::Coords, e1, e2, theta, g, w, w_inv, a, tilde_m, beta_0, L) 
   exact_bend!(i, coords, 0, 0, theta, g, 0, w, w_inv, tilde_m, beta_0, L)
   if !isnothing(coords.q)
     patch_rotation!(i, coords, w, 0)
@@ -336,7 +336,7 @@ end
 end
 
 
-@makekernel fastgtpsa=false function patch_rotation!(i, coords::Coords, winv::StaticMatrix{3,3}, dz)
+@makekernel fastgtpsa=true function patch_rotation!(i, coords::Coords, winv, dz) 
   v = coords.v
   cond = (1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2
   coords.state[i] = ifelse(cond <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
@@ -344,24 +344,29 @@ end
   ps_0 = alive * sqrt(cond + (alive-1)*(cond-1))
   x_0 = v[i,XI]
   y_0 = v[i,YI]
-  v[i,XI]   = alive*(winv[1,1]*x_0 + winv[1,2]*y_0 - winv[1,3]*dz) - (alive - 1)*v[i,XI]
-  v[i,YI]   = alive*(winv[2,1]*x_0 + winv[2,2]*y_0 - winv[2,3]*dz) - (alive - 1)*v[i,YI]
+  w11 = 1 - 2*(winv[QY]^2 + winv[QZ]^2)
+  w12 = 2*(winv[QX]*winv[QY] - winv[QZ]*winv[Q0])
+  w13 = 2*(winv[QX]*winv[QZ] + winv[QY]*winv[Q0])
+  w21 = 2*(winv[QX]*winv[QY] + winv[QZ]*winv[Q0])
+  w22 = 1 - 2*(winv[QX]^2+winv[QZ]^2)
+  w23 = 2*(winv[QY]*winv[QZ] - winv[QX]*winv[Q0])
+  v[i,XI]   = alive*(w11*x_0 + w12*y_0 - w13*dz) - (alive - 1)*v[i,XI]
+  v[i,YI]   = alive*(w21*x_0 + w22*y_0 - w23*dz) - (alive - 1)*v[i,YI]
 
   px_0 = v[i,PXI]
   py_0 = v[i,PYI]
-  v[i,PXI] = alive*(winv[1,1]*px_0 + winv[1,2]*py_0 + winv[1,3]*ps_0) - (alive - 1)*v[i,PXI]
-  v[i,PYI] = alive*(winv[2,1]*px_0 + winv[2,2]*py_0 + winv[2,3]*ps_0) - (alive - 1)*v[i,PYI]
+  v[i,PXI] = alive*(w11*px_0 + w12*py_0 + w13*ps_0) - (alive - 1)*v[i,PXI]
+  v[i,PYI] = alive*(w21*px_0 + w22*py_0 + w23*ps_0) - (alive - 1)*v[i,PYI]
 
   q1 = coords.q 
   if !isnothing(q1) && alive == 1
-    q2 = Quaternion(q1[i,Q0], -q1[i,QX], -q1[i,QY], -q1[i,QZ]) # weird ReferenceFrameRotations convention
-    q_new = dcm_to_quat(winv ∘ q2)
-    q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ] = q_new.q0, -q_new.q1, -q_new.q2, -q_new.q3
+    q = quat_mul(winv, q1)
+    q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ] = q[Q0], q[QX], q[QY], q[QZ]
   end
 end
 
 
-@makekernel fastgtpsa=true function patch!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv::Union{StaticMatrix{3,3},Nothing}, L)
+@makekernel fastgtpsa=true function patch!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv, L) 
   v = coords.v
   rel_p = 1 + v[i,PZI]
   cond = (1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2
@@ -375,7 +380,10 @@ end
     v[i,ZI] -= alive*((dz-L) * rel_p / ps_0)
   else
     patch_offset!(i, coords, tilde_m, dx, dy, dt)
-    s_f = winv[3,1]*v[i,XI] + winv[3,2]*v[i,YI] - winv[3,3]*dz
+    w31 = 2*(winv[QX]*winv[QZ] - winv[QY]*winv[Q0])
+    w32 = 2*(winv[QY]*winv[QZ] + winv[QX]*winv[Q0])
+    w33 = 1 - 2*(winv[QX]^2 + winv[QY]^2)
+    s_f = w31*v[i,XI] + w32*v[i,YI] - w33*dz
     patch_rotation!(i, coords, winv, dz)
     exact_drift!(i, coords, beta_0, gamsqr_0, tilde_m, -s_f)
     v[i,ZI] += alive*((s_f + L) * rel_p * sqrt((1 + tilde_m^2)/(rel_p^2 + tilde_m^2)))
@@ -389,11 +397,9 @@ end
 """
   w_matrix(x_rot, y_rot, z_rot)
 
-Constructs a rotation matrix based on the given Bryan-Tait angles.
+Constructs a rotation quaternion based on the given Bryan-Tait angles.
 
 Bmad/SciBmad follows the MAD convention of applying z, x, y rotations in that order.
-Furthermore, in ReferenceFrameRotations, the rotation angles are defined as negative
-of the SciBmad rotation angles `x_rot`, `y_rot`, and `z_rot`.
 
 The inverse matrix reverses the order of operations and their signs.
 
@@ -406,13 +412,23 @@ Arguments:
 Returns:
 - `DCM{Float64}`: ReferenceFrameRotations.DCM (direct cosine matrix), rotation matrix.
 """
-function w_matrix(x_rot, y_rot, z_rot)
-  return ReferenceFrameRotations.angle_to_rot(-z_rot, -x_rot, -y_rot, :ZXY)
+function w_quaternion(x_rot, y_rot, z_rot)
+  qz = SA[cos(z_rot/2) 0 0 sin(z_rot/2)]
+  qx = SA[cos(x_rot/2) sin(x_rot/2) 0 0]
+  qy = SA[cos(y_rot/2) 0 sin(y_rot/2) 0]
+  q = quat_mul(qx, qz)
+  q = quat_mul(qy, q)
+  return q
 end
 
-# Inverse rotation matrix
-function w_inv_matrix(x_rot, y_rot, z_rot)
-  return ReferenceFrameRotations.angle_to_rot(y_rot, x_rot, z_rot, :YXZ)
+# Inverse rotation quaternion
+function w_inv_quaternion(x_rot, y_rot, z_rot)
+  qz = SA[cos(z_rot/2) 0 0 -sin(z_rot/2)]
+  qx = SA[cos(x_rot/2) -sin(x_rot/2) 0 0]
+  qy = SA[cos(y_rot/2) 0 -sin(y_rot/2) 0]
+  q = quat_mul(qx, qy)
+  q = quat_mul(qz, q)
+  return q
 end
 
 function drift_params(species::Species, R_ref)

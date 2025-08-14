@@ -32,8 +32,8 @@
       L = T(2)
       k1 = T(0.1) 
       tilt = T(pi/4)
-      w = ExactTracking.w_matrix(0,0,-tilt)
-      w_inv = ExactTracking.w_inv_matrix(0,0,-tilt)
+      w = ExactTracking.w_quaternion(0,0,-tilt)
+      w_inv = ExactTracking.w_inv_quaternion(0,0,-tilt)
       mm = SA[2]
       kn = SA[k1*cos(-2*tilt)]
       ks = SA[k1*sin(-2*tilt)]
@@ -73,7 +73,7 @@
       Ks1 = T(0)
       kn = SA[Kn0, Kn1]
       ks = SA[Ks0, Ks1]
-      w = w_inv = SA[1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0]
+      w = w_inv = SA[1.0 0.0 0.0 0.0]
       a = T(0.00115965218046)
       p0c = T(10e6)
       mc2 = T(BeamTracking.massof(Species("electron")))

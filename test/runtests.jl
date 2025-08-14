@@ -7,7 +7,7 @@ using Test,
       StaticArrays,
       ReferenceFrameRotations
 
-using BeamTracking: Coords, KernelCall
+using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
 
@@ -178,7 +178,7 @@ function quaternion_coeffs_approx_equal(q_expected, q_calculated, ϵ)
   return all_ok
 end
 
-#include("LinearTracking.jl")
-#include("ExactTracking.jl")
+include("LinearTracking.jl")
+include("ExactTracking.jl")
 include("IntegrationTracking.jl")
-#include("BeamlinesExt.jl")
+include("BeamlinesExt.jl")
