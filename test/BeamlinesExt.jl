@@ -349,252 +349,429 @@
     R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + BeamTracking.massof(Species("electron"))^2))
 
     # Thin straight pure dipole:
-    ele = LineElement(L=0.0, Kn0L=1.0, tracking_method=SplitIntegration())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    ele = LineElement(L=0.0, Kn0L=0.1, tracking_method=SplitIntegration())
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/thin_pure_dipole.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/thin_pure_dipole.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 1e-14)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Thin straight dipole:
-    ele = LineElement(L=0.0, Kn0L=1.0, Kn5L=1000.0, tracking_method=SplitIntegration())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    ele = LineElement(L=0.0, Kn0L=0.1, Kn5L=1000.0, tracking_method=SplitIntegration())
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/thin_dipole.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/thin_dipole.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 1e-14)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Thin pure quadrupole:
-    ele = LineElement(L=0.0, Kn1L=1.0, tilt1 = pi, tracking_method=SplitIntegration())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    ele = LineElement(L=0.0, Kn1L=1.0, tilt1=pi, tracking_method=SplitIntegration())
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/thin_pure_quadrupole.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/thin_pure_quadrupole.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 1e-14)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Thin quadrupole:
-    ele = LineElement(L=0.0, Kn1L=1.0, tilt1 = pi, Kn5L=100.0, tilt5=-0.1*pi, tracking_method=SplitIntegration())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    ele = LineElement(L=0.0, Kn1L=1.0, tilt1=pi, Kn5L=100.0, tilt5=-0.1*pi, tracking_method=SplitIntegration())
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/thin_quadrupole.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/thin_quadrupole.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 1e-14)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Thin pure multipole:
     ele = LineElement(L=0.0, Kn3L=10.0, tilt3=0.5*pi, tracking_method=SplitIntegration())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/thin_pure_multipole.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/thin_pure_multipole.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 1e-14)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Thin multipole:
     ele = LineElement(L=0.0, Kn2L=1.0, tilt2=0.3*pi, Kn6L=100.0, tilt6=0.15*pi, tracking_method=SplitIntegration())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/thin_multipole.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/thin_multipole.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 1e-14)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Drift: 
     ele = LineElement(L=1.0, tracking_method=SplitIntegration())   
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
     v_expected = read_map("bmad_maps/drift.jl")
+    q_expected = Quaternion(TPS64{D10}(1), TPS64{D10}[0, 0, 0])
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
+
+    # Curved drift: 
+    ele = LineElement(L=2.0, g_ref=0.1, tracking_method=SplitIntegration())   
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/bend_no_field.jl")
+    @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
+
+    # Rotated and curved drift: 
+    ele = LineElement(L=2.0, g_ref=0.1, tilt_ref=-pi/3, tracking_method=SplitIntegration())   
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/rotated_bend_no_field.jl")
+    @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
+
+    # Pure bend:
+    ele = LineElement(L=2.0, g=0.1, tracking_method=SplitIntegration(order=6, num_steps=10))   
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    q = [1.0 0.0 0.0 0.0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    @test b0.coords.v ≈ [58.61782947 31.13531470 105.79375452 40.00000000 41.75205992 60.00000000]/1e3
+    @test b0.coords.q ≈ [0.99999555887473 0.00000197685011 0.00297918168991 0.00008187412527]
 
     # Pure solenoid:
     ele = LineElement(L=1.0, Ksol=2.0, tracking_method=SplitIntegration())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/solenoid.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/solenoid.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Solenoid with quadrupole:
     ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/sol_quad.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/sol_quad.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # SK multiple steps:
     ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=4, num_steps=2))
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/sk_multistep.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/sk_multistep.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Step size:
     ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=4, ds_step=1.0))
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/sk_multistep.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/sk_multistep.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Straight pure dipole (DK):
     ele = LineElement(L=2.0, Kn0=0.1, tilt0=pi/3, tracking_method=DriftKick())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/straight_pure_dipole_dk.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/straight_pure_dipole_dk.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
+
+    # Straight pure dipole (BK):
+    ele = LineElement(L=2.0, Kn0=0.1, tracking_method=BendKick(order=6, num_steps=10))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/straight_pure_dipole_bk.jl")
+    @test coeffs_approx_equal(v_expected, b0.coords.v, 2e-6)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-6)
 
     # Straight dipole with quadrupole (DK):
     ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.03, tracking_method=DriftKick())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/straight_dipole_dk.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/straight_dipole_dk.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Straight dipole with quadrupole (BK):
-    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=BendKick(order=6,num_steps=10))
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=BendKick(order=6, num_steps=10))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/straight_dipole_bk.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/straight_dipole_bk.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 2e-6)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-6)
 
-   # Straight dipole with quadrupole (MK):
-    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=SplitIntegration(order=6,num_steps=10))
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
-    bl = Beamline([ele], R_ref=R_ref)
+    # Straight dipole with quadrupole (MK):
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=SplitIntegration(order=6, num_steps=10))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/straight_dipole_bk.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/straight_dipole_bk.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 4e-7)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 4e-7)
 
     # Pure quadrupole (MK):
     ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/quadrupole_mk.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/quadrupole_mk.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Skew quadrupole (MK):
     ele = LineElement(L=2.0, Kn1=0.1, tilt1=pi/4, tracking_method=MatrixKick())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/skew_quad_mk.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/skew_quad_mk.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-9)
 
     # Skew quadrupole another way (MK):
     ele = LineElement(L=2.0, Ks1=-0.1, tracking_method=MatrixKick())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/skew_quad_mk.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/skew_quad_mk.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-9)
 
     # Pure quadrupole (DK):
     ele = LineElement(L=2.0, Kn1=0.1, tilt1=0.1*pi, tracking_method=DriftKick())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/quadrupole_dk.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/quadrupole_dk.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Quadrupole with octupole (MK):
     ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/quad_oct_mk.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/quad_oct_mk.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-7)
 
     # MK multiple steps:
     ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick(num_steps=2))
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/mk_multistep.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/mk_multistep.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-7)
 
     # Quadrupole with octupole (DK):
     ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=DriftKick())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/quad_oct_dk.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/quad_oct_dk.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 4e-8)
 
     # Pure sextupole:
     ele = LineElement(L=2.0, Kn2=10.0, tilt2=0.2*pi, tracking_method=SplitIntegration())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/sextupole.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/sextupole.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-9)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 7e-8)
 
     # DK multiple steps:
     ele = LineElement(L=2.0, Kn2=10.0, tracking_method=SplitIntegration(order=4, num_steps=2))
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/dk_multistep.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/dk_multistep.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-7)
 
     # Sextupole with decapole:
     ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/sex_dec.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/sex_dec.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-8)
 
     # Order 4:
     ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=4))
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/order_four.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/order_four.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-7)
 
     # Order 6:
     ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=6))
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/order_six.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/order_six.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-9)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-8)
 
     # Order 8:
     ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=8))
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/order_eight.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/order_eight.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-9)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 3e-7)
 
     # Patch:
-    ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
-    b0 = Bunch(collect(transpose(@vars(D10))), R_ref=R_ref, species=Species("electron"))
-    bl = Beamline([ele_patch], R_ref=R_ref, species_ref=Species("electron"))
+    ele = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = read_map("bmad_maps/patch.jl")
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected, q_expected = read_spin_orbit_map("bmad_maps/patch.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
+
+    # Particle lost in dipole (momentum is too small):
+    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
+    v_init = copy(b0.coords.v)
+    q_init = copy(b0.coords.q)
+    ele_dipole = LineElement(L=1.0, Kn0=1e-8, Kn1=1e-8, tracking_method=BendKick())
+    track!(b0, Beamline([ele_dipole], R_ref=R_ref))
+    @test b0.coords.state[1] == State.Lost
+    @test v_init == b0.coords.v
+    @test q_init == b0.coords.q || q_init == -b0.coords.q
 
     # Particle lost in quadrupole (momentum is too small):
-    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], R_ref=R_ref, species=Species("electron"))
+    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
+    q_init = copy(b0.coords.q)
     ele_quad = LineElement(L=1.0, Kn1=1e-8, tracking_method=MatrixKick())
     track!(b0, Beamline([ele_quad], R_ref=R_ref))
     @test b0.coords.state[1] == State.Lost
     @test v_init == b0.coords.v
+    @test q_init == b0.coords.q || q_init == -b0.coords.q
 
     # Particle lost in patch (momentum is too small):
-    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], R_ref=R_ref, species=Species("electron"))
+    b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
+    q_init = copy(b0.coords.q)
     ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
     track!(b0, Beamline([ele_patch], R_ref=R_ref))
     @test b0.coords.state[1] == State.Lost
     @test v_init == b0.coords.v
+    @test q_init == b0.coords.q || q_init == -b0.coords.q
 
     # Errors:
     @test_throws ErrorException MatrixKick(ds_step = 0.1, num_steps = 2)

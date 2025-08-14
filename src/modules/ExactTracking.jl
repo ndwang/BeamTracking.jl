@@ -8,7 +8,7 @@ struct Exact end
 
 module ExactTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays, ..ReferenceFrameRotations, ..KernelAbstractions
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, @makekernel, Coords
+using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, @makekernel, Coords
 using ..BeamTracking: C_LIGHT
 const TRACKING_METHOD = Exact
 
@@ -83,7 +83,7 @@ lists the orders of the corresponding entries in knl and ksl.
 
 The algorithm used in this function takes advantage of the
 complex representation of the vector potential Az,
-  - ``-Re{ sum_m (b_m + i a_m) (x + i y)^m / m }``,
+  - ``-Re{ sum_m (b_m + i a_m) (x + i y)^m / m! }``,
 and uses a Horner-like scheme (see Shachinger and Talman
 [SSC-52]) to compute the transverse kicks induced by a pure
 multipole magnet. This method supposedly has good numerical
@@ -105,27 +105,37 @@ properties, though I've not seen a proof of that claim.
 """
 @makekernel fastgtpsa=true function multipole_kick!(i, coords::Coords, ms, knl, ksl, excluding)
   v = coords.v
-  alive = (coords.state[i] == State.Alive)
+  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+  bx, by = normalized_field!(ms, knl, ksl, v[i,XI], v[i,YI], excluding)
+  v[i,PXI] -= by * alive
+  v[i,PYI] += bx * alive
+end # function multipole_kick!()
+
+
+@inline function normalized_field!(ms, knl, ksl, x, y, excluding)
+  """
+  Returns (bx, by), the transverse components of the magnetic field divided
+  by the reference rigidty.
+  """
   jm = length(ms)
   m  = ms[jm]
-  add = alive && (m != excluding)
-  ar = knl[jm] * add
-  ai = ksl[jm] * add
+  add = (m != excluding && m > 0)
+  by = knl[jm] * add
+  bx = ksl[jm] * add
   jm -= 1
   while 2 <= m
     m -= 1
-    t  = (ar * v[i,XI] - ai * v[i,YI]) / m
-    ai = (ar * v[i,YI] + ai * v[i,XI]) / m
-    ar = t
-    add = alive && (0 < jm && m == ms[jm]) && (m != excluding) # branchless
+    t  = (by * x - bx * y) / m
+    bx = (by * y + bx * x) / m
+    by = t
+    add = (0 < jm && m == ms[jm]) && (m != excluding) # branchless
     idx = max(1, jm) # branchless trickery
-    ar += knl[idx] * add
-    ai += ksl[idx] * add
+    by += knl[idx] * add
+    bx += ksl[idx] * add
     jm -= add
   end
-  v[i,PXI] -= ar
-  v[i,PYI] += ai
-end # function multipole_kick!()
+  return bx, by
+end
 
 
 #function binom(m::Integer, x, y)
@@ -198,6 +208,7 @@ to carry both reference and design values.
                + (1 + v[i,PZI]) * Lr / (beta_0 * sqrt(1 / beta_0^2 + (2 + v[i,PZI]) * v[i,PZI])))
 end # function exact_sbend!()
 
+
 """
     exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
 
@@ -216,11 +227,13 @@ provided, a linear hard-edge fringe map is applied at both ends.
 - 'beta_0'   -- p0c/E0
 - 'L'        -- length
 """
-@makekernel fastgtpsa=false function exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w::StaticMatrix{3,3}, w_inv::StaticMatrix{3,3}, tilde_m, beta_0, L)
-  me1 = Kn0*tan(e1)/(1 + coords.v[i,PZI])
+@makekernel fastgtpsa=false function exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
+  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+
+  me1 = Kn0*tan(e1)/(1 + coords.v[i,PZI]) * alive
   mx1 = SA[1 0; me1  1]
   my1 = SA[1 0;-me1  1]
-  me2 = Kn0*tan(e2)/(1 + coords.v[i,PZI])
+  me2 = Kn0*tan(e2)/(1 + coords.v[i,PZI]) * alive
   mx2 = SA[1 0; me2  1]
   my2 = SA[1 0;-me2 1]
   
@@ -271,6 +284,18 @@ provided, a linear hard-edge fringe map is applied at both ends.
   patch_rotation!(i, coords, w_inv, 0)
 end
 
+
+# This is separate because the spin can be transported exactly here
+@makekernel fastgtpsa=true function exact_curved_drift!(i, coords::Coords, e1, e2, theta, g, w, w_inv, a, tilde_m, beta_0, L) 
+  exact_bend!(i, coords, 0, 0, theta, g, 0, w, w_inv, tilde_m, beta_0, L)
+  if !isnothing(coords.q)
+    patch_rotation!(i, coords, w, 0)
+    IntegrationTracking.rotate_spin!(i, coords, a, g, tilde_m, SA[0], SA[0], SA[0], L)
+    patch_rotation!(i, coords, w_inv, 0)
+  end
+end
+
+
 @makekernel fastgtpsa=true function exact_solenoid!(i, coords::Coords, ks, beta_0, gamsqr_0, tilde_m, L)
   v = coords.v
 
@@ -300,6 +325,7 @@ end
   v[i,PYI]  = alive*(ks * cm * x_0 / 4 - s * (px_0 / 2 + ks * y_0 / 4) + cp * v[i,PYI] / 2) - (alive - 1) * v[i,PYI]
 end
 
+
 @makekernel fastgtpsa=true function patch_offset!(i, coords::Coords, tilde_m, dx, dy, dt)
   v = coords.v
   alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
@@ -309,7 +335,8 @@ end
   v[i,ZI] += alive*rel_p/sqrt(rel_p^2+tilde_m^2)*C_LIGHT*dt
 end
 
-@makekernel fastgtpsa=true function patch_rotation!(i, coords::Coords, winv::StaticMatrix{3,3}, dz)
+
+@makekernel fastgtpsa=true function patch_rotation!(i, coords::Coords, winv, dz) 
   v = coords.v
   cond = (1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2
   coords.state[i] = ifelse(cond <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
@@ -317,16 +344,29 @@ end
   ps_0 = alive * sqrt(cond + (alive-1)*(cond-1))
   x_0 = v[i,XI]
   y_0 = v[i,YI]
-  v[i,XI]   = alive*(winv[1,1]*x_0 + winv[1,2]*y_0 - winv[1,3]*dz) - (alive - 1)*v[i,XI]
-  v[i,YI]   = alive*(winv[2,1]*x_0 + winv[2,2]*y_0 - winv[2,3]*dz) - (alive - 1)*v[i,YI]
+  w11 = 1 - 2*(winv[QY]^2 + winv[QZ]^2)
+  w12 = 2*(winv[QX]*winv[QY] - winv[QZ]*winv[Q0])
+  w13 = 2*(winv[QX]*winv[QZ] + winv[QY]*winv[Q0])
+  w21 = 2*(winv[QX]*winv[QY] + winv[QZ]*winv[Q0])
+  w22 = 1 - 2*(winv[QX]^2+winv[QZ]^2)
+  w23 = 2*(winv[QY]*winv[QZ] - winv[QX]*winv[Q0])
+  v[i,XI]   = alive*(w11*x_0 + w12*y_0 - w13*dz) - (alive - 1)*v[i,XI]
+  v[i,YI]   = alive*(w21*x_0 + w22*y_0 - w23*dz) - (alive - 1)*v[i,YI]
 
   px_0 = v[i,PXI]
   py_0 = v[i,PYI]
-  v[i,PXI] = alive*(winv[1,1]*px_0 + winv[1,2]*py_0 + winv[1,3]*ps_0) - (alive - 1)*v[i,PXI]
-  v[i,PYI] = alive*(winv[2,1]*px_0 + winv[2,2]*py_0 + winv[2,3]*ps_0) - (alive - 1)*v[i,PYI]
+  v[i,PXI] = alive*(w11*px_0 + w12*py_0 + w13*ps_0) - (alive - 1)*v[i,PXI]
+  v[i,PYI] = alive*(w21*px_0 + w22*py_0 + w23*ps_0) - (alive - 1)*v[i,PYI]
+
+  q1 = coords.q 
+  if !isnothing(q1) && alive == 1
+    q = quat_mul(winv, q1)
+    q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ] = q[Q0], q[QX], q[QY], q[QZ]
+  end
 end
 
-@makekernel fastgtpsa=true function patch!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv::Union{StaticMatrix{3,3},Nothing}, L)
+
+@makekernel fastgtpsa=true function patch!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv, L) 
   v = coords.v
   rel_p = 1 + v[i,PZI]
   cond = (1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2
@@ -340,7 +380,10 @@ end
     v[i,ZI] -= alive*((dz-L) * rel_p / ps_0)
   else
     patch_offset!(i, coords, tilde_m, dx, dy, dt)
-    s_f = winv[3,1]*v[i,XI] + winv[3,2]*v[i,YI] - winv[3,3]*dz
+    w31 = 2*(winv[QX]*winv[QZ] - winv[QY]*winv[Q0])
+    w32 = 2*(winv[QY]*winv[QZ] + winv[QX]*winv[Q0])
+    w33 = 1 - 2*(winv[QX]^2 + winv[QY]^2)
+    s_f = w31*v[i,XI] + w32*v[i,YI] - w33*dz
     patch_rotation!(i, coords, winv, dz)
     exact_drift!(i, coords, beta_0, gamsqr_0, tilde_m, -s_f)
     v[i,ZI] += alive*((s_f + L) * rel_p * sqrt((1 + tilde_m^2)/(rel_p^2 + tilde_m^2)))
@@ -352,15 +395,13 @@ end
 
 # Rotation matrix
 """
-  w_matrix(x_rot, y_rot, z_rot)
+  w_quaternion(x_rot, y_rot, z_rot)
 
-Constructs a rotation matrix based on the given Bryan-Tait angles.
+Constructs a rotation quaternion based on the given Bryan-Tait angles.
 
 Bmad/SciBmad follows the MAD convention of applying z, x, y rotations in that order.
-Furthermore, in ReferenceFrameRotations, the rotation angles are defined as negative
-of the SciBmad rotation angles `x_rot`, `y_rot`, and `z_rot`.
 
-The inverse matrix reverses the order of operations and their signs.
+The inverse quaternion reverses the order of operations and their signs.
 
 
 Arguments:
@@ -368,16 +409,24 @@ Arguments:
 - `y_rot::Number`: Rotation angle around the y-axis.
 - `z_rot::Number`: Rotation angle around the z-axis.
 
-Returns:
-- `DCM{Float64}`: ReferenceFrameRotations.DCM (direct cosine matrix), rotation matrix.
 """
-function w_matrix(x_rot, y_rot, z_rot)
-  return ReferenceFrameRotations.angle_to_rot(-z_rot, -x_rot, -y_rot, :ZXY)
+function w_quaternion(x_rot, y_rot, z_rot)
+  qz = SA[cos(z_rot/2) 0 0 sin(z_rot/2)]
+  qx = SA[cos(x_rot/2) sin(x_rot/2) 0 0]
+  qy = SA[cos(y_rot/2) 0 sin(y_rot/2) 0]
+  q = quat_mul(qx, qz)
+  q = quat_mul(qy, q)
+  return q
 end
 
-# Inverse rotation matrix
-function w_inv_matrix(x_rot, y_rot, z_rot)
-  return ReferenceFrameRotations.angle_to_rot(y_rot, x_rot, z_rot, :YXZ)
+# Inverse rotation quaternion
+function w_inv_quaternion(x_rot, y_rot, z_rot)
+  qz = SA[cos(z_rot/2) 0 0 -sin(z_rot/2)]
+  qx = SA[cos(x_rot/2) -sin(x_rot/2) 0 0]
+  qy = SA[cos(y_rot/2) 0 -sin(y_rot/2) 0]
+  q = quat_mul(qx, qy)
+  q = quat_mul(qz, q)
+  return q
 end
 
 function drift_params(species::Species, R_ref)

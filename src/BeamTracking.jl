@@ -17,10 +17,10 @@ import Base: setproperty!
 
 # Put AtomicAndPhysicalConstants in a box for now for safety
 include("Constants.jl")
-using .Constants: Constants, Species, massof, chargeof, C_LIGHT, isnullspecies
+using .Constants: Constants, Species, massof, chargeof, nameof, C_LIGHT, isnullspecies
 export Species
 
-export Bunch, State, ParticleView, sincu, sinhcu, sincuc
+export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, quat_mul
 export LinearTracking, Linear
 export ExactTracking, Exact
 export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
