@@ -3,6 +3,7 @@ using GTPSA,
       ReferenceFrameRotations,
       StaticArrays, 
       SIMD,
+      SIMDMathFunctions,
       VectorizationBase,
       EnumX,
       Unrolled,
@@ -20,7 +21,7 @@ include("Constants.jl")
 using .Constants: Constants, Species, massof, chargeof, nameof, C_LIGHT, isnullspecies
 export Species
 
-export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, quat_mul
+export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, quat_mul, atan2
 export LinearTracking, Linear
 export ExactTracking, Exact
 export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick

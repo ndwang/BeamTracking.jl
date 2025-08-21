@@ -7,15 +7,15 @@
 struct Exact end
 
 module ExactTracking
-using ..GTPSA, ..BeamTracking, ..StaticArrays, ..ReferenceFrameRotations, ..KernelAbstractions
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, @makekernel, Coords
+using ..GTPSA, ..BeamTracking, ..StaticArrays, ..ReferenceFrameRotations, ..KernelAbstractions, ..SIMD, ..SIMDMathFunctions
+using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, Alive, Lost, @makekernel, Coords
 using ..BeamTracking: C_LIGHT
 const TRACKING_METHOD = Exact
 
 # Update the reference energy of the canonical coordinates
 # BUG: z and pz are not updated correctly
 #=
-@makekernel fastgtpsa=true function update_P0!(i, coords, R_ref_initial, R_ref_final)
+@makekernel fastgtpsa=false function update_P0!(i, coords, R_ref_initial, R_ref_final)
   @inbounds begin
     @FastGTPSA! v[i,PXI] = v[i,PXI] * R_ref_initial / R_ref_final
     @FastGTPSA! v[i,PYI] = v[i,PYI] * R_ref_initial / R_ref_final
@@ -49,24 +49,26 @@ values of ``ε``.
 - `tilde_m`: particle rest energy normalized to the reference value of ``pc``
 - `L`:       element length, in meters
 """
-@makekernel fastgtpsa=true function exact_drift!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, L)
+@makekernel fastgtpsa=false function exact_drift!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, L)
   v = coords.v
 
   P_s2 = (1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)
-  coords.state[i] = ifelse(P_s2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
-  P_s = sqrt(P_s2 + (alive-1)*(P_s2-1))
+  good_momenta = (P_s2 > 0.0)
+  alive_at_start = (coords.state[i] == Alive)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
+  alive = (coords.state[i] == Alive)
+  P_s = sqrt(vifelse(good_momenta, P_s2, 1.0))
 
-  v[i,XI] = alive*(v[i,XI] + v[i,PXI] * L / P_s) - (alive - 1) * v[i,XI]
-  v[i,YI] = alive*(v[i,YI] + v[i,PYI] * L / P_s) - (alive - 1) * v[i,YI]
+  v[i,XI] = vifelse(alive, v[i,XI] + v[i,PXI] * L / P_s, v[i,XI])
+  v[i,YI] = vifelse(alive, v[i,YI] + v[i,PYI] * L / P_s, v[i,YI])
   # high-precision computation of z_final:
   #   vf.z = vi.z - (1 + δ) * L * (1 / Ps - 1 / (β0 * sqrt((1 + δ)^2 + tilde_m^2)))
-  v[i,ZI] = alive*(v[i,ZI] - ( (1 + v[i,PZI]) * L
+  v[i,ZI] = vifelse(alive, v[i,ZI] - ( (1 + v[i,PZI]) * L
                 * ((v[i,PXI]^2 + v[i,PYI]^2) - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0)
                 / ( beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) * P_s
                     * (beta_0 * sqrt((1 + v[i,PZI])^2 + tilde_m^2) + P_s)
                   )
-              )) - (alive - 1) * v[i,ZI]
+              ), v[i,ZI])
 end # function exact_drift!()
 
 
@@ -103,12 +105,12 @@ properties, though I've not seen a proof of that claim.
        Moreover, and this is essential, the multipole
        coefficients must appear in ascending order.
 """
-@makekernel fastgtpsa=true function multipole_kick!(i, coords::Coords, ms, knl, ksl, excluding)
+@makekernel fastgtpsa=false function multipole_kick!(i, coords::Coords, ms, knl, ksl, excluding)
   v = coords.v
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+  alive = (coords.state[i] == Alive)
   bx, by = normalized_field!(ms, knl, ksl, v[i,XI], v[i,YI], excluding)
-  v[i,PXI] -= by * alive
-  v[i,PYI] += bx * alive
+  v[i,PXI] -= vifelse(alive, by, 0.0)
+  v[i,PYI] += vifelse(alive, bx, 0.0)
 end # function multipole_kick!()
 
 
@@ -164,6 +166,7 @@ end
 #
 # ===============  E X A C T   S E C T O R   B E N D  ===============
 #
+#=
 """
     exact_sbend!(i, coords, β0, Bρ0, hc, b0, e1, e2, Larc)
 This function implements exact symplectic tracking through a
@@ -182,7 +185,7 @@ to carry both reference and design values.
 - e2:     exit face angle (+ve angle <=> toward rbend)
 - Larc:   element arc length, in meters
 """
-@makekernel fastgtpsa=true function exact_sbend!(i, coords::Coords, beta_0, R_ref, hc, b0, e1, e2, Lr)
+@makekernel fastgtpsa=false function exact_sbend!(i, coords::Coords, beta_0, R_ref, hc, b0, e1, e2, Lr)
   v = coords.v
 
   rho = R_ref0 / b0
@@ -207,7 +210,7 @@ to carry both reference and design values.
   v[i,ZI] = (v[i,ZI] - rho * (1 + v[i,PZI]) * ang_eff
                + (1 + v[i,PZI]) * Lr / (beta_0 * sqrt(1 / beta_0^2 + (2 + v[i,PZI]) * v[i,PZI])))
 end # function exact_sbend!()
-
+=#
 
 """
     exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
@@ -228,65 +231,69 @@ provided, a linear hard-edge fringe map is applied at both ends.
 - 'L'        -- length
 """
 @makekernel fastgtpsa=false function exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+  v = coords.v
+  alive = (coords.state[i] == Alive)
+  rel_p = 1 + v[i,PZI]
 
-  me1 = Kn0*tan(e1)/(1 + coords.v[i,PZI]) * alive
-  mx1 = SA[1 0; me1  1]
-  my1 = SA[1 0;-me1  1]
-  me2 = Kn0*tan(e2)/(1 + coords.v[i,PZI]) * alive
-  mx2 = SA[1 0; me2  1]
-  my2 = SA[1 0;-me2 1]
+  me1 = Kn0*tan(e1)/rel_p
+  me2 = Kn0*tan(e2)/rel_p
   
   patch_rotation!(i, coords, w, 0)
-  LinearTracking.linear_coast_uncoupled!(i, coords, mx1, my1, 0, nothing, nothing)
+  v[i,PXI] = vifelse(alive, v[i,PXI] + v[i,XI]*me1, v[i,PXI])
+  v[i,PYI] = vifelse(alive, v[i,PYI] - v[i,YI]*me1, v[i,PYI])
 
-  v = coords.v
-  rel_p = 1 + v[i,PZI]
- 
   pt2 = rel_p^2 - v[i,PYI]^2
-  coords.state[i] = ifelse(pt2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
-  
-  pt = sqrt(pt2 + (alive-1)*(pt2-1))
-  arg = v[i,PXI] / pt
-  coords.state[i] = ifelse(abs(arg) > 1 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
-  # The above comparison does not work with FastGTPSA (currently)
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+  good_momenta = (pt2 > 0.0)
+  alive_at_start = (coords.state[i] == Alive)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
+  alive = (coords.state[i] == Alive)
+  pt = sqrt(vifelse(good_momenta, pt2, 1.0))
 
-  phi1 = theta + asin(alive * arg)
+  arg = v[i,PXI] / pt
+  good_arg = (abs(arg) <= 1)
+  coords.state[i] = vifelse(!good_arg & alive, Lost, coords.state[i])
+  # The above comparison does not work with FastGTPSA (currently)
+  alive = (coords.state[i] == Alive)
+
+  phi1 = theta + asin(vifelse(good_arg, arg, 0.0))
   gp = Kn0 / pt
   h = 1 + g*v[i,XI] 
   cplus = cos(phi1) 
   splus = sin(phi1)
   sinc_theta = sincu(theta)
-  cosc_theta = (sincu(theta/2))^2 / 2
+  cosc_theta = (sincu(theta/2))^2/2
   sgn = sign(L)
   alpha = 2*h*splus*L*sinc_theta - gp*(h*L*sinc_theta)^2
 
   cond = cplus^2 + gp*alpha
-  coords.state[i] = ifelse(cond <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i]) # particle does not intersect the exit face
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
-  nasty_sqrt = alive * sqrt(cond + (alive-1)*(cond-1))
+  good_cond = (cond > 0)
+  coords.state[i] = vifelse(!good_cond & alive, Lost, coords.state[i]) # particle does not intersect the exit face
+  alive = (coords.state[i] == Alive)
+  nasty_sqrt = sqrt(vifelse(good_cond, cond, 1.0))
 
-  xi = ifelse(cplus > 0 || gp ≈ 0, alpha/(nasty_sqrt + cplus), (nasty_sqrt - cplus)/(gp + ((abs(gp)>0)-1)*(gp-1)))
+  good_gp = (abs(gp) >= 0)
+  gp_safe = vifelse(!good_gp, gp, 1.0)
+  pos_cplus = (cplus > 0)
+  xi = vifelse(pos_cplus | !good_gp, alpha/(nasty_sqrt + cplus), (nasty_sqrt - cplus)/gp_safe)
 
   Lcv = -sgn*(L*sinc_theta + v[i,XI]*sin(theta)) 
-  thetap = 2 * (phi1 - sgn*atan(xi, -Lcv)) 
+  thetap = 2*(phi1 - sgn*atan2(xi, -Lcv)) 
   Lp = sgn*sqrt(Lcv^2 + xi^2)/sincu(thetap/2) 
 
-  v[i,XI]  = alive*(v[i,XI]*cos(theta) - L^2*g*cosc_theta + xi) - (alive - 1) * v[i,XI]
-  v[i,PXI] = alive*(pt*sin(phi1 - thetap)) - (alive - 1) * v[i,PXI]
-  v[i,YI]  = alive*(v[i,YI] + v[i,PYI]*Lp/pt) - (alive - 1) * v[i,YI]
-  v[i,ZI]  = alive*(v[i,ZI] - rel_p*Lp/pt + 
-                  L*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0) - (alive - 1) * v[i,ZI]
+  v[i,XI]  = vifelse(alive, v[i,XI]*cos(theta) - L^2*g*cosc_theta + xi, v[i,XI])
+  v[i,PXI] = vifelse(alive, pt*sin(phi1 - thetap), v[i,PXI])
+  v[i,YI]  = vifelse(alive, v[i,YI] + v[i,PYI]*Lp/pt, v[i,YI])
+  v[i,ZI]  = vifelse(alive, v[i,ZI] - rel_p*Lp/pt + 
+                  L*rel_p/sqrt(tilde_m^2+rel_p^2)/beta_0, v[i,ZI])
 
-  LinearTracking.linear_coast_uncoupled!(i, coords, mx2, my2, 0, nothing, nothing)
+  v[i,PXI] = vifelse(alive, v[i,PXI] + v[i,XI]*me2, v[i,PXI])
+  v[i,PYI] = vifelse(alive, v[i,PYI] - v[i,YI]*me2, v[i,PYI])
   patch_rotation!(i, coords, w_inv, 0)
 end
 
 
 # This is separate because the spin can be transported exactly here
-@makekernel fastgtpsa=true function exact_curved_drift!(i, coords::Coords, e1, e2, theta, g, w, w_inv, a, tilde_m, beta_0, L) 
+@makekernel fastgtpsa=false function exact_curved_drift!(i, coords::Coords, e1, e2, theta, g, w, w_inv, a, tilde_m, beta_0, L) 
   exact_bend!(i, coords, 0, 0, theta, g, 0, w, w_inv, tilde_m, beta_0, L)
   if !isnothing(coords.q)
     patch_rotation!(i, coords, w, 0)
@@ -296,15 +303,17 @@ end
 end
 
 
-@makekernel fastgtpsa=true function exact_solenoid!(i, coords::Coords, ks, beta_0, gamsqr_0, tilde_m, L)
+@makekernel fastgtpsa=false function exact_solenoid!(i, coords::Coords, ks, beta_0, gamsqr_0, tilde_m, L)
   v = coords.v
 
   # Recurring variables
   rel_p = 1 + v[i,PZI]
   pr2 = rel_p^2 - (v[i,PXI] + v[i,YI] * ks / 2)^2 - (v[i,PYI] - v[i,XI] * ks / 2)^2
-  coords.state[i] = ifelse(pr2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
-  pr = sqrt(pr2 + (alive-1)*(pr2-1))
+  good_momenta = (pr2 > 0)
+  alive_at_start = (coords.state[i] == Alive)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
+  alive = (coords.state[i] == Alive)
+  pr = sqrt(vifelse(good_momenta, pr2, 1.0))
 
   s = sin(ks * L / pr)
   cp = 1 + cos(ks * L / pr)
@@ -315,48 +324,52 @@ end
   y_0 = v[i,YI]
 
   # Update
-  v[i,ZI]  = (alive*(v[i,ZI] - rel_p * L *
+  v[i,ZI]  = vifelse(alive, v[i,ZI] - rel_p * L *
                 ((v[i,PXI] + v[i,YI] * ks / 2)^2 + (v[i,PYI] - v[i,XI] * ks / 2)^2 - v[i,PZI] * (2 + v[i,PZI]) / gamsqr_0) /
-                ( beta_0 * sqrt(rel_p^2 + tilde_m^2) * pr * (beta_0 * sqrt(rel_p^2 + tilde_m^2) + pr) )) 
-                - (alive - 1) * v[i,ZI])
-  v[i,XI] = alive*(cp * x_0 / 2 + s * (px_0 / ks + y_0 / 2) + cm * v[i,PYI] / ks) - (alive - 1) * v[i,XI]
-  v[i,PXI] = alive*(s * (v[i,PYI] / 2 - ks * x_0 / 4) + cp * px_0 / 2 - ks * cm * y_0 / 4) - (alive - 1) * v[i,PXI]
-  v[i,YI] = alive*(s * (v[i,PYI] / ks - x_0 / 2) + cp * y_0 / 2 - cm * px_0 / ks) - (alive - 1) * v[i,YI]
-  v[i,PYI]  = alive*(ks * cm * x_0 / 4 - s * (px_0 / 2 + ks * y_0 / 4) + cp * v[i,PYI] / 2) - (alive - 1) * v[i,PYI]
+                ( beta_0 * sqrt(rel_p^2 + tilde_m^2) * pr * (beta_0 * sqrt(rel_p^2 + tilde_m^2) + pr) )
+                , v[i,ZI])
+  v[i,XI] = vifelse(alive, cp * x_0 / 2 + s * (px_0 / ks + y_0 / 2) + cm * v[i,PYI] / ks, v[i,XI])
+  v[i,PXI] = vifelse(alive, s * (v[i,PYI] / 2 - ks * x_0 / 4) + cp * px_0 / 2 - ks * cm * y_0 / 4, v[i,PXI])
+  v[i,YI] = vifelse(alive, s * (v[i,PYI] / ks - x_0 / 2) + cp * y_0 / 2 - cm * px_0 / ks, v[i,YI])
+  v[i,PYI]  = vifelse(alive, ks * cm * x_0 / 4 - s * (px_0 / 2 + ks * y_0 / 4) + cp * v[i,PYI] / 2, v[i,PYI])
 end
 
 
-@makekernel fastgtpsa=true function patch_offset!(i, coords::Coords, tilde_m, dx, dy, dt)
+@makekernel fastgtpsa=false function patch_offset!(i, coords::Coords, tilde_m, dx, dy, dt)
   v = coords.v
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+  alive = (coords.state[i] == Alive)
   rel_p = 1 + v[i,PZI]
-  v[i,XI] -= alive*dx
-  v[i,YI] -= alive*dy
-  v[i,ZI] += alive*rel_p/sqrt(rel_p^2+tilde_m^2)*C_LIGHT*dt
+  v[i,XI] = vifelse(alive, v[i,XI] - dx, v[i,XI])
+  v[i,YI] = vifelse(alive, v[i,YI] - dy, v[i,YI])
+  v[i,ZI] = vifelse(alive, v[i,ZI] + rel_p/sqrt(rel_p^2+tilde_m^2)*C_LIGHT*dt, v[i,ZI])
 end
 
 
-@makekernel fastgtpsa=true function patch_rotation!(i, coords::Coords, winv, dz) 
+@makekernel fastgtpsa=false function patch_rotation!(i, coords::Coords, winv, dz) 
   v = coords.v
-  cond = (1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2
-  coords.state[i] = ifelse(cond <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
-  ps_0 = alive * sqrt(cond + (alive-1)*(cond-1))
-  x_0 = v[i,XI]
-  y_0 = v[i,YI]
+  ps_02 = (1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)
+  good_momenta = (ps_02 > 0.0)
+  alive_at_start = (coords.state[i] == Alive)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
+  alive = (coords.state[i] == Alive)
+  ps_0 = sqrt(vifelse(good_momenta, ps_02, 1.0))
+
   w11 = 1 - 2*(winv[QY]^2 + winv[QZ]^2)
   w12 = 2*(winv[QX]*winv[QY] - winv[QZ]*winv[Q0])
   w13 = 2*(winv[QX]*winv[QZ] + winv[QY]*winv[Q0])
   w21 = 2*(winv[QX]*winv[QY] + winv[QZ]*winv[Q0])
   w22 = 1 - 2*(winv[QX]^2+winv[QZ]^2)
   w23 = 2*(winv[QY]*winv[QZ] - winv[QX]*winv[Q0])
-  v[i,XI]   = alive*(w11*x_0 + w12*y_0 - w13*dz) - (alive - 1)*v[i,XI]
-  v[i,YI]   = alive*(w21*x_0 + w22*y_0 - w23*dz) - (alive - 1)*v[i,YI]
+
+  x_0 = v[i,XI]
+  y_0 = v[i,YI]
+  v[i,XI] = vifelse(alive, w11*x_0 + w12*y_0 - w13*dz, v[i,XI])
+  v[i,YI] = vifelse(alive, w21*x_0 + w22*y_0 - w23*dz, v[i,YI])
 
   px_0 = v[i,PXI]
   py_0 = v[i,PYI]
-  v[i,PXI] = alive*(w11*px_0 + w12*py_0 + w13*ps_0) - (alive - 1)*v[i,PXI]
-  v[i,PYI] = alive*(w21*px_0 + w22*py_0 + w23*ps_0) - (alive - 1)*v[i,PYI]
+  v[i,PXI] = vifelse(alive, w11*px_0 + w12*py_0 + w13*ps_0, v[i,PXI])
+  v[i,PYI] = vifelse(alive, w21*px_0 + w22*py_0 + w23*ps_0, v[i,PYI])
 
   q1 = coords.q 
   if !isnothing(q1) && alive == 1
@@ -366,12 +379,12 @@ end
 end
 
 
-@makekernel fastgtpsa=true function patch!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv, L) 
+@makekernel fastgtpsa=false function patch!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv, L) 
   v = coords.v
   rel_p = 1 + v[i,PZI]
   cond = (1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2
-  coords.state[i] = ifelse(cond <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
+  coords.state[i] = vifelse(cond <= 0 & coords.state[i] == Alive, Lost, coords.state[i])
+  alive = vifelse(coords.state[i]==Alive, 1, 0) 
   ps_0 = alive * sqrt(cond + (alive-1)*(cond-1))
   # Only apply rotations if needed
   if isnothing(winv)
