@@ -7,7 +7,7 @@ using Test,
       StaticArrays,
       ReferenceFrameRotations
 
-using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ
+using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, Alive, Lost
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
 
@@ -24,8 +24,8 @@ function test_matrix(
 )
   # Initialize bunch without spin
   v = transpose(@vars(D1))
-  state = similar(v, State.T, 1)
-  state .= State.Alive
+  state = similar(v, UInt8, 1)
+  state .= Alive
   coords = Coords(state, v, nothing)
 
   # Set up kernel chain and launch!
@@ -87,8 +87,8 @@ function test_map(
   # Initialize bunch without spin
   v = transpose(@vars(D10))
   q = TPS64{D10}[1 0 0 0]
-  state = similar(v, State.T, 1)
-  state .= State.Alive
+  state = similar(v, UInt8, 1)
+  state .= Alive
   coords = Coords(state, v, q)
 
   # Set up kernel chain and launch!

@@ -53,11 +53,11 @@ values of ``ε``.
   v = coords.v
 
   P_s2 = (1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)
-  good_momenta = (P_s2 > 0.0)
+  good_momenta = (P_s2 > 0)
   alive_at_start = (coords.state[i] == Alive)
   coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
   alive = (coords.state[i] == Alive)
-  P_s = sqrt(vifelse(good_momenta, P_s2, 1.0))
+  P_s = sqrt(vifelse(good_momenta, P_s2, one(P_s2)))
 
   v[i,XI] = vifelse(alive, v[i,XI] + v[i,PXI] * L / P_s, v[i,XI])
   v[i,YI] = vifelse(alive, v[i,YI] + v[i,PYI] * L / P_s, v[i,YI])
@@ -109,8 +109,8 @@ properties, though I've not seen a proof of that claim.
   v = coords.v
   alive = (coords.state[i] == Alive)
   bx, by = normalized_field!(ms, knl, ksl, v[i,XI], v[i,YI], excluding)
-  v[i,PXI] -= vifelse(alive, by, 0.0)
-  v[i,PYI] += vifelse(alive, bx, 0.0)
+  v[i,PXI] -= vifelse(alive, by, zero(by))
+  v[i,PYI] += vifelse(alive, bx, zero(bx))
 end # function multipole_kick!()
 
 
@@ -122,8 +122,8 @@ end # function multipole_kick!()
   jm = length(ms)
   m  = ms[jm]
   add = (m != excluding && m > 0)
-  by = knl[jm] * add
-  bx = ksl[jm] * add
+  by = vifelse(add, knl[jm], zero(x))
+  bx = vifelse(add, ksl[jm], zero(y))
   jm -= 1
   while 2 <= m
     m -= 1
@@ -132,8 +132,8 @@ end # function multipole_kick!()
     by = t
     add = (0 < jm && m == ms[jm]) && (m != excluding) # branchless
     idx = max(1, jm) # branchless trickery
-    by += knl[idx] * add
-    bx += ksl[idx] * add
+    by += vifelse(add, knl[idx], zero(by))
+    bx += vifelse(add, ksl[idx], zero(bx))
     jm -= add
   end
   return bx, by
@@ -232,22 +232,22 @@ provided, a linear hard-edge fringe map is applied at both ends.
 """
 @makekernel fastgtpsa=false function exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
   v = coords.v
-  alive = (coords.state[i] == Alive)
   rel_p = 1 + v[i,PZI]
 
   me1 = Kn0*tan(e1)/rel_p
   me2 = Kn0*tan(e2)/rel_p
   
   patch_rotation!(i, coords, w, 0)
+  alive = (coords.state[i] == Alive)
   v[i,PXI] = vifelse(alive, v[i,PXI] + v[i,XI]*me1, v[i,PXI])
   v[i,PYI] = vifelse(alive, v[i,PYI] - v[i,YI]*me1, v[i,PYI])
 
   pt2 = rel_p^2 - v[i,PYI]^2
-  good_momenta = (pt2 > 0.0)
+  good_momenta = (pt2 > 0)
   alive_at_start = (coords.state[i] == Alive)
   coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
   alive = (coords.state[i] == Alive)
-  pt = sqrt(vifelse(good_momenta, pt2, 1.0))
+  pt = sqrt(vifelse(good_momenta, pt2, one(pt2)))
 
   arg = v[i,PXI] / pt
   good_arg = (abs(arg) <= 1)
@@ -255,7 +255,7 @@ provided, a linear hard-edge fringe map is applied at both ends.
   # The above comparison does not work with FastGTPSA (currently)
   alive = (coords.state[i] == Alive)
 
-  phi1 = theta + asin(vifelse(good_arg, arg, 0.0))
+  phi1 = theta + asin(vifelse(good_arg, arg, zero(arg)))
   gp = Kn0 / pt
   h = 1 + g*v[i,XI] 
   cplus = cos(phi1) 
@@ -269,12 +269,12 @@ provided, a linear hard-edge fringe map is applied at both ends.
   good_cond = (cond > 0)
   coords.state[i] = vifelse(!good_cond & alive, Lost, coords.state[i]) # particle does not intersect the exit face
   alive = (coords.state[i] == Alive)
-  nasty_sqrt = sqrt(vifelse(good_cond, cond, 1.0))
+  nasty_sqrt = sqrt(vifelse(good_cond, cond, one(cond)))
 
-  good_gp = (abs(gp) >= 0)
-  gp_safe = vifelse(!good_gp, gp, 1.0)
+  good_gp = (abs(gp) > 0)
+  gp_safe = vifelse(good_gp, gp, one(gp))
   pos_cplus = (cplus > 0)
-  xi = vifelse(pos_cplus | !good_gp, alpha/(nasty_sqrt + cplus), (nasty_sqrt - cplus)/gp_safe)
+  xi = vifelse(!good_gp | pos_cplus, alpha/(nasty_sqrt + cplus), (nasty_sqrt - cplus)/gp_safe)
 
   Lcv = -sgn*(L*sinc_theta + v[i,XI]*sin(theta)) 
   thetap = 2*(phi1 - sgn*atan2(xi, -Lcv)) 
@@ -313,7 +313,7 @@ end
   alive_at_start = (coords.state[i] == Alive)
   coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
   alive = (coords.state[i] == Alive)
-  pr = sqrt(vifelse(good_momenta, pr2, 1.0))
+  pr = sqrt(vifelse(good_momenta, pr2, one(pr2)))
 
   s = sin(ks * L / pr)
   cp = 1 + cos(ks * L / pr)
@@ -348,11 +348,11 @@ end
 @makekernel fastgtpsa=false function patch_rotation!(i, coords::Coords, winv, dz) 
   v = coords.v
   ps_02 = (1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)
-  good_momenta = (ps_02 > 0.0)
+  good_momenta = (ps_02 > 0)
   alive_at_start = (coords.state[i] == Alive)
   coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
   alive = (coords.state[i] == Alive)
-  ps_0 = sqrt(vifelse(good_momenta, ps_02, 1.0))
+  ps_0 = sqrt(vifelse(good_momenta, ps_02, one(ps_02)))
 
   w11 = 1 - 2*(winv[QY]^2 + winv[QZ]^2)
   w12 = 2*(winv[QX]*winv[QY] - winv[QZ]*winv[Q0])
@@ -363,18 +363,22 @@ end
 
   x_0 = v[i,XI]
   y_0 = v[i,YI]
-  v[i,XI] = vifelse(alive, w11*x_0 + w12*y_0 - w13*dz, v[i,XI])
-  v[i,YI] = vifelse(alive, w21*x_0 + w22*y_0 - w23*dz, v[i,YI])
+  v[i,XI] = vifelse(alive, w11*x_0 + w12*y_0 - w13*dz, x_0)
+  v[i,YI] = vifelse(alive, w21*x_0 + w22*y_0 - w23*dz, y_0)
 
   px_0 = v[i,PXI]
   py_0 = v[i,PYI]
-  v[i,PXI] = vifelse(alive, w11*px_0 + w12*py_0 + w13*ps_0, v[i,PXI])
-  v[i,PYI] = vifelse(alive, w21*px_0 + w22*py_0 + w23*ps_0, v[i,PYI])
+  v[i,PXI] = vifelse(alive, w11*px_0 + w12*py_0 + w13*ps_0, px_0)
+  v[i,PYI] = vifelse(alive, w21*px_0 + w22*py_0 + w23*ps_0, py_0)
 
-  q1 = coords.q 
-  if !isnothing(q1) && alive == 1
-    q = quat_mul(winv, q1)
-    q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ] = q[Q0], q[QX], q[QY], q[QZ]
+  q1 = coords.q
+  if !isnothing(q1)
+    q = quat_mul(winv, q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ])
+    q0 = vifelse(alive, q[Q0], q1[i,Q0])
+    qx = vifelse(alive, q[QX], q1[i,QX])
+    qy = vifelse(alive, q[QY], q1[i,QY])
+    qz = vifelse(alive, q[QZ], q1[i,QZ])
+    q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ] = q0, qx, qy, qz
   end
 end
 
@@ -382,15 +386,17 @@ end
 @makekernel fastgtpsa=false function patch!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, dt, dx, dy, dz, winv, L) 
   v = coords.v
   rel_p = 1 + v[i,PZI]
-  cond = (1 + v[i,PZI])^2 - v[i,PXI]^2 - v[i,PYI]^2
-  coords.state[i] = vifelse(cond <= 0 & coords.state[i] == Alive, Lost, coords.state[i])
-  alive = vifelse(coords.state[i]==Alive, 1, 0) 
-  ps_0 = alive * sqrt(cond + (alive-1)*(cond-1))
+  ps_02 = rel_p^2 - (v[i,PXI]^2 + v[i,PYI]^2)
+  good_momenta = (ps_02 > 0)
+  alive_at_start = (coords.state[i] == Alive)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
+  alive = (coords.state[i] == Alive)
+  ps_0 = sqrt(vifelse(good_momenta, ps_02, one(ps_02)))
   # Only apply rotations if needed
   if isnothing(winv)
     patch_offset!(i, coords, tilde_m, dx, dy, dt)
     exact_drift!(i, coords, beta_0, gamsqr_0, tilde_m, L)
-    v[i,ZI] -= alive*((dz-L) * rel_p / ps_0)
+    v[i,ZI] = vifelse(alive, v[i,ZI] - (dz-L) * rel_p / ps_0, v[i,ZI])
   else
     patch_offset!(i, coords, tilde_m, dx, dy, dt)
     w31 = 2*(winv[QX]*winv[QZ] - winv[QY]*winv[Q0])
@@ -399,7 +405,8 @@ end
     s_f = w31*v[i,XI] + w32*v[i,YI] - w33*dz
     patch_rotation!(i, coords, winv, dz)
     exact_drift!(i, coords, beta_0, gamsqr_0, tilde_m, -s_f)
-    v[i,ZI] += alive*((s_f + L) * rel_p * sqrt((1 + tilde_m^2)/(rel_p^2 + tilde_m^2)))
+    v[i,ZI] = vifelse(alive, v[i,ZI] + ((s_f + L) * rel_p * 
+    sqrt((1 + tilde_m^2)/(rel_p^2 + tilde_m^2))), v[i,ZI])
   end
 end
 
@@ -427,9 +434,9 @@ function w_quaternion(x_rot, y_rot, z_rot)
   qz = SA[cos(z_rot/2) 0 0 sin(z_rot/2)]
   qx = SA[cos(x_rot/2) sin(x_rot/2) 0 0]
   qy = SA[cos(y_rot/2) 0 sin(y_rot/2) 0]
-  q = quat_mul(qx, qz)
-  q = quat_mul(qy, q)
-  return q
+  q = quat_mul(qx, qz[Q0], qz[QX], qz[QY], qz[QZ])
+  q = quat_mul(qy, q[Q0], q[QX], q[QY], q[QZ])
+  return SA[q[Q0], q[QX], q[QY], q[QZ]]
 end
 
 # Inverse rotation quaternion
@@ -437,9 +444,9 @@ function w_inv_quaternion(x_rot, y_rot, z_rot)
   qz = SA[cos(z_rot/2) 0 0 -sin(z_rot/2)]
   qx = SA[cos(x_rot/2) -sin(x_rot/2) 0 0]
   qy = SA[cos(y_rot/2) 0 -sin(y_rot/2) 0]
-  q = quat_mul(qx, qy)
-  q = quat_mul(qz, q)
-  return q
+  q = quat_mul(qx, qy[Q0], qy[QX], qy[QY], qy[QZ])
+  q = quat_mul(qz, q[Q0], q[QX], q[QY], q[QZ])
+  return SA[q[Q0], q[QX], q[QY], q[QZ]]
 end
 
 function drift_params(species::Species, R_ref)

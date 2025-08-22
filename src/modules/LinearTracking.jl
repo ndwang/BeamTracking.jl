@@ -14,7 +14,7 @@ const TRACKING_METHOD = Linear
 
 # Maybe get rid of inline here and put in function-wise launch! ?
 # Drift kernel
-@makekernel fastgtpsa=true function linear_drift!(i, coords::Coords, L, r56)
+@makekernel fastgtpsa=false function linear_drift!(i, coords::Coords, L, r56)
   v = coords.v
   v[i,XI] += v[i,PXI] * L
   v[i,YI] += v[i,PYI] * L
@@ -31,7 +31,7 @@ end
 
 =#
 
-@makekernel fastgtpsa=true function linear_coast_uncoupled!(i, coords::Coords, mx::StaticMatrix{2,2}, my::StaticMatrix{2,2}, r56, d::Union{StaticVector{4},Nothing}, t::Union{StaticVector{4},Nothing})
+@makekernel fastgtpsa=false function linear_coast_uncoupled!(i, coords::Coords, mx::StaticMatrix{2,2}, my::StaticMatrix{2,2}, r56, d::Union{StaticVector{4},Nothing}, t::Union{StaticVector{4},Nothing})
   v = coords.v
   if !isnothing(t)
     v[i,ZI] += t[XI] * v[i,XI] + t[PXI] * v[i,PXI] + t[YI] * v[i,YI] + t[PYI] * v[i,PYI]
@@ -51,7 +51,7 @@ end
   end
 end
 
-@makekernel fastgtpsa=true function linear_coast!(i, coords::Coords, mxy::StaticMatrix{4,4}, r56, d::Union{StaticVector{4},Nothing}, t::Union{StaticVector{4},Nothing})
+@makekernel fastgtpsa=false function linear_coast!(i, coords::Coords, mxy::StaticMatrix{4,4}, r56, d::Union{StaticVector{4},Nothing}, t::Union{StaticVector{4},Nothing})
   v = coords.v
   if !isnothing(t)
     v[i,ZI] += t[XI] * v[i,XI] + t[PXI] * v[i,PXI] + t[YI] * v[i,YI] + t[PYI] * v[i,PYI]
@@ -72,7 +72,7 @@ end
   end
 end
 
-@makekernel fastgtpsa=true function linear_6D!(i, coords::Coords, m::StaticMatrix{6,6})
+@makekernel fastgtpsa=false function linear_6D!(i, coords::Coords, m::StaticMatrix{6,6})
   v = coords.v
   old_x  = v[i,XI]
   old_px = v[i,PXI]

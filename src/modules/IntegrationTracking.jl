@@ -137,7 +137,7 @@ L: element length
   ksl = ks * L / 2
 
   P_s2 = (1 + coords.v[i,PZI])^2 - (coords.v[i,PXI]^2 + coords.v[i,PYI]^2)
-  good_momenta = (P_s2 > 0.0)
+  good_momenta = (P_s2 > 0)
   alive_at_start = (coords.state[i] == Alive)
   coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
 
@@ -198,10 +198,8 @@ s: element length
                                     + k1 / (1 + v[i,PZI])
                                         * ( v[i,XI]^2 * (1 - sx * cx)
                                           - v[i,YI]^2 * (1 - sy * cy) )
-                                  )
-                      + sign(k1) * ( v[i,XI] * xp * (sqrtks * sx)^2
-                              - v[i,YI] * yp * (sqrtks * sy)^2 ) / 2
-              , v[i,ZI])
+                                  ) + sign(k1) * ( v[i,XI] * xp * (sqrtks * sx)^2
+                              - v[i,YI] * yp * (sqrtks * sy)^2 ) / 2, v[i,ZI])
   v[i,XI]  = vifelse(alive, v[i,XI] * cx + xp * s * sx, v[i,XI])
   v[i,YI]  = vifelse(alive, v[i,YI] * cy + yp * s * sy, v[i,YI])
 end 
@@ -232,10 +230,10 @@ s: element length
   P      = 1 + v[i,PZI]             # [scaled] total momentum, P/P0 = 1 + δ
   PtSqr  = v[i,PXI]^2 + v[i,PYI]^2  # (transverse momentum)^2, P⟂^2 = (Px^2 + Py^2) / P0^2
   Ps2    = P^2 - PtSqr        
-  good_momenta = (Ps2 > 0.0)
+  good_momenta = (Ps2 > 0)
   alive_at_start = (coords.state[i] == Alive)
   coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
-  Ps = sqrt(vifelse(good_momenta, Ps2, 1.0)) # longitudinal momentum,   Ps   = √[(1 + δ)^2 - P⟂^2]
+  Ps = sqrt(vifelse(good_momenta, Ps2, one(Ps2))) # longitudinal momentum,   Ps   = √[(1 + δ)^2 - P⟂^2]
   alive = (coords.state[i] == Alive)
 
   v[i,XI] = vifelse(alive, v[i,XI] + s * v[i,PXI] * PtSqr / (P * Ps * (P + Ps)), v[i,XI])
@@ -281,7 +279,7 @@ Arguments
   ksl = ks * L / 2
 
   ExactTracking.exact_bend!(      i, coords, e1, e2, g*L/2, g, k0, w, w_inv, tilde_m, beta_0, L / 2)
-  ExactTracking.patch_rotation!(i, coords, w, 0)
+  ExactTracking.patch_rotation!(  i, coords, w, 0)
 
   if isnothing(coords.q)
     ExactTracking.multipole_kick!(i, coords, mm, knl * 2, ksl * 2, -1)
@@ -291,7 +289,7 @@ Arguments
     ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
   end
 
-  ExactTracking.patch_rotation!(i, coords, w_inv, 0)
+  ExactTracking.patch_rotation!(  i, coords, w_inv, 0)
   ExactTracking.exact_bend!(      i, coords, e1, e2, g*L/2, g, k0, w, w_inv, tilde_m, beta_0, L / 2)
 end 
 
@@ -383,40 +381,51 @@ end
 #
 # ===============  S P I N  ===============
 #
-@inline function omega(i, coords::Coords, a, g, tilde_m, mm, kn, ks)
+@inline function omega(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
   """
-  This function computes the spin-precession vector using the multipole 
+  This function computes the integrated spin-precession vector using the multipole 
   coefficients kn and ks indexed by mm, i.e., knl[i] is the normal 
   coefficient of order mm[i].
   """
   v = coords.v
 
   # kinetic momenta, not canonical momenta
-  px = v[i,PXI] + (v[i,YI] * kn[1] / 2) * (mm[1] == 0) 
-  py = v[i,PYI] - (v[i,XI] * kn[1] / 2) * (mm[1] == 0)
+  px = vifelse(mm[1] == 0, v[i,PXI] + (v[i,YI] * kn[1] / 2), v[i,PXI]) 
+  py = vifelse(mm[1] == 0, v[i,PYI] - (v[i,XI] * kn[1] / 2), v[i,PYI])
 
   rel_p = 1 + v[i,PZI]
   beta_gamma = rel_p / tilde_m
   gamma = sqrt(1 + beta_gamma^2)
   pl2 = rel_p^2 - px^2 - py^2
-  coords.state[i] = vifelse(pl2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
-  alive = vifelse(coords.state[i]==State.Alive, 1, 0) 
-  pl = sqrt(pl2 + (alive-1)*(pl2-1))
+  good_momenta = (pl2 > 0)
+  alive_at_start = (coords.state[i] == Alive)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, Lost, coords.state[i])
+  alive = (coords.state[i] == Alive)
+  pl = sqrt(vifelse(good_momenta, pl2, one(pl2))) 
 
-  beta_hat = SA[px, py, pl] / rel_p
+  beta_hat = SA[px/rel_p, py/rel_p, pl/rel_p]
 
   bx, by = ExactTracking.normalized_field!(mm, kn, ks, v[i,XI], v[i,YI], -1)
   bz = kn[1] * (mm[1] == 0)
   b_field = SA[bx, by, bz]
 
   dot = b_field[1]*beta_hat[1] + b_field[2]*beta_hat[2] + b_field[3]*beta_hat[3]
-  b_para = dot * beta_hat
+  b_para = SA[dot*px/rel_p, dot*py/rel_p, dot*pl/rel_p]
   b_perp = b_field - b_para
-  
-  omega = (1 + a*gamma)*b_perp + (1 + a)*b_para
-  omega = -(1 + g*v[i,XI])/pl * omega
-  omega = omega + SA[0, g, 0]
-  omega = alive * omega
+
+  coeff1 = -(1 + g*v[i,XI])/pl
+  coeff2 = 1 + a*gamma
+  coeff3 = 1 + a
+
+  ox = coeff1 * (coeff2 * b_perp[1] + coeff3 * b_para[1])
+  oy = coeff1 * (coeff2 * b_perp[2] + coeff3 * b_para[2]) + g
+  oz = coeff1 * (coeff2 * b_perp[3] + coeff3 * b_para[3])
+
+  ox = vifelse(alive, ox*L, zero(ox))
+  oy = vifelse(alive, oy*L, zero(oy))
+  oz = vifelse(alive, oz*L, zero(oz))
+
+  omega = SA[ox, oy, oz]
 
   return omega
 end
@@ -427,9 +436,9 @@ end
   This function rotates particle i's quaternion according to the multipoles present.
   """
   q2 = coords.q
-  q1 = expq(-L/2 * omega(i, coords, a, g, tilde_m, mm, kn, ks))
-  q3 = quat_mul(q1, q2[i,:])
-  q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ] = q3[Q0], q3[QX], q3[QY], q3[QZ]
+  q1 = expq(-omega(i, coords, a, g, tilde_m, mm, kn, ks, L)/2)
+  q3 = quat_mul(q1, q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ])
+  q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ] = q3
 end
 
 
