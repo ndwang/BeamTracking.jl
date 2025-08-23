@@ -52,7 +52,7 @@ function sinhcu(x)
 end
 
 
-function atan2(y::T, x::T) where {T}
+function atan2(y::T, x::T) where T
   arctan = atan(y/x)
   return vifelse(x > 0, arctan,
          vifelse((x < 0)  & (y >= 0),  arctan + Float64(pi),
@@ -75,53 +75,63 @@ function sincuc(x)
 end
 
 
-"""
-    sincus(x)
-
-Compute the unnormalized sinc square-root function 
-``\\operatorname{sincus}(x) = \\sin(\\sqrt(x)) / (\\sqrt(x))`` 
-with accuracy near the origin.
-"""
-function sincus(x)
-  c0 = 1
-  c1 = -1/6
-  c2 = 1/120
-  c3 = -1/5040
-  c4 = 1/362880
-  c5 = -1/39916800
-  c6 = 1/6227020800
-  c7 = -1/1307674368000
-  c8 = 1/355687428096000
-  c9 = -1/12164510040883200000
-  c10 = 1/5109094217170944000000
-  y = vifelse(x > 0, x, one(x))
-  return vifelse(x > 4.1, sin(sqrt(y))/sqrt(y), c0+x*(c1+x*(c2+x*(c3+x*(c4+x*
-  (c5+x*(c6+x*(c7+x*(c8+x*(c9+x*c10))))))))))
+function sincos_quaternion(x)
+  """
+  This function computes sin(sqrt(x))/sqrt(x) and cos(sqrt(x)), which are both 
+  necessary for exponentiating a rotation vector into a quaternion.
+  """
+  threshold = 7.3e-8 # sqrt(24*eps(Float64))
+  sq = sqrt(x)
+  s, c = sincos(sq)
+  s = s/sq
+  s_out = vifelse(x > threshold, s, 1-x/6)
+  c_out = vifelse(x > threshold, c, 1-x/2)
+  return s_out, c_out
 end
 
 
-"""
-    coss(x)
-
-Compute the cos square-root function 
-``\\operatorname{coss}(x) = \\cos(\\sqrt(x))`` 
-with accuracy near the origin.
-"""
-function coss(x)
-  c0 = 1
-  c1 = -1/2
-  c2 = 1/24
-  c3 = -1/720
-  c4 = 1/40320
-  c5 = -1/3628800
-  c6 = 1/479001600
-  c7 = -1/87178291200
-  c8 = 1/20922789888000
-  c9 = -1/6402373705728000
-  c10 = 1/2432902008176640000
-  y = vifelse(x > 0, x, one(x))
-  return vifelse(x > 3.0, cos(sqrt(y)), c0+x*(c1+x*(c2+x*(c3+x*(c4+x*
-  (c5+x*(c6+x*(c7+x*(c8+x*(c9+x*c10))))))))))
+function sincos_quaternion(x::TPS{T}) where T
+  """
+  This function computes sin(sqrt(x))/sqrt(x) and cos(sqrt(x)), which are both 
+  necessary for exponentiating a rotation vector into a quaternion.
+  """
+  ε = eps(T)
+  N_max = 100
+  N = 1
+  conv_sin = false
+  conv_cos = false
+  y = one(x)
+  prev_sin = one(x)
+  prev_cos = one(x)
+  result_sin = one(x)
+  result_cos = one(x)
+  sq = one(x)
+  @FastGTPSA! begin
+    if x < 0.1
+      while !(conv_sin && conv_cos) && N < N_max
+        y = -y*x/((2*N)*(2*N - 1))
+        result_sin = prev_sin + y/(2*N + 1)
+        result_cos = prev_cos + y
+        N += 1
+        if norm_tps(result_sin - prev_sin) < ε
+          conv_sin = true
+        end
+        if norm_tps(result_cos - prev_cos) < ε
+          conv_cos = true
+        end
+        prev_sin = result_sin
+        prev_cos = result_cos
+      end
+    else
+      sq = sqrt(x)
+      result_sin, result_cos = sincos(sq)
+      result_sin = result_sin/sq
+    end
+  end
+  if N == N_max
+    @warn "sincos_quaternion convergence not reached in $N_max iterations"
+  end
+  return result_sin, result_cos
 end
 
 
@@ -131,9 +141,8 @@ end
   vector of Pauli matrices.
   """
   n2 = v[1]^2 + v[2]^2 + v[3]^2
-  c = coss(n2)
-  s = -sincus(n2)
-  return SA[c, s*v[1], s*v[2], s*v[3]]
+  s, c = sincos_quaternion(n2)
+  return SA[c, -s*v[1], -s*v[2], -s*v[3]]
 end
 
 

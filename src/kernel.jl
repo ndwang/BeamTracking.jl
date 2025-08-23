@@ -57,7 +57,7 @@ end
   kc::KernelChain;
   groupsize::Union{Nothing,Integer}=nothing, #backend isa CPU ? floor(Int,REGISTER_SIZE/sizeof(eltype(v))) : 256 
   multithread_threshold::Integer=Threads.nthreads() > 1 ? 1750*Threads.nthreads() : typemax(Int),
-  use_KA::Bool=true, #!(get_backend(coords.v) isa CPU && isnothing(groupsize)),
+  use_KA::Bool=false, #!(get_backend(coords.v) isa CPU && isnothing(groupsize)),
   use_explicit_SIMD::Bool=!use_KA # Default to use explicit SIMD on CPU
 ) where {V}
   v = coords.v
