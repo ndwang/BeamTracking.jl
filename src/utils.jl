@@ -40,7 +40,7 @@ end
     sinhcu(x)
 
 Compute the unnormalized sinhc function ``\\operatorname{sinhcu}(x) = \\sinh(x) / (x)`` 
-with accuracy accuracy near the origin.
+with accuracy near the origin.
 """
 function sinhcu(x)
   #if isinf_imag(x)
@@ -52,13 +52,18 @@ function sinhcu(x)
 end
 
 
-function atan2(y::T, x::T) where T
+function atan2(y, x)
+  return atan(y, x)
+end
+
+
+function atan2(y::Vec{N, T}, x::Vec{N, T}) where {N, T}
   arctan = atan(y/x)
   return vifelse(x > 0, arctan,
-         vifelse((x < 0)  & (y >= 0),  arctan + Float64(pi),
-         vifelse((x < 0)  & (y < 0),   arctan - Float64(pi),
-         vifelse((x == 0) & (y > 0),   T(Float64(pi/2)),
-         vifelse((x == 0) & (y < 0),   T(Float64(-pi/2)),
+         vifelse((x < 0)  & (y >= 0),  arctan + T(pi),
+         vifelse((x < 0)  & (y < 0),   arctan - T(pi),
+         vifelse((x == 0) & (y > 0),   T(pi/2),
+         vifelse((x == 0) & (y < 0),   T(-pi/2),
          vifelse((x == 0) & (y == 0),  T(0), 
          T(NaN)))))))
 end
@@ -90,7 +95,7 @@ function sincos_quaternion(x)
 end
 
 
-function sincos_quaternion(x::TPS{T}) where T
+function sincos_quaternion(x::TPS{T}) where {T}
   """
   This function computes sin(sqrt(x))/sqrt(x) and cos(sqrt(x)), which are both 
   necessary for exponentiating a rotation vector into a quaternion.
@@ -106,7 +111,8 @@ function sincos_quaternion(x::TPS{T}) where T
   result_sin = one(x)
   result_cos = one(x)
   sq = one(x)
-  @FastGTPSA! begin
+  # Using FastGTPSA! for the following makes other kernels run out of temps
+  @FastGTPSA begin
     if x < 0.1
       while !(conv_sin && conv_cos) && N < N_max
         y = -y*x/((2*N)*(2*N - 1))
@@ -135,27 +141,29 @@ function sincos_quaternion(x::TPS{T}) where T
 end
 
 
-@inline function expq(v)
+function expq(v)
   """
   This function computes exp(i v⋅σ) as a quaternion, where σ is the 
   vector of Pauli matrices.
   """
-  n2 = v[1]^2 + v[2]^2 + v[3]^2
+  n2 = @FastGTPSA v[1]^2 + v[2]^2 + v[3]^2
   s, c = sincos_quaternion(n2)
   return SA[c, -s*v[1], -s*v[2], -s*v[3]]
 end
 
 
-@inline function quat_mul(q1, q20, q2x, q2y, q2z)
+function quat_mul(q1, q20, q2x, q2y, q2z)
   """
   Returns q1 * q2.
   """
   a1, b1, c1, d1 = q1[Q0], q1[QX], q1[QY], q1[QZ]
   a2, b2, c2, d2 = q20, q2x, q2y, q2z
-  a3 = a1*a2 - b1*b2 - c1*c2 - d1*d2
-  b3 = a1*b2 + b1*a2 + c1*d2 - d1*c2
-  c3 = a1*c2 - b1*d2 + c1*a2 + d1*b2
-  d3 = a1*d2 + b1*c2 - c1*b2 + d1*a2
+  @FastGTPSA begin
+    a3 = a1*a2 - b1*b2 - c1*c2 - d1*d2
+    b3 = a1*b2 + b1*a2 + c1*d2 - d1*c2
+    c3 = a1*c2 - b1*d2 + c1*a2 + d1*b2
+    d3 = a1*d2 + b1*c2 - c1*b2 + d1*a2
+  end
   return (a3, b3, c3, d3)
 end
 
