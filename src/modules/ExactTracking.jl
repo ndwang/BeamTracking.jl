@@ -131,10 +131,12 @@ function normalized_field(ms, knl, ksl, x, y, excluding)
     jm = length(ms)
     m  = ms[jm]
     add = (m != excluding && m > 0)
-    knl_0 = zero(knl[jm])
-    ksl_0 = zero(ksl[jm])
-    by = vifelse(add, knl[jm], knl_0)
-    bx = vifelse(add, ksl[jm], ksl_0)
+    knl_0 = zero(knl[jm]*x)
+    ksl_0 = zero(ksl[jm]*y)
+    by_0 = knl[jm]*one(x)
+    bx_0 = ksl[jm]*one(y)
+    by = vifelse(add, by_0, knl_0)
+    bx = vifelse(add, bx_0, ksl_0)
     jm -= 1
     while 2 <= m
       m -= 1
@@ -436,7 +438,8 @@ end
   v = coords.v
   rel_p = 1 + v[i,PZI]
   ps_02 = rel_p*rel_p - v[i,PXI]*v[i,PXI] - v[i,PYI]*v[i,PYI]
-  good_momenta = (ps_02 > 0)
+  ps_02_0 = zero(ps_02)
+  good_momenta = (ps_02 > ps_02_0)
   alive_at_start = (coords.state[i] == State_Alive)
   coords.state[i] = vifelse(!good_momenta & alive_at_start, State_Lost, coords.state[i])
   alive = (coords.state[i] == State_Alive)

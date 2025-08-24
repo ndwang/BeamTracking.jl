@@ -407,10 +407,13 @@ function omega(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
     v = coords.v
 
     # kinetic momenta, not canonical momenta
-    kinetic_px = v[i,PXI] + (v[i,YI] * kn[1] / 2)
-    kinetic_py = v[i,PYI] - (v[i,XI] * kn[1] / 2)
-    px = vifelse(mm[1] == 0, kinetic_px, v[i,PXI]) 
-    py = vifelse(mm[1] == 0, kinetic_py, v[i,PYI])
+    if (length(kn) == 0) || (mm[1] != 0)
+      px = v[i,PXI]
+      py = v[i,PYI] 
+    else
+      px = v[i,PXI] + (v[i,YI] * kn[1] / 2)
+      py = v[i,PYI] - (v[i,XI] * kn[1] / 2)
+    end
 
     rel_p = 1 + v[i,PZI]
     beta_gamma = rel_p / tilde_m
@@ -424,32 +427,32 @@ function omega(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
     pl2_1 = one(pl2)
     pl = sqrt(vifelse(good_momenta, pl2, pl2_1)) 
 
-    beta_hat = SA[px/rel_p, py/rel_p, pl/rel_p]
-
     bx, by = ExactTracking.normalized_field(mm, kn, ks, v[i,XI], v[i,YI], -1)
-    kn1_0 = zero(kn[1])
-    bz = ifelse(mm[1] == 0, kn[1], kn1_0)
-    b_field = SA[bx, by, bz]
+    bz = mm[1] == 0 ? kn[1] : zero(kn[1])
 
-    dot = b_field[1]*beta_hat[1] + b_field[2]*beta_hat[2] + b_field[3]*beta_hat[3]
-    b_para = SA[dot*px/rel_p, dot*py/rel_p, dot*pl/rel_p]
-    b_perp = b_field - b_para
+    coeff = -(1 + g*v[i,XI])/pl
+    coeff1 = coeff * (1 + a*gamma)
+    coeff2 = coeff * (1 + a)
 
-    coeff1 = -(1 + g*v[i,XI])/pl
-    coeff2 = 1 + a*gamma
-    coeff3 = 1 + a
+    dot = bx*px/rel_p + by*py/rel_p + bz*pl/rel_p
 
-    ox = (coeff1 * (coeff2 * b_perp[1] + coeff3 * b_para[1])) * L
-    oy = (coeff1 * (coeff2 * b_perp[2] + coeff3 * b_para[2]) + g) * L
-    oz = (coeff1 * (coeff2 * b_perp[3] + coeff3 * b_para[3])) * L
+    b_para_x = dot * px / rel_p
+    b_para_y = dot * py / rel_p
+    b_para_z = dot * pl / rel_p
 
-    oy_0 = zero(oy)
+    b_perp_x = (bx - b_para_x) * coeff1
+    b_perp_y = (by - b_para_y) * coeff1
+    b_perp_z = (bz - b_para_z) * coeff1
 
-    ox = vifelse(alive, ox, oy_0)
-    oy = vifelse(alive, oy, oy_0)
-    oz = vifelse(alive, oz, oy_0)
+    b_para_x = b_para_x * coeff2
+    b_para_y = b_para_y * coeff2
+    b_para_z = b_para_z * coeff2
 
-    omega = SA[ox, oy, oz]
+    ox = (b_perp_x + b_para_x) * L        
+    oy = (b_perp_y + b_para_y + g) * L
+    oz = (b_perp_z + b_para_z) * L
+
+    omega = (ox, oy, oz)
   end
 
   return omega
@@ -461,7 +464,8 @@ end
   This function rotates particle i's quaternion according to the multipoles present.
   """
   q2 = coords.q
-  q1 = expq(-omega(i, coords, a, g, tilde_m, mm, kn, ks, L)/2)
+  alive = (coords.state[i] == State_Alive)
+  q1 = expq(omega(i, coords, a, g, tilde_m, mm, kn, ks, L), alive)
   q3 = quat_mul(q1, q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ])
   q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ] = q3
 end

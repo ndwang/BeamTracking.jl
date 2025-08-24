@@ -60,12 +60,12 @@ end
 function atan2(y::Vec{N, T}, x::Vec{N, T}) where {N, T}
   arctan = atan(y/x)
   return vifelse(x > 0, arctan,
-         vifelse((x < 0)  & (y >= 0),  arctan + T(pi),
-         vifelse((x < 0)  & (y < 0),   arctan - T(pi),
-         vifelse((x == 0) & (y > 0),   T(pi/2),
-         vifelse((x == 0) & (y < 0),   T(-pi/2),
-         vifelse((x == 0) & (y == 0),  T(0), 
-         T(NaN)))))))
+         vifelse((x < 0)  & (y >= 0),  arctan + Vec{N, T}(T(pi)),
+         vifelse((x < 0)  & (y < 0),   arctan - Vec{N, T}(T(pi)),
+         vifelse((x == 0) & (y > 0),   Vec{N, T}(pi/2),
+         vifelse((x == 0) & (y < 0),   Vec{N, T}(-pi/2),
+         vifelse((x == 0) & (y == 0),  Vec{N, T}(0), 
+         Vec{N, T}(NaN)))))))
 end
 
 
@@ -141,14 +141,16 @@ function sincos_quaternion(x::TPS{T}) where {T}
 end
 
 
-function expq(v)
+function expq(v, compute)
   """
-  This function computes exp(i v⋅σ) as a quaternion, where σ is the 
-  vector of Pauli matrices.
+  This function computes exp(-i/2 v⋅σ) as a quaternion, where σ is the 
+  vector of Pauli matrices. If compute is false, it returns the identity quaternion.
   """
-  n2 = @FastGTPSA v[1]^2 + v[2]^2 + v[3]^2
-  s, c = sincos_quaternion(n2)
-  return SA[c, -s*v[1], -s*v[2], -s*v[3]]
+  n2 = @FastGTPSA (v[1]*v[1] + v[2]*v[2] + v[3]*v[3])/4
+  n2_0 = zero(n2)
+  s, c = sincos_quaternion(vifelse(compute, n2, n2_0))
+  s = vifelse(compute, s, n2_0)
+  return (c, s*v[1]/2, s*v[2]/2, s*v[3]/2)
 end
 
 

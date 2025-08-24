@@ -48,9 +48,11 @@ function test_matrix(
   end
   # 3) No scalar allocations
   if no_scalar_allocs
-    v = [0.1 0.2 0.3 0.4 0.5 0.6]
+    v = repeat([0.1 0.2 0.3 0.4 0.5 0.6], 2)
+    q = repeat([1.0 0.0 0.0 0.0], 2)
+    state = [State_Alive State_Alive]
     @test @ballocated(BeamTracking.launch!(coords, $kernel_call; use_KA=false), 
-    setup=(coords = Coords(copy($state), copy($v), nothing))) == 0
+    setup=(coords = Coords(copy($state), copy($v), copy($q)))) == 0
   end
 end
 
@@ -102,9 +104,11 @@ function test_map(
   end
   # 3) No scalar allocations
   if no_scalar_allocs
-    v = [0.1 0.2 0.3 0.4 0.5 6e16]
+    v = repeat([0.1 0.2 0.3 0.4 0.5 0.6], 2)
+    q = repeat([1.0 0.0 0.0 0.0], 2)
+    state = [State_Alive State_Alive]
     @test @ballocated(BeamTracking.launch!(coords, $kernel_call; use_KA=false), 
-    setup=(coords = Coords(copy($state), copy($v), nothing))) == 0
+    setup=(coords = Coords(copy($state), copy($v), copy($q)))) == 0
   end
 
 
