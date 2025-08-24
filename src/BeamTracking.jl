@@ -24,6 +24,7 @@ export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, quat_mul
 export LinearTracking, Linear
 export ExactTracking, Exact
 export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
+export SpaceChargeIntegration, SpaceCharge
 export track!
 
 include("utils.jl")
@@ -35,6 +36,7 @@ include("kernel.jl")
 include("modules/ExactTracking.jl") #; TRACKING_METHOD(::ExactTracking) = Exact
 include("modules/LinearTracking.jl") #; TRACKING_METHOD(::LinearTracking) = Linear
 include("modules/IntegrationTracking.jl") #; TRACKING_METHOD(::LinearTracking) = SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
+include("modules/SpaceChargeIntegration.jl") #; TRACKING_METHOD(::SpaceChargeIntegration) = SpaceCharge
 
 
 # Empty tracking method to be imported+implemented by package extensions
