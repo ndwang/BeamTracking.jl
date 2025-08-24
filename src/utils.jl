@@ -110,7 +110,7 @@ function sincos_quaternion(x::TPS{T}) where {T}
   prev_cos = one(x)
   result_sin = one(x)
   result_cos = one(x)
-  sq = one(x)
+  #sq = one(x)
   # Using FastGTPSA! for the following makes other kernels run out of temps
   @FastGTPSA begin
     if x < 0.1
@@ -184,10 +184,10 @@ function anom(species::Species)
     return 0.0011596521735304233
   elseif nameof(species) == "proton"
     return 1.7928473446300592
-  elseif nameof(species) == "proton"
+  elseif nameof(species) == "anti-proton"
     return 1.7928473446300592
   else
-    error("Your species is not in fake APC yet")
+    return 0.0
   end
 end
 

@@ -127,26 +127,28 @@ function normalized_field(ms, knl, ksl, x, y, excluding)
   Returns (bx, by), the transverse components of the magnetic field divided
   by the reference rigidty.
   """
-  jm = length(ms)
-  m  = ms[jm]
-  add = (m != excluding && m > 0)
-  knl_0 = zero(knl[jm])
-  ksl_0 = zero(ksl[jm])
-  by = vifelse(add, knl[jm], knl_0)
-  bx = vifelse(add, ksl[jm], ksl_0)
-  jm -= 1
-  while 2 <= m
-    m -= 1
-    t  = (by * x - bx * y) / m
-    bx = (by * y + bx * x) / m
-    by = t
-    add = (0 < jm && m == ms[jm]) && (m != excluding) # branchless
-    idx = max(1, jm) # branchless trickery
-    new_by = by + knl[idx]
-    new_bx = bx + ksl[idx]
-    by = vifelse(add, new_by, by)
-    bx = vifelse(add, new_bx, bx)
-    jm -= add
+  @FastGTPSA begin
+    jm = length(ms)
+    m  = ms[jm]
+    add = (m != excluding && m > 0)
+    knl_0 = zero(knl[jm])
+    ksl_0 = zero(ksl[jm])
+    by = vifelse(add, knl[jm], knl_0)
+    bx = vifelse(add, ksl[jm], ksl_0)
+    jm -= 1
+    while 2 <= m
+      m -= 1
+      t  = (by * x - bx * y) / m
+      bx = (by * y + bx * x) / m
+      by = t
+      add = (0 < jm && m == ms[jm]) && (m != excluding) # branchless
+      idx = max(1, jm) # branchless trickery
+      new_by = by + knl[idx]
+      new_bx = bx + ksl[idx]
+      by = vifelse(add, new_by, by)
+      bx = vifelse(add, new_bx, bx)
+      jm -= add
+    end
   end
   return bx, by
 end
