@@ -21,7 +21,7 @@ end
   Ksol, _ = get_strengths(bm0, L, bunch.R_ref)
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, bunch.R_ref)
   params = (tilde_m, gamsqr_0, beta_0, Ksol, bunch.R_ref, scp, L)
-  integration_launcher!(SpaceChargeIntegrationTracking.solenoid_sc!, params, tm, L)
+  return integration_launcher!(SpaceChargeIntegrationTracking.solenoid_sc!, params, tm, L)
 end
 
 @inline function thick_bend_pure_bdipole(tm::SpaceChargeIntegration, bunch, bendparams, bm1, scp, L)

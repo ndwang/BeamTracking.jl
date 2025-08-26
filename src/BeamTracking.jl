@@ -37,7 +37,7 @@ include("kernel.jl")
 include("modules/ExactTracking.jl") #; TRACKING_METHOD(::ExactTracking) = Exact
 include("modules/LinearTracking.jl") #; TRACKING_METHOD(::LinearTracking) = Linear
 include("modules/IntegrationTracking.jl") #; TRACKING_METHOD(::LinearTracking) = SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
-include("modules/SpaceChargeIntegration.jl") #; TRACKING_METHOD(::SpaceChargeIntegration) = SpaceCharge
+include("modules/SpaceChargeIntegrationTracking.jl") #; TRACKING_METHOD(::SpaceChargeIntegration) = SpaceCharge
 
 
 # Empty tracking method to be imported+implemented by package extensions

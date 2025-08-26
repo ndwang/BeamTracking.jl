@@ -44,12 +44,15 @@ function sc_calc(scp, bunch)
   solve!(scp.mesh)
 end
 
-@makekernel fastgtpsa=true function SC_kick!(i, coords::Coords, β_0, gamsqr_0, R, scp, L)
+@makekernel fastgtpsa=true function interpolate_field(i, coords::Coords, scp)
+  v = coords.v
   efield = scp.mesh.efield
+  min_bounds = scp.mesh.min_bounds
+  delta = scp.mesh.delta
 
-  norm_x = (coords.v[i, XI] - scp.mesh.min_bounds[1]) / scp.mesh.delta[1]
-  norm_y = (coords.v[i, YI] - scp.mesh.min_bounds[2]) / scp.mesh.delta[2]
-  norm_z = (coords.v[i, ZI] - scp.mesh.min_bounds[3]) / scp.mesh.delta[3]
+  norm_x = (v[i, XI] - min_bounds[1]) / delta[1]
+  norm_y = (v[i, YI] - min_bounds[2]) / delta[2]
+  norm_z = (v[i, ZI] - min_bounds[3]) / delta[3]
 
   ix = floor(Int, norm_x)
   iy = floor(Int, norm_y)
@@ -68,7 +71,7 @@ end
   w_011 = (1 - dx) * dy * dz
   w_111 = dx * dy * dz
 
-  Ex = (
+  scp.efield_scratch[i, 1] = (
     efield[ix + 1, iy + 1, iz + 1, 1] * w_000 +
     efield[ix + 2, iy + 1, iz + 1, 1] * w_100 +
     efield[ix + 1, iy + 2, iz + 1, 1] * w_010 +
@@ -78,7 +81,7 @@ end
     efield[ix + 1, iy + 2, iz + 2, 1] * w_011 +
     efield[ix + 2, iy + 2, iz + 2, 1] * w_111
   )
-  Ey = (
+  scp.efield_scratch[i, 2] = (
     efield[ix + 1, iy + 1, iz + 1, 2] * w_000 +
     efield[ix + 2, iy + 1, iz + 1, 2] * w_100 +
     efield[ix + 1, iy + 2, iz + 1, 2] * w_010 +
@@ -88,7 +91,7 @@ end
     efield[ix + 1, iy + 2, iz + 2, 2] * w_011 +
     efield[ix + 2, iy + 2, iz + 2, 2] * w_111
   )
-  Ez = (
+  scp.efield_scratch[i, 3] = (
     efield[ix + 1, iy + 1, iz + 1, 3] * w_000 +
     efield[ix + 2, iy + 1, iz + 1, 3] * w_100 +
     efield[ix + 1, iy + 2, iz + 1, 3] * w_010 +
@@ -98,19 +101,21 @@ end
     efield[ix + 1, iy + 2, iz + 2, 3] * w_011 +
     efield[ix + 2, iy + 2, iz + 2, 3] * w_111
   )
+end
 
+@makekernel fastgtpsa=true function SC_kick!(i, coords::Coords, β_0, gamsqr_0, R, scp, L)
+  v = coords.v
+  Efield = scp.efield_scratch
   coeff = L * β_0 / (R * gamsqr_0)
 
-  
-  Ps2 = (1 + coords.v[i,PZI])^2 - (coords.v[i,PXI]^2 + coords.v[i,PYI]^2)
+  Ps2 = (1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)
   coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
-  alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
-  Ps = sqrt(Ps2 + (alive-1)*(Ps2-1))
-
-  Ps              += Ez * coeff
-  coords.v[i, PXI] += Ex * coeff
-  coords.v[i, PYI] += Ey * coeff
-  coords.v[i, PZI] = sqrt(coords.v[i, PXI]^2 + coords.v[i, PYI]^2 + Ps^2) - 1
+  alive = ifelse(coords.state[i] == State.Alive, 1, 0) 
+  Ps = sqrt(Ps2 + (alive-1)*(Ps2-1)) + alive * Efield[i,3] * coeff
+  
+  v[i, PXI] = alive * (v[i, PXI] + Efield[i,1] * coeff) + (1 - alive) * v[i, PXI]
+  v[i, PYI] = alive * (v[i, PYI] + Efield[i,2] * coeff) + (1 - alive) * v[i, PYI]
+  v[i, PZI] = sqrt(v[i, PXI]^2 + v[i, PYI]^2 + Ps^2) - 1
 end
 
 @makekernel fastgtpsa=true function curved_drift_sc!(i, coords::Coords, tilde_m, gamsqr_0, beta_0, e1, e2, theta, g, w, w_inv, R, scp, L)
