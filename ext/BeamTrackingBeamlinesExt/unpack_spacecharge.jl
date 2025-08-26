@@ -15,13 +15,14 @@ function _track!(
   dp = deval(ele.ApertureParams)
   sc = deval(ele.SpaceChargeParams)
 
-  sc_calc_step = L / sc.steps
+  sc_calc_step = L / tm.num_sc_steps
   kc = fetch_kernels(i, coords, tm, bunch, sc_calc_step / 2, ap, bp, bm, pp, dp, sc; kwargs...)
 
-  runkernels!(i, coords, kc; kwargs...)
-  sc_calc() # Needs to be implemented
-  runkernels!(i, coords, kc; kwargs...)
-
+  for _ in 1:tm.num_sc_steps
+    runkernels!(i, coords, kc; kwargs...)
+    sc_calc() # Needs to be implemented
+    runkernels!(i, coords, kc; kwargs...)
+  end
 end
 
 
@@ -42,11 +43,11 @@ function fetch_kernels(
   kc = KernelChain(Val{1}())
 
   if isactive(patchparams)
-    if isactive(bendparams) || isactive(bmultipoleparams)
-      error("Tracking through a LineElement containing both PatchParams and BendParams/BMultipoleParams not currently defined")
-    else
-      kc = push(kc, @inline(pure_patch(Exact(), bunch, patchparams, L)))
-    end
+    error("Tracking through a LineElement containing both PatchParams and SpaceChargeParams not currently defined")
+  end
+
+  if isactive(alignmentparams)
+    kc = push(kc, @inline(misalign(tm, bunch, alignmentparams, true)))
   end
 
   # Zero-length elements
@@ -89,6 +90,10 @@ function fetch_kernels(
   else
     # Steering or other higher-order multipole elements
     kc = push(kc, @inline(thick_bmultipole(tm, bunch, bmultipoleparams, spacechargeparams, L)))
+  end
+
+  if isactive(alignmentparams)
+    kc = push(kc, @inline(misalign(tm, bunch, alignmentparams, false)))
   end
 
   return kc

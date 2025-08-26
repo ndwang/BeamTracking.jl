@@ -1,6 +1,31 @@
 using ..BeamTracking.IntegrationTracking.def_integrator_struct
 
-@def_integrator_struct(SpaceCharge)
+struct SpaceCharge
+  order::Int
+  num_steps::Int
+  num_sc_steps::Int
+  ds_step::Float64
+
+  function SpaceCharge(; order::Int=2, num_steps::Int=-1, num_sc_steps::Int=-1, ds_step::Float64=-1.0)
+      _order = order
+      _num_steps = num_steps
+      _ds_step = ds_step
+      if _order ∉ (2, 4, 6, 8)
+          error("Symplectic integration only supports orders 2, 4, 6, and 8")
+      elseif _num_steps == -1 && _ds_step == -1.0
+          _num_steps = 1
+      elseif _num_steps > 0 && _ds_step > 0
+          error("Only one of num_steps or ds_step should be specified")
+      elseif _num_steps < 1 && _ds_step <= 0
+          error("Invalid step size")
+      elseif _num_steps > 0
+          _ds_step = -1.0
+      elseif _ds_step > 0
+          _num_steps = -1
+      end
+      return new(_order, _num_steps, _num_sc_steps, _ds_step)
+  end
+end
 
 module SpaceChargeIntegration
 using ..BeamTracking, ..KernelAbstractions
