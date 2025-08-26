@@ -21,7 +21,7 @@ struct SpaceChargeIntegration
       elseif _ds_step > 0
           _num_steps = -1
       end
-      return new(_order, _num_steps, _num_sc_steps, _ds_step)
+      return new(_order, _num_steps, num_sc_steps, _ds_step)
   end
 end
 
@@ -45,11 +45,11 @@ function sc_calc(scp, bunch)
 end
 
 @makekernel fastgtpsa=true function SC_kick!(i, coords::Coords, β_0, gamsqr_0, R, scp, L)
-  efield = scp.efield
+  efield = scp.mesh.efield
 
-  norm_x = (coords.v[i, XI] - scp.min_bounds[1]) / scp.delta[1]
-  norm_y = (coords.v[i, YI] - scp.min_bounds[2]) / scp.delta[2]
-  norm_z = (coords.v[i, ZI] - scp.min_bounds[3]) / scp.delta[3]
+  norm_x = (coords.v[i, XI] - scp.mesh.min_bounds[1]) / scp.mesh.delta[1]
+  norm_y = (coords.v[i, YI] - scp.mesh.min_bounds[2]) / scp.mesh.delta[2]
+  norm_z = (coords.v[i, ZI] - scp.mesh.min_bounds[3]) / scp.mesh.delta[3]
 
   ix = floor(Int, norm_x)
   iy = floor(Int, norm_y)
@@ -102,15 +102,15 @@ end
   coeff = L * β_0 / (R * gamsqr_0)
 
   
-  Ps2 = (1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)
+  Ps2 = (1 + coords.v[i,PZI])^2 - (coords.v[i,PXI]^2 + coords.v[i,PYI]^2)
   coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
   alive = ifelse(coords.state[i]==State.Alive, 1, 0) 
   Ps = sqrt(Ps2 + (alive-1)*(Ps2-1))
 
   Ps              += Ez * coeff
-  coords.v[i, PX] += Ex * coeff
-  coords.v[i, PY] += Ey * coeff
-  coords.v[i, PZ] = sqrt(coords.v[i, PX]^2 + coords.v[i, PY]^2 + Ps^2) - 1
+  coords.v[i, PXI] += Ex * coeff
+  coords.v[i, PYI] += Ey * coeff
+  coords.v[i, PZI] = sqrt(coords.v[i, PXI]^2 + coords.v[i, PYI]^2 + Ps^2) - 1
 end
 
 @makekernel fastgtpsa=true function curved_drift_sc!(i, coords::Coords, tilde_m, gamsqr_0, beta_0, e1, e2, theta, g, w, w_inv, R, scp, L)

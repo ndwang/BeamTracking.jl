@@ -25,7 +25,7 @@ export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, quat_mul
 export LinearTracking, Linear
 export ExactTracking, Exact
 export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
-export SpaceChargeIntegration, SpaceCharge
+export SpaceChargeIntegrationTracking, SpaceChargeIntegration
 export track!
 
 include("utils.jl")

@@ -118,10 +118,12 @@ function _track!(
 end
 =#
 include("unpack.jl")
+include("unpack_spacecharge.jl")
 include("scibmadstandard.jl")
 include("linear.jl")
 include("exact.jl")
 include("integration.jl")
+include("scintegration.jl")
 
 
 end
