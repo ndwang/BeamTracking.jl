@@ -103,70 +103,73 @@ end
   )
 end
 
-@makekernel fastgtpsa=true function SC_kick!(i, coords::Coords, β_0, gamsqr_0, R, scp, L)
+@makekernel fastgtpsa=true function sc_kick!(i, coords::Coords, β_0, R, scp, L)
   v = coords.v
   Efield = scp.efield_scratch
-  coeff = L * β_0 / (R * gamsqr_0)
+  gamma2 = scp.mesh.gamma^2
+  coeff = L / (β_0 * R * gamma2 * BeamTracking.C_LIGHT)
 
   Ps2 = (1 + v[i,PZI])^2 - (v[i,PXI]^2 + v[i,PYI]^2)
   coords.state[i] = ifelse(Ps2 <= 0 && coords.state[i] == State.Alive, State.Lost, coords.state[i])
   alive = ifelse(coords.state[i] == State.Alive, 1, 0) 
-  Ps = sqrt(Ps2 + (alive-1)*(Ps2-1)) + alive * Efield[i,3] * coeff
+
+  Ps2_safe = max(0, Ps2)
+  Ps = alive * (sqrt(Ps2_safe) + Efield[i,3] * coeff) + (1 - alive) * 0
   
   v[i, PXI] = alive * (v[i, PXI] + Efield[i,1] * coeff) + (1 - alive) * v[i, PXI]
   v[i, PYI] = alive * (v[i, PYI] + Efield[i,2] * coeff) + (1 - alive) * v[i, PYI]
-  v[i, PZI] = sqrt(v[i, PXI]^2 + v[i, PYI]^2 + Ps^2) - 1
+  v[i, PZI] = alive * (sqrt(v[i, PXI]^2 + v[i, PYI]^2 + Ps^2) - 1) + (1 - alive) * v[i, PZI]
 end
 
-@makekernel fastgtpsa=true function curved_drift_sc!(i, coords::Coords, tilde_m, gamsqr_0, beta_0, e1, e2, theta, g, w, w_inv, R, scp, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+@makekernel fastgtpsa=true function curved_drift_sc!(i, coords::Coords, tilde_m, beta_0, e1, e2, theta, g, w, w_inv, R, scp, L)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
   ExactTracking.exact_curved_drift!(i, coords, e1, e2, theta, g, w, w_inv, BeamTracking.anom(bunch.species), tilde_m, beta_0, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
 end
 
 @makekernel fastgtpsa=true function drift_sc!(i, coords::Coords, tilde_m, gamsqr_0, beta_0, R, scp, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
   ExactTracking.exact_drift!(i, coords, beta_0, gamsqr_0, tilde_m, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
 end
 
 @makekernel fastgtpsa=true function solenoid_sc!(i, coords::Coords, tilde_m, gamsqr_0, beta_0, Ksol, R, scp, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
   ExactTracking.exact_solenoid!(i, coords, Ksol, beta_0, gamsqr_0, tilde_m, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
 end
 
-@makekernel fastgtpsa=true function bend_sc!(i, coords::Coords, tilde_m, gamsqr_0, beta_0, e1, e2, theta, g, Kn0, w, w_inv, R, scp, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+@makekernel fastgtpsa=true function bend_sc!(i, coords::Coords, tilde_m, beta_0, e1, e2, theta, g, Kn0, w, w_inv, R, scp, L)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
   ExactTracking.exact_bend!(i, coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
 end
 
 @makekernel fastgtpsa=true function dkd_multipole_sc!(i, coords::Coords, tilde_m, gamsqr_0, beta_0, a, mm, kn, ks, R, scp, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
   IntegrationTracking.dkd_multipole!(i, coords, beta_0, gamsqr_0, tilde_m, a, mm, kn, ks, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
 end
 
 
 @makekernel fastgtpsa=true function sks_multipole_sc!(i, coords::Coords, tilde_m, gamsqr_0, beta_0, a, Ksol, mm, kn, ks, R, scp, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
   IntegrationTracking.sks_multipole!(i, coords, beta_0, gamsqr_0, tilde_m, a, Ksol, mm, kn, ks, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
 end
 
 
-@makekernel fastgtpsa=true function bkb_multipole_sc!(i, coords::Coords, tilde_m, gamsqr_0, beta_0, a, e1, e2, g, w, w_inv, k0, mm, kn, ks, R, scp, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+@makekernel fastgtpsa=true function bkb_multipole_sc!(i, coords::Coords, tilde_m, beta_0, a, e1, e2, g, w, w_inv, k0, mm, kn, ks, R, scp, L)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
   IntegrationTracking.bkb_multipole!(i, coords, tilde_m, beta_0, a, e1, e2, g, w, w_inv, k0, mm, kn, ks, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
 end
 
 
 @makekernel fastgtpsa=true function mkm_quadrupole_sc!(i, coords::Coords, tilde_m, gamsqr_0, beta_0, a, w, w_inv, k1, mm, kn, ks, R, scp, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
   IntegrationTracking.mkm_quadrupole!(i, coords, beta_0, gamsqr_0, tilde_m, a, w, w_inv, k1, mm, kn, ks, L)
-  SC_kick!(i, coords::Coords, beta_0, gamsqr_0, R, scp, L/2)
+  sc_kick!(i, coords::Coords, beta_0, R, scp, L/2)
 end
 
 end

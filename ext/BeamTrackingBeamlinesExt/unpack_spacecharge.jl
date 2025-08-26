@@ -14,10 +14,10 @@ function _track!(
   pp = deval(ele.PatchParams)
   dp = deval(ele.ApertureParams)
   sc = deval(ele.SpaceChargeParams)
+  Beamlines.init_efield_scratch(sc, coords.v)
 
   sc_calc_step = L / tm.num_sc_steps
   kc = fetch_kernels(i, coords, tm, bunch, sc_calc_step, ap, bp, bm, pp, dp, sc; kwargs...)
-  init_efield_scratch(scp)
 
   for i_step in 1:tm.num_sc_steps
     SpaceChargeIntegrationTracking.sc_calc(sc, bunch)
@@ -108,7 +108,7 @@ function fetch_kernels(
     kc = push(kc, @inline(misalign(tm, bunch, alignmentparams, true)))
   end
 
-  kc = push(kc, @inline(SpaceChargeIntegrationTracking.interpolate_field(i, coords, spacechargeparams)))
+  kc = push(kc, KernelCall(SpaceChargeIntegrationTracking.interpolate_field, (spacechargeparams,)))
   kc = push(kc, @inline(determine_element_type(kc, i, coords, tm, bunch, L, alignmentparams, bendparams, bmultipoleparams, patchparams, apertureparams, spacechargeparams; kwargs...)))
 
   if isactive(alignmentparams)

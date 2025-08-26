@@ -7,7 +7,7 @@
   w_inv = ExactTracking.w_inv_quaternion(0,0,-tilt)
   theta = g * L
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, bunch.R_ref)
-  params = (tilde_m, gamsqr_0, beta_0, e1, e2, theta, g, w, w_inv, bunch.R_ref, scp)
+  params = (tilde_m, beta_0, e1, e2, theta, g, w, w_inv, bunch.R_ref, scp)
   return integration_launcher!(SpaceChargeIntegrationTracking.curved_drift_sc!, params, tm, L)
 end
 
@@ -35,7 +35,7 @@ end
   Kn0, Ks0 = get_strengths(bm1, L, bunch.R_ref)
   Ks0 ≈ 0 || error("A skew dipole field cannot be used in an exact bend")
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, bunch.R_ref)
-  params = (tilde_m, gamsqr_0, beta_0, e1, e2, theta, g, Kn0, w, w_inv, bunch.R_ref, scp)
+  params = (tilde_m, beta_0, e1, e2, theta, g, Kn0, w, w_inv, bunch.R_ref, scp)
   return integration_launcher!(SpaceChargeIntegrationTracking.bend_sc!, params, tm, L)
 end
 
@@ -64,7 +64,7 @@ end
   w = ExactTracking.w_quaternion(0,0,tilt)
   w_inv = ExactTracking.w_inv_quaternion(0,0,tilt)
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, bunch.R_ref)
-  params = (tilde_m, gamsqr_0, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, w, w_inv, k0, mm, kn, ks, bunch.R_ref, scp)
+  params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, w, w_inv, k0, mm, kn, ks, bunch.R_ref, scp)
   return integration_launcher!(SpaceChargeIntegrationTracking.bkb_multipole_sc!, params, tm, L)
 end
 
