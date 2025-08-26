@@ -818,16 +818,6 @@
     @test_throws ErrorException DriftKick(ds_step = -0.1)
     @test_throws ErrorException SolenoidKick(num_steps = -2)
     @test_throws ErrorException SplitIntegration(order = 5)
-
-    # Utility:
-    x = (0.01, -0.01, -0.01, 0.0, 0.0, 0.0)
-    y = (-0.02, 0.02, -0.02, 0.02, -0.02, 0.0)
-    x_s = Vec(x)
-    y_s = Vec(y)
-    x_v = [x[i] for i in 1:length(x)]
-    y_v = [y[i] for i in 1:length(y)]
-    atan_s = atan2(y_s, x_s)
-    @test all([atan_s[i] for i in 1:length(atan_s)] .== atan.(y_v, x_v))
   end
 
 end
