@@ -8,7 +8,7 @@ Module implementing particle tracking through arbitrary electromagnetic fields u
 module FieldTracking
 using ..BeamTracking
 using ..BeamTracking: @makekernel, BunchView
-using SciMLBase
+using ..SciMLBase
 const TRACKING_METHOD = Field
 
 """
@@ -44,17 +44,16 @@ Track a particle through a drift space with arbitrary field using DifferentialEq
 - `solver_params`: Additional parameters for the solver
 """
 @makekernel function field_track!(i, b::BunchView, L, field_func, field_params, solver, solver_params)
-    begin
-        # Initial state vector
-        u0 = view(b.v, i, :)
-        
-        # Set up and solve the ODE
-        prob = ODEProblem(field_system!, u0, (0.0, L), (field_func, field_params))
-        sol = solve(prob, solver; solver_params...)
-        
-        # Update final coordinates by assigning each component
-        u0 .= sol.u[end]
-    end
+    # Initial state vector
+    u0 = view(b.v, i, :)
+
+    # Set up and solve the ODE
+    prob = ODEProblem(field_system!, u0, (0.0, L), (field_func, field_params))
+    sol = solve(prob, solver; solver_params...)
+
+    # Update final coordinates by assigning each component
+    u0 .= sol.u[end]
+
 end
 
 end
