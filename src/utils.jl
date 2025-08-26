@@ -93,51 +93,112 @@ function sincuc(x)
   return y
 end
 
-# Fake APC ====================================================================
-const Q = 1.602176634e-19 # C
-const C_LIGHT = 2.99792458e8 # m/s
-const M_ELECTRON = 0.51099895069e6 # eV/c^2
-const M_PROTON = 9.3827208943e8 # eV/c^2
+"""
+    sincus(x)
 
-struct Species
-  name::String
-  mass::Float64   # in eV/c^2
-  charge::Float64 # in Coulomb
+Compute the unnormalized sinc square-root function 
+``\\operatorname{sincus}(x) = \\sin(\\sqrt(x)) / (\\sqrt(x))`` 
+with accuracy near the origin.
+"""
+sincus(x) = _sincus(float(x))
+function _sincus(x::Union{T,Complex{T}}) where {T}
+    nrm = Base.Math.fastabs(x)
+    if nrm >= 109.018*eps(T)^(1/11)
+        return sin(sqrt(x))/(sqrt(x))
+    else
+        c0 = 1
+        c1 = -1/6
+        c2 = 1/120
+        c3 = -1/5040
+        c4 = 1/362880
+        c5 = -1/39916800
+        c6 = 1/6227020800
+        c7 = -1/1307674368000
+        c8 = 1/355687428096000
+        c9 = -1/12164510040883200000
+        c10 = 1/5109094217170944000000
+        return (c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*(c8+x*
+        (c9+x*c10))))))))))
+    end
 end
 
-const ELECTRON = Species("electron", M_ELECTRON,-1)
-const POSITRON = Species("positron", M_ELECTRON,1)
+"""
+    coss(x)
 
-const PROTON = Species("proton", M_PROTON,1)
-const ANTIPROTON = Species("antiproton", M_PROTON,-1)
-
-
-function Species(name)
-  if name == "electron"
-    return ELECTRON
-  elseif name == "positron"
-    return POSITRON
-  elseif name == "proton"
-    return PROTON
-  elseif name == "ANTIPROTON"
-    return ANTIPROTON
-  else
-    error("BeamTracking.jl's fake APC does not support species $name")
-  end
+Compute the cos square-root function 
+``\\operatorname{coss}(x) = \\cos(\\sqrt(x))`` 
+with differentiability near the origin.
+"""
+coss(x) = _coss(float(x))
+function _coss(x::Union{T,Complex{T}}) where {T}
+    nrm = Base.Math.fastabs(x)
+    if nrm >= 81.9796*eps(T)^(1/11)
+        return cos(sqrt(x))
+    else
+        c0 = 1
+        c1 = -1/2
+        c2 = 1/24
+        c3 = -1/720
+        c4 = 1/40320
+        c5 = -1/3628800
+        c6 = 1/479001600
+        c7 = -1/87178291200
+        c8 = 1/20922789888000
+        c9 = -1/6402373705728000
+        c10 = 1/2432902008176640000
+        return (c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*(c8+x*
+        (c9+x*c10))))))))))
+    end
 end
 
-massof(s::Species) = s.mass
-chargeof(s::Species) = s.charge
+@inline function expq(v)
+  """
+  This function computes exp(i v⋅σ) as a quaternion, where σ is the 
+  vector of Pauli matrices.
+  """
+  n2 = v[1]^2 + v[2]^2 + v[3]^2
+  c = coss(n2)
+  s = sincus(n2)
+  v2 = s * v
+  return SA[-c, v2[1], v2[2], v2[3]]
+end
+
+@inline function quat_mul(q1, q2)
+  """
+  Returns q1 * q2.
+  """
+  a1, b1, c1, d1 = q1[Q0], q1[QX], q1[QY], q1[QZ]
+  a2, b2, c2, d2 = q2[Q0], q2[QX], q2[QY], q2[QZ]
+  a3 = a1*a2 - b1*b2 - c1*c2 - d1*d2
+  b3 = a1*b2 + b1*a2 + c1*d2 - d1*c2
+  c3 = a1*c2 - b1*d2 + c1*a2 + d1*b2
+  d3 = a1*d2 + b1*c2 - c1*b2 + d1*a2
+  return SA[a3 b3 c3 d3]
+end
 
 # Particle energy conversions =============================================================
-calc_Brho(species::Species, E) = @FastGTPSA sqrt(E^2-massof(species)^2)/C_LIGHT/chargeof(species)
-calc_E(species::Species, Brho) = @FastGTPSA sqrt((Brho*C_LIGHT*chargeof(species))^2 + massof(species)^2)
-calc_gamma(species::Species, Brho) = @FastGTPSA sqrt((Brho*C_LIGHT/massof(species))^2+1)
+R_to_E(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT*chargeof(species))^2 + massof(species)^2)
+E_to_R(species::Species, E) = @FastGTPSA massof(species)*sinh(acosh(E/massof(species)))/C_LIGHT/chargeof(species) 
+pc_to_R(species::Species, pc) = @FastGTPSA pc/C_LIGHT/chargeof(species)
 
-calc_p0c(species::Species, Brho) = @FastGTPSA Brho*C_LIGHT*chargeof(species)
-calc_beta_gammma(species::Species, Brho) = @FastGTPSA Brho*chargeof(species)*C_LIGHT/massof(species)
+R_to_gamma(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT/massof(species))^2+1)
+R_to_pc(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT
+R_to_beta_gamma(species::Species, R_ref) = @FastGTPSA R_ref*chargeof(species)*C_LIGHT/massof(species)
 
-
+# Fake APC because APC is not working for now :(
+function anom(species::Species) 
+  if nameof(species) == "electron"
+    return 0.00115965218046
+  elseif nameof(species) == "positron"
+    return 0.0011596521735304233
+  elseif nameof(species) == "proton"
+    return 1.7928473446300592
+  elseif nameof(species) == "proton"
+    return 1.7928473446300592
+  else
+    error("Your species is not in fake APC yet")
+  end
+end
 
 #=
 
@@ -211,14 +272,14 @@ end
 
 
 """
-    brho(e_rest, beta_gamma, ne = 1)
+    R_ref(e_rest, beta_gamma, ne = 1)
 
 For a particle with a given rest energy and relativistic parameter
-``\\beta\\gamma``, compute the magnetic rigidity, ``B\\rho = p / q``.
+``\\beta\\gamma``, compute the magnetic R_ref, ``B\\rho = p / q``.
 
 DTA: Need to handle energy units other than ``\\mathrm{eV}``..
 """
-function brho(e_rest, beta_gamma, ne = 1)
+function R_ref(e_rest, beta_gamma, ne = 1)
   return (sr_pc(e_rest, beta_gamma) / (ne * C_LIGHT))
 end
 ## If given ``E_\text{kin}`` instead of ``\beta\gamma``,
@@ -249,7 +310,7 @@ end
 #  return e_rest + e_kin
 #end
 #
-#function brho(e_rest, e_kin, ne = 1)
+#function R_ref(e_rest, e_kin, ne = 1)
 #  return sr_pc(e_rest, e_kin) / (ne * clight)
 #end
 
