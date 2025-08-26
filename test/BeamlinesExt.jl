@@ -820,10 +820,14 @@
     @test_throws ErrorException SplitIntegration(order = 5)
 
     # Utility:
-    x = Vec((0.01, -0.01, -0.01, 0.0, 0.0, 0.0))
-    y = Vec((-0.02, 0.02, -0.02, 0.02, -0.02, 0.0))
-    @test all(atan2(y,x) == Vec((atan(y[1], x[1]), atan(y[2], x[2]), 
-    atan(y[3], x[3]), atan(y[4], x[4]), atan(y[5], x[5]), atan(y[6], x[6]))))
+    x = (0.01, -0.01, -0.01, 0.0, 0.0, 0.0)
+    y = (-0.02, 0.02, -0.02, 0.02, -0.02, 0.0)
+    x_s = Vec(x)
+    y_s = Vec(y)
+    x_v = [x[i] for i in 1:length(x)]
+    y_v = [y[i] for i in 1:length(y)]
+    atan_s = atan2(y_s, x_s)
+    @test all([atan_s[i] for i in 1:length(atan_s)] .== atan.(y_v, x_v))
   end
 
 end
