@@ -6,15 +6,15 @@ Currently provides both linear, exact, field tracking, and Runge-Kutta tracking 
 """
 module BeamTracking
 using GTPSA,
-    ReferenceFrameRotations,
-    StaticArrays,
-    SIMD,
-    VectorizationBase,
-    EnumX,
-    Unrolled,
-    MacroTools,
-    Adapt,
-    Accessors
+  ReferenceFrameRotations,
+  StaticArrays,
+  SIMD,
+  VectorizationBase,
+  EnumX,
+  Unrolled,
+  MacroTools,
+  Adapt,
+  Accessors
 
 using KernelAbstractions
 

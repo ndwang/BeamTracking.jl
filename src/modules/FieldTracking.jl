@@ -25,8 +25,8 @@ Define the ODE system for particle motion in an electromagnetic field.
 - `t`: Time variable
 """
 function field_system!(du, u, p, t)
-    field_func, params = p
-    du .= field_func(u, t, params)
+  field_func, params = p
+  du .= field_func(u, t, params)
 end
 
 """
@@ -44,15 +44,15 @@ Track a particle through a drift space with arbitrary field using DifferentialEq
 - `solver_params`: Additional parameters for the solver
 """
 @makekernel function field_track!(i, b::BunchView, L, field_func, field_params, solver, solver_params)
-    # Initial state vector
-    u0 = view(b.v, i, :)
+  # Initial state vector
+  u0 = view(b.v, i, :)
 
-    # Set up and solve the ODE
-    prob = ODEProblem(field_system!, u0, (0.0, L), (field_func, field_params))
-    sol = solve(prob, solver; solver_params...)
+  # Set up and solve the ODE
+  prob = ODEProblem(field_system!, u0, (0.0, L), (field_func, field_params))
+  sol = solve(prob, solver; solver_params...)
 
-    # Update final coordinates by assigning each component
-    u0 .= sol.u[end]
+  # Update final coordinates by assigning each component
+  u0 .= sol.u[end]
 
 end
 

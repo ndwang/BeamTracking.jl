@@ -25,14 +25,14 @@ Perform a single 4th order Runge-Kutta step.
 - `params`: Additional parameters for the field function
 """
 function rk4_step!(u, t, h, field_func, params)
-    # Intermediate stages
-    k1 = field_func(u, 0.0, params)
-    k2 = field_func(u .+ (h / 2) .* k1, h / 2, params)
-    k3 = field_func(u .+ (h / 2) .* k2, h / 2, params)
-    k4 = field_func(u .+ h .* k3, h, params)
+  # Intermediate stages
+  k1 = field_func(u, 0.0, params)
+  k2 = field_func(u .+ (h / 2) .* k1, h / 2, params)
+  k3 = field_func(u .+ (h / 2) .* k2, h / 2, params)
+  k4 = field_func(u .+ h .* k3, h, params)
 
-    # Final update
-    u .+= (h / 6) .* (k1 .+ 2 .* k2 .+ 2 .* k3 .+ k4)
+  # Final update
+  u .+= (h / 6) .* (k1 .+ 2 .* k2 .+ 2 .* k3 .+ k4)
 end
 
 """
@@ -50,18 +50,18 @@ Track a particle through a drift space with arbitrary field using 4th order Rung
 - `n_steps`: Number of integration steps
 """
 @makekernel function rk4_track!(i, b::BunchView, t_span, field_func, params, n_steps)
-    # Create a view of the particle coordinates
-    u = view(b.v, i, :)
+  # Create a view of the particle coordinates
+  u = view(b.v, i, :)
 
-    # Integration step size
-    h = (t_span[2] - t_span[1]) / n_steps
+  # Integration step size
+  h = (t_span[2] - t_span[1]) / n_steps
 
-    t = t_span[1]
-    # Perform integration steps
-    for _ in 1:n_steps
-        rk4_step!(u, t, h, field_func, params)
-        t += h
-    end
+  t = t_span[1]
+  # Perform integration steps
+  for _ in 1:n_steps
+    rk4_step!(u, t, h, field_func, params)
+    t += h
+  end
 end
 
 end
