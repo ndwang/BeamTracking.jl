@@ -3,7 +3,7 @@ function _track!(
   coords::Coords,
   bunch::Bunch,
   ele::LineElement, 
-  tm::SpaceCharge;
+  tm::SpaceChargeIntegration;
   kwargs...
 )
   # Unpack the line element (type unstable)
@@ -16,11 +16,13 @@ function _track!(
   sc = deval(ele.SpaceChargeParams)
 
   sc_calc_step = L / tm.num_sc_steps
+  SpaceChargeIntegration.sc_calc(scp, bunch)
+
   kc = fetch_kernels(i, coords, tm, bunch, sc_calc_step / 2, ap, bp, bm, pp, dp, sc; kwargs...)
 
   for _ in 1:tm.num_sc_steps
     runkernels!(i, coords, kc; kwargs...)
-    sc_calc() # Needs to be implemented
+    SpaceChargeIntegration.sc_calc(scp, bunch)
     runkernels!(i, coords, kc; kwargs...)
   end
 end

@@ -8,7 +8,8 @@ using GTPSA,
       Unrolled,
       MacroTools,
       Adapt,
-      Accessors
+      Accessors,
+      SpaceCharge
 
 using KernelAbstractions
       

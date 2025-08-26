@@ -1,12 +1,10 @@
-using ..BeamTracking.IntegrationTracking.def_integrator_struct
-
-struct SpaceCharge
+struct SpaceChargeIntegration
   order::Int
   num_steps::Int
   num_sc_steps::Int
   ds_step::Float64
 
-  function SpaceCharge(; order::Int=2, num_steps::Int=-1, num_sc_steps::Int=-1, ds_step::Float64=-1.0)
+  function SpaceChargeIntegration(; order::Int=2, num_steps::Int=-1, num_sc_steps::Int=-1, ds_step::Float64=-1.0)
       _order = order
       _num_steps = num_steps
       _ds_step = ds_step
@@ -27,10 +25,24 @@ struct SpaceCharge
   end
 end
 
-module SpaceChargeIntegration
-using ..BeamTracking, ..KernelAbstractions
+module SpaceChargeIntegrationTracking
+using ..GTPSA, ..BeamTracking, ..KernelAbstractions, ..SpaceCharge
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, @makekernel, Coords
-const TRACKING_METHOD = SpaceCharge
+const TRACKING_METHOD = SpaceChargeIntegration
+
+
+function sc_calc(scp, bunch)
+  # Extract only alive particles
+  alive_idx = findall(==(State.Alive), bunch.coords.state)
+  particles_x = bunch.coords.v[alive_idx, XI]
+  particles_y = bunch.coords.v[alive_idx, YI]
+  particles_z = bunch.coords.v[alive_idx, ZI]
+  particles_q = scp.total_charge * Float64.(bunch.coords.state .== State.Alive) / length(bunch.coords.state)
+  scp.mesh.gamma  = BeamTracking.R_to_gamma(bunch.species, bunch.R_ref * (1 + sum(bunch.coords.v[alive_idx, PZI])/length(alive_idx)))
+
+  deposit!(scp.mesh, particles_x, particles_y, particles_z, particles_q)
+  solve!(scp.mesh)
+end
 
 @makekernel fastgtpsa=true function SC_kick!(i, coords::Coords, β_0, gamsqr_0, R, scp, L)
   efield = scp.efield
