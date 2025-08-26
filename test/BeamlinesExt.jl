@@ -284,7 +284,7 @@
     v_init = copy(b0.coords.v)
     ele_kick = LineElement(L=1.0, Kn0L=1.0, tracking_method=Exact())
     track!(b0, Beamline([ele_kick], R_ref=R_ref, species_ref=Species("electron")))
-    @test b0.coords.state[1] == State_Lost
+    @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
 
     # Particle lost (abs(px) > pt):
@@ -292,7 +292,7 @@
     v_init = copy(b0.coords.v)
     ele_bend = LineElement(L=1.0, g_ref=0.01, Kn0=0.01, tracking_method=Exact())
     track!(b0, Beamline([ele_bend], R_ref=R_ref, species_ref=Species("electron")))
-    @test b0.coords.state[1] == State_Lost
+    @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
 
     # Particle lost in bend (momentum is too small):
@@ -300,7 +300,7 @@
     v_init = copy(b0.coords.v)
     ele_bend = LineElement(L=1.0, g_ref=0.01, Kn0=0.01, tracking_method=Exact())
     track!(b0, Beamline([ele_bend], R_ref=R_ref, species_ref=Species("electron")))
-    @test b0.coords.state[1] == State_Lost
+    @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
 
     # Particle lost in drift (momentum is too small):
@@ -308,7 +308,7 @@
     v_init = copy(b0.coords.v)
     ele_drift = LineElement(L=1.0, tracking_method=Exact())
     track!(b0, Beamline([ele_drift], R_ref=R_ref, species_ref=Species("electron")))
-    @test b0.coords.state[1] == State_Lost
+    @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
 
     # Particle lost in solenoid (momentum is too small):
@@ -316,7 +316,7 @@
     v_init = copy(b0.coords.v)
     ele_sol = LineElement(L=1.0, Ksol=1.0, tracking_method=Exact())
     track!(b0, Beamline([ele_sol], R_ref=R_ref, species_ref=Species("electron")))
-    @test b0.coords.state[1] == State_Lost
+    @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
 
     # Errors:
@@ -421,6 +421,45 @@
 
     # Drift: 
     ele = LineElement(L=1.0, tracking_method=SplitIntegration())   
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected = read_map("bmad_maps/drift.jl")
+    q_expected = Quaternion(TPS64{D10}(1), TPS64{D10}[0, 0, 0])
+    @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
+
+    # Drift another way: 
+    ele = LineElement(L=1.0, Kn0=0.0, Kn1=0.0, tracking_method=MatrixKick())   
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected = read_map("bmad_maps/drift.jl")
+    q_expected = Quaternion(TPS64{D10}(1), TPS64{D10}[0, 0, 0])
+    @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
+
+    # Drift yet another way: 
+    ele = LineElement(L=1.0, Kn2=0.0, Kn1=0.0, tracking_method=MatrixKick())   
+    v = collect(transpose(@vars(D10)))
+    q = TPS64{D10}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    q_z = Quaternion(b0.coords.q[1], b0.coords.q[2:4])
+    v_expected = read_map("bmad_maps/drift.jl")
+    q_expected = Quaternion(TPS64{D10}(1), TPS64{D10}[0, 0, 0])
+    @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
+    @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
+
+    # Drift yet yet another way: 
+    ele = LineElement(L=1.0, Kn1=0.0, tracking_method=MatrixKick())   
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -749,7 +788,7 @@
     q_init = copy(b0.coords.q)
     ele_dipole = LineElement(L=1.0, Kn0=1e-8, Kn1=1e-8, tracking_method=BendKick())
     track!(b0, Beamline([ele_dipole], R_ref=R_ref))
-    @test b0.coords.state[1] == State_Lost
+    @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
     @test q_init == b0.coords.q || q_init == -b0.coords.q
 
@@ -759,7 +798,7 @@
     q_init = copy(b0.coords.q)
     ele_quad = LineElement(L=1.0, Kn1=1e-8, tracking_method=MatrixKick())
     track!(b0, Beamline([ele_quad], R_ref=R_ref))
-    @test b0.coords.state[1] == State_Lost
+    @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
     @test q_init == b0.coords.q || q_init == -b0.coords.q
 
@@ -769,7 +808,7 @@
     q_init = copy(b0.coords.q)
     ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
     track!(b0, Beamline([ele_patch], R_ref=R_ref))
-    @test b0.coords.state[1] == State_Lost
+    @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
     @test q_init == b0.coords.q || q_init == -b0.coords.q
 
@@ -779,6 +818,12 @@
     @test_throws ErrorException DriftKick(ds_step = -0.1)
     @test_throws ErrorException SolenoidKick(num_steps = -2)
     @test_throws ErrorException SplitIntegration(order = 5)
+
+    # Utility:
+    x = Vec((0.01, -0.01, -0.01, 0.0, 0.0, 0.0))
+    y = Vec((-0.02, 0.02, -0.02, 0.02, -0.02, 0.0))
+    @test all(atan2(y,x) == Vec((atan(y[1], x[1]), atan(y[2], x[2]), 
+    atan(y[3], x[3]), atan(y[4], x[4]), atan(y[5], x[5]), atan(y[6], x[6]))))
   end
 
 end

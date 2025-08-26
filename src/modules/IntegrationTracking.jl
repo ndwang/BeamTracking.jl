@@ -42,7 +42,7 @@ end
 
 module IntegrationTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays, ..KernelAbstractions, ..SIMD, ..SIMDMathFunctions
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, State_Alive, State_Lost, @makekernel, Coords
+using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST, @makekernel, Coords
 
 #
 # ===============  I N T E G R A T O R S  ===============
@@ -141,8 +141,8 @@ L: element length
   py = coords.v[i,PYI]
   P_s2 = rel_p*rel_p - px*px - py*py
   good_momenta = (P_s2 > 0)
-  alive_at_start = (coords.state[i] == State_Alive)
-  coords.state[i] = vifelse(!good_momenta & alive_at_start, State_Lost, coords.state[i])
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
 
   if !isnothing(coords.q)
     rotate_spin!(               i, coords, a, 0, tilde_m, mm, kn, ks, L / 2)
@@ -176,7 +176,7 @@ s: element length
 """
 @makekernel fastgtpsa=true function quadrupole_matrix!(i, coords::Coords, k1, s)
   v = coords.v
-  alive = (coords.state[i] == State_Alive)
+  alive = (coords.state[i] == STATE_ALIVE)
 
   focus = k1 >= 0  # horizontally focusing if positive
 
@@ -240,11 +240,11 @@ s: element length
   PtSqr  = v[i,PXI]*v[i,PXI] + v[i,PYI]*v[i,PYI]  # (transverse momentum)^2, P⟂^2 = (Px^2 + Py^2) / P0^2
   Ps2    = P*P - PtSqr        
   good_momenta = (Ps2 > 0)
-  alive_at_start = (coords.state[i] == State_Alive)
-  coords.state[i] = vifelse(!good_momenta & alive_at_start, State_Lost, coords.state[i])
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
   Ps2_1 = one(Ps2)
   Ps = sqrt(vifelse(good_momenta, Ps2, Ps2_1)) # longitudinal momentum,   Ps   = √[(1 + δ)^2 - P⟂^2]
-  alive = (coords.state[i] == State_Alive)
+  alive = (coords.state[i] == STATE_ALIVE)
 
   new_x = v[i,XI] + s * v[i,PXI] * PtSqr / (P * Ps * (P + Ps))
   new_y = v[i,YI] + s * v[i,PYI] * PtSqr / (P * Ps * (P + Ps))
@@ -397,12 +397,12 @@ end
 # WARNING!!! IF YOU INLINE THIS FUNCTION, SPIN TRACKING THROUGH A SOLENOID WILL
 # BREAK WITH SIMD!!!
 # BEWARE!!!
+"""
+This function computes the integrated spin-precession vector using the multipole 
+coefficients kn and ks indexed by mm, i.e., knl[i] is the normal 
+coefficient of order mm[i].
+"""
 function omega(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
-  """
-  This function computes the integrated spin-precession vector using the multipole 
-  coefficients kn and ks indexed by mm, i.e., knl[i] is the normal 
-  coefficient of order mm[i].
-  """
   @FastGTPSA begin
     v = coords.v
 
@@ -421,9 +421,9 @@ function omega(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
     pl2 = rel_p*rel_p - px*px - py*py
     pl2_0 = zero(pl2)
     good_momenta = (pl2 > pl2_0)
-    alive_at_start = (coords.state[i] == State_Alive)
-    coords.state[i] = vifelse(!good_momenta & alive_at_start, State_Lost, coords.state[i])
-    alive = (coords.state[i] == State_Alive)
+    alive_at_start = (coords.state[i] == STATE_ALIVE)
+    coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
+    alive = (coords.state[i] == STATE_ALIVE)
     pl2_1 = one(pl2)
     pl = sqrt(vifelse(good_momenta, pl2, pl2_1)) 
 
@@ -459,12 +459,12 @@ function omega(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
 end
 
 
+"""
+This function rotates particle i's quaternion according to the multipoles present.
+"""
 @makekernel fastgtpsa=true function rotate_spin!(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
-  """
-  This function rotates particle i's quaternion according to the multipoles present.
-  """
   q2 = coords.q
-  alive = (coords.state[i] == State_Alive)
+  alive = (coords.state[i] == STATE_ALIVE)
   q1 = expq(omega(i, coords, a, g, tilde_m, mm, kn, ks, L), alive)
   q3 = quat_mul(q1, q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ])
   q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ] = q3

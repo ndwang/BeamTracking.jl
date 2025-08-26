@@ -8,7 +8,7 @@ struct Exact end
 
 module ExactTracking
 using ..GTPSA, ..BeamTracking, ..StaticArrays, ..ReferenceFrameRotations, ..KernelAbstractions, ..SIMD, ..SIMDMathFunctions
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, State_Alive, State_Lost, @makekernel, Coords
+using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST, @makekernel, Coords
 using ..BeamTracking: C_LIGHT
 const TRACKING_METHOD = Exact
 
@@ -56,9 +56,9 @@ values of ``ε``.
   P_t2 = v[i,PXI]*v[i,PXI] + v[i,PYI]*v[i,PYI]
   P_s2 = rel_p*rel_p - P_t2
   good_momenta = (P_s2 > 0)
-  alive_at_start = (coords.state[i] == State_Alive)
-  coords.state[i] = vifelse(!good_momenta & alive_at_start, State_Lost, coords.state[i])
-  alive = (coords.state[i] == State_Alive)
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
+  alive = (coords.state[i] == STATE_ALIVE)
   P_s2_1 = one(P_s2)
   P_s = sqrt(vifelse(good_momenta, P_s2, P_s2_1))
 
@@ -113,7 +113,7 @@ properties, though I've not seen a proof of that claim.
 """
 @makekernel fastgtpsa=true function multipole_kick!(i, coords::Coords, ms, knl, ksl, excluding)
   v = coords.v
-  alive = (coords.state[i] == State_Alive)
+  alive = (coords.state[i] == STATE_ALIVE)
   bx, by = normalized_field(ms, knl, ksl, v[i,XI], v[i,YI], excluding)
   bx_0 = zero(bx)
   by_0 = zero(by)
@@ -254,7 +254,7 @@ provided, a linear hard-edge fringe map is applied at both ends.
   me2 = Kn0*tan(e2)/rel_p
   
   patch_rotation!(i, coords, w, 0)
-  alive = (coords.state[i] == State_Alive)
+  alive = (coords.state[i] == STATE_ALIVE)
   new_px = v[i,PXI] + v[i,XI]*me1
   new_py = v[i,PYI] - v[i,YI]*me1
   v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
@@ -262,9 +262,9 @@ provided, a linear hard-edge fringe map is applied at both ends.
 
   pt2 = rel_p*rel_p - v[i,PYI]*v[i,PYI]
   good_momenta = (pt2 > 0)
-  alive_at_start = (coords.state[i] == State_Alive)
-  coords.state[i] = vifelse(!good_momenta & alive_at_start, State_Lost, coords.state[i])
-  alive = (coords.state[i] == State_Alive)
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
+  alive = (coords.state[i] == STATE_ALIVE)
   pt2_1 = one(pt2)
   pt = sqrt(vifelse(good_momenta, pt2, pt2_1))
 
@@ -272,8 +272,8 @@ provided, a linear hard-edge fringe map is applied at both ends.
   abs_arg = abs(arg)
   arg_1 = one(arg)
   good_arg = (abs_arg <= arg_1)
-  coords.state[i] = vifelse(!good_arg & alive, State_Lost, coords.state[i])
-  alive = (coords.state[i] == State_Alive)
+  coords.state[i] = vifelse(!good_arg & alive, STATE_LOST, coords.state[i])
+  alive = (coords.state[i] == STATE_ALIVE)
 
   phi1 = theta + asin(vifelse(good_arg, arg, arg_1))
   gp = Kn0 / pt
@@ -289,8 +289,8 @@ provided, a linear hard-edge fringe map is applied at both ends.
 
   cond = cplus*cplus + gp*alpha
   good_cond = (cond > 0)
-  coords.state[i] = vifelse(!good_cond & alive, State_Lost, coords.state[i]) # particle does not intersect the exit face
-  alive = (coords.state[i] == State_Alive)
+  coords.state[i] = vifelse(!good_cond & alive, STATE_LOST, coords.state[i]) # particle does not intersect the exit face
+  alive = (coords.state[i] == STATE_ALIVE)
   cond_1 = one(cond)
   nasty_sqrt = sqrt(vifelse(good_cond, cond, cond_1))
 
@@ -347,9 +347,9 @@ end
   pt2 = px_k*px_k + py_k*py_k
   pr2 = rel_p*rel_p - pt2
   good_momenta = (pr2 > 0)
-  alive_at_start = (coords.state[i] == State_Alive)
-  coords.state[i] = vifelse(!good_momenta & alive_at_start, State_Lost, coords.state[i])
-  alive = (coords.state[i] == State_Alive)
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
+  alive = (coords.state[i] == STATE_ALIVE)
   pr2_1 = one(pr2)
   pr = sqrt(vifelse(good_momenta, pr2, pr2_1))
 
@@ -379,7 +379,7 @@ end
 
 @makekernel fastgtpsa=true function patch_offset!(i, coords::Coords, tilde_m, dx, dy, dt)
   v = coords.v
-  alive = (coords.state[i] == State_Alive)
+  alive = (coords.state[i] == STATE_ALIVE)
   rel_p = 1 + v[i,PZI]
   new_x = v[i,XI] - dx
   new_y = v[i,YI] - dy
@@ -395,9 +395,9 @@ end
   rel_p = 1 + v[i,PZI]
   ps_02 = rel_p*rel_p - v[i,PXI]*v[i,PXI] - v[i,PYI]*v[i,PYI]
   good_momenta = (ps_02 > 0)
-  alive_at_start = (coords.state[i] == State_Alive)
-  coords.state[i] = vifelse(!good_momenta & alive_at_start, State_Lost, coords.state[i])
-  alive = (coords.state[i] == State_Alive)
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
+  alive = (coords.state[i] == STATE_ALIVE)
   ps_02_1 = one(ps_02)
   ps_0 = sqrt(vifelse(good_momenta, ps_02, ps_02_1))
 
@@ -440,9 +440,9 @@ end
   ps_02 = rel_p*rel_p - v[i,PXI]*v[i,PXI] - v[i,PYI]*v[i,PYI]
   ps_02_0 = zero(ps_02)
   good_momenta = (ps_02 > ps_02_0)
-  alive_at_start = (coords.state[i] == State_Alive)
-  coords.state[i] = vifelse(!good_momenta & alive_at_start, State_Lost, coords.state[i])
-  alive = (coords.state[i] == State_Alive)
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
+  alive = (coords.state[i] == STATE_ALIVE)
   ps_02_1 = one(ps_02)
   ps_0 = sqrt(vifelse(good_momenta, ps_02, ps_02_1))
   # Only apply rotations if needed

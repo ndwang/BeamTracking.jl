@@ -13,9 +13,8 @@ using GTPSA,
 
 using KernelAbstractions
       
-import GTPSA: sincu, sinhcu
+import GTPSA: sincu, sinhcu, normTPS
 import Base: setproperty!
-import TPSAInterface: norm_tps
 import SIMD: Vec
 
 # Put AtomicAndPhysicalConstants in a box for now for safety

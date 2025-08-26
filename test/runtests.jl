@@ -5,9 +5,10 @@ using Test,
       BenchmarkTools,
       GTPSA,
       StaticArrays,
-      ReferenceFrameRotations
+      ReferenceFrameRotations,
+      SIMD
 
-using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, State_Alive, State_Lost
+using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
 
@@ -25,7 +26,7 @@ function test_matrix(
   # Initialize bunch without spin
   v = transpose(@vars(D1))
   state = similar(v, UInt8, 1)
-  state .= State_Alive
+  state .= STATE_ALIVE
   coords = Coords(state, v, nothing)
 
   # Set up kernel chain and launch!
@@ -50,7 +51,7 @@ function test_matrix(
   if no_scalar_allocs
     v = repeat([0.1 0.2 0.3 0.4 0.5 0.6], 2)
     q = repeat([1.0 0.0 0.0 0.0], 2)
-    state = [State_Alive State_Alive]
+    state = [STATE_ALIVE STATE_ALIVE]
     @test @ballocated(BeamTracking.launch!(coords, $kernel_call; use_KA=false), 
     setup=(coords = Coords(copy($state), copy($v), copy($q)))) == 0
   end
@@ -90,7 +91,7 @@ function test_map(
   v = transpose(@vars(D10))
   q = TPS64{D10}[1 0 0 0]
   state = similar(v, UInt8, 1)
-  state .= State_Alive
+  state .= STATE_ALIVE
   coords = Coords(state, v, q)
 
   # Set up kernel chain and launch!
@@ -106,7 +107,7 @@ function test_map(
   if no_scalar_allocs
     v = repeat([0.1 0.2 0.3 0.4 0.5 0.6], 2)
     q = repeat([1.0 0.0 0.0 0.0], 2)
-    state = [State_Alive State_Alive]
+    state = [STATE_ALIVE STATE_ALIVE]
     @test @ballocated(BeamTracking.launch!(coords, $kernel_call; use_KA=false), 
     setup=(coords = Coords(copy($state), copy($v), copy($q)))) == 0
   end

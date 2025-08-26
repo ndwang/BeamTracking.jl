@@ -80,11 +80,11 @@ function sincuc(x)
 end
 
 
+"""
+This function computes sin(sqrt(x))/sqrt(x) and cos(sqrt(x)), which are both 
+necessary for exponentiating a rotation vector into a quaternion.
+"""
 function sincos_quaternion(x)
-  """
-  This function computes sin(sqrt(x))/sqrt(x) and cos(sqrt(x)), which are both 
-  necessary for exponentiating a rotation vector into a quaternion.
-  """
   threshold = 7.3e-8 # sqrt(24*eps(Float64))
   sq = sqrt(x)
   s, c = sincos(sq)
@@ -95,11 +95,11 @@ function sincos_quaternion(x)
 end
 
 
+"""
+This function computes sin(sqrt(x))/sqrt(x) and cos(sqrt(x)), which are both 
+necessary for exponentiating a rotation vector into a quaternion.
+"""
 function sincos_quaternion(x::TPS{T}) where {T}
-  """
-  This function computes sin(sqrt(x))/sqrt(x) and cos(sqrt(x)), which are both 
-  necessary for exponentiating a rotation vector into a quaternion.
-  """
   ε = eps(T)
   N_max = 100
   N = 1
@@ -119,10 +119,10 @@ function sincos_quaternion(x::TPS{T}) where {T}
         result_sin = prev_sin + y/(2*N + 1)
         result_cos = prev_cos + y
         N += 1
-        if norm_tps(result_sin - prev_sin) < ε
+        if normTPS(result_sin - prev_sin) < ε
           conv_sin = true
         end
-        if norm_tps(result_cos - prev_cos) < ε
+        if normTPS(result_cos - prev_cos) < ε
           conv_cos = true
         end
         prev_sin = result_sin
@@ -141,11 +141,11 @@ function sincos_quaternion(x::TPS{T}) where {T}
 end
 
 
+"""
+This function computes exp(-i/2 v⋅σ) as a quaternion, where σ is the 
+vector of Pauli matrices. If compute is false, it returns the identity quaternion.
+"""
 function expq(v, compute)
-  """
-  This function computes exp(-i/2 v⋅σ) as a quaternion, where σ is the 
-  vector of Pauli matrices. If compute is false, it returns the identity quaternion.
-  """
   n2 = @FastGTPSA (v[1]*v[1] + v[2]*v[2] + v[3]*v[3])/4
   n2_0 = zero(n2)
   s, c = sincos_quaternion(vifelse(compute, n2, n2_0))
@@ -154,6 +154,10 @@ function expq(v, compute)
 end
 
 
+"""
+This function computes exp(-i/2 v⋅σ) as a quaternion, where σ is the 
+vector of Pauli matrices. If compute is false, it returns the identity quaternion.
+"""
 function quat_mul(q1, q20, q2x, q2y, q2z)
   """
   Returns q1 * q2.
