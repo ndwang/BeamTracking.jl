@@ -27,7 +27,7 @@ end
 
 #
 
-@makekernel fastgtpsa=true function track_alignment_straight!(i, coords::Coords, entering, 
+@makekernel fastgtpsa=true function track_alignment_bend!(i, coords::Coords, entering, 
           x_off, y_off, z_off, x_rot, y_rot, tilt, g_ref, tilt_ref, ele_orient, tilde_m, beta_0, L)
   v = coords.v
 
