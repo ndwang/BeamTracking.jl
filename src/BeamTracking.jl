@@ -36,8 +36,8 @@ include("kernel.jl")
 include("modules/ExactTracking.jl") #; TRACKING_METHOD(::ExactTracking) = Exact
 include("modules/LinearTracking.jl") #; TRACKING_METHOD(::LinearTracking) = Linear
 include("modules/IntegrationTracking.jl") #; TRACKING_METHOD(::LinearTracking) = SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
-include("modules/alignmentTracking.jl")
-include("modules/apertureTracking.jl")
+include("modules/AlignmentTracking.jl")
+include("modules/ApertureTracking.jl")
 
 # Empty tracking method to be imported+implemented by package extensions
 function track! end
