@@ -173,6 +173,25 @@ function quat_mul(q1, q20, q2x, q2y, q2z)
   return (a3, b3, c3, d3)
 end
 
+#
+"""
+    function quat_rotate!(r, q)
+
+Rotates vector `r` using quaternion `q`.
+"""
+@inline function quat_rotate!(r, q)
+
+q0_inv = -[q[QX]*r[1] + q[QY]*r[2] + q[QZ]*r[3]]
+
+r = SA[q[Q0]*r[1] + q[QY]*r[3] - q[QZ]*r[2],
+       q[Q0]*r[2] + q[QZ]*r[1] - q[QX]*r[3],
+       q[Q0]*r[3] + q[QX]*r[2] - q[QY]*r[1]]
+
+r = SA[q[Q0]*r[1] + q[QY]*r[3] - q[QZ]*r[2] - q0_inv*q[QX],
+       q[Q0]*r[2] + q[QZ]*r[1] - q[QX]*r[3] - q0_inv*q[QY],
+       q[Q0]*r[3] + q[QX]*r[2] - q[QY]*r[1] - q0_inv*q[QZ]] / (q' * q)
+end
+
 # Particle energy conversions =============================================================
 R_to_E(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT*chargeof(species))^2 + massof(species)^2)
 E_to_R(species::Species, E) = @FastGTPSA massof(species)*sinh(acosh(E/massof(species)))/C_LIGHT/chargeof(species) 

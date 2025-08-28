@@ -33,21 +33,35 @@ function universal!(
   apertureparams;
   kwargs...
 ) 
-  kc = KernelChain(Val{1}())
-  if isactive(alignmentparams)
-    if isactive(patchparams)
+
+  if isactive(patchparams)
+    if isactive(alignmentparams) 
       error("Tracking through a LineElement containing both PatchParams and AlignmentParams is undefined")
     end
-    kc = push(kc, @inline(misalign(tm, bunch, alignmentparams, true)))
+
+    if isactive(bendparams) || isactive(bmultipoleparams)
+      error("Tracking through a LineElement containing both PatchParams and BendParams/BMultipoleParams not currently defined")
+    end
   end
+
+  kc = KernelChain(Val{1}())
+
+  # Entrance aperture and alignment. 1 => entering element
+
+  if isactive(apertureparams) && isactive(alignmentparams) && apertureparams.aperture_shifts_with_body
+    kc = push(kc, @inline(alignment(tm, bunch, alignmentparams, bendparams, L, 1)))
+    kc = push(kc, @inline(aperture(tm, bunch, apertureparams, true)))
+  else
+    kc = push(kc, @inline(aperture(tm, bunch, apertureparams, true)))
+    kc = push(kc, @inline(alignment(tm, bunch, alignmentparams, bendparams, L, 1)))
+  end
+
+  #
 
   if isactive(patchparams) 
     # Patch
-    if isactive(bendparams) || isactive(bmultipoleparams)
-      error("Tracking through a LineElement containing both PatchParams and BendParams/BMultipoleParams not currently defined")
-    else
-      kc = push(kc, @inline(pure_patch(tm, bunch, patchparams, L)))
-    end
+    kc = push(kc, @inline(pure_patch(tm, bunch, patchparams, L)))
+
   elseif isactive(bendparams)
     # Bend
     if !isactive(bmultipoleparams) 
@@ -93,6 +107,7 @@ function universal!(
         end
       end
     end
+
   elseif isactive(bmultipoleparams)
     # BMultipole
     n_multipoles = get_n_multipoles(bmultipoleparams)
@@ -133,20 +148,28 @@ function universal!(
         kc = push(kc, @inline(bmultipole(tm, bunch, bmultipoleparams, L)))
       end
     end
-  elseif !(L ≈ 0)
+
+  elseif L != 0
     kc = push(kc, @inline(drift(tm, bunch, L)))
   end
-    
-  if isactive(alignmentparams)
-    kc = push(kc, @inline(misalign(tm, bunch, alignmentparams, false)))
+
+  # Exit aperture and alignment. -1 => exiting.
+
+  if isactive(apertureparams) && isactive(alignmentparams) && apertureparams.aperture_shifts_with_body
+    kc = push(kc, @inline(aperture(tm, bunch, apertureparams, false)))
+    kc = push(kc, @inline(alignment(tm, bunch, alignmentparams, bendparams, L, -1)))
+  else
+    kc = push(kc, @inline(alignment(tm, bunch, alignmentparams, bendparams, L, -1)))
+    kc = push(kc, @inline(aperture(tm, bunch, apertureparams, false)))
   end
+
+  #
 
   runkernels!(i, coords, kc; kwargs...)
   return nothing
 end
 
 # === Coordinate system transformations === #
-@inline misalign(tm, bunch, alignmentparams, in) = error("Undefined for tracking method $tm")
 @inline pure_patch(tm, bunch, patchparams, L)    = error("Undefined for tracking method $tm")
 
 # === Straight Elements === #
