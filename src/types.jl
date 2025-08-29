@@ -9,7 +9,15 @@ const QX  = 2
 const QY  = 3
 const QZ  = 4
 
-@enumx State::UInt8 Preborn Alive Lost Lost_Neg_X Lost_Pos_X Lost_Neg_Y Lost_Pos_Y Lost_Pz Lost_Z   
+const STATE_PREBORN    = UInt8(0)
+const STATE_ALIVE      = UInt8(1)
+const STATE_LOST       = UInt8(2)
+const STATE_LOST_NEG_X = UInt8(3)
+const STATE_LOST_POS_X = UInt8(4)
+const STATE_LOST_NEG_Y = UInt8(5)
+const STATE_LOST_POS_Y = UInt8(6)
+const STATE_LOST_PZ    = UInt8(7)
+const STATE_LOST_Z     = UInt8(8)
 
 # Always SOA
 struct Coords{S,V,Q}
@@ -32,16 +40,16 @@ get_N_particle(bunch::Bunch) = size(bunch.coords.v, 1)
 function Bunch(N::Integer; R_ref=NaN, species=Species(), spin=false)
   v = rand(N,6)
   q = spin ? rand(N,4) : nothing
-  state = similar(v, State.T, N)
-  state .= State.Alive
+  state = similar(v, UInt8, N)
+  state .= STATE_ALIVE
   return Bunch(species, R_ref, Coords(state, v, q))
 end
 
 function Bunch(v::AbstractMatrix, q=nothing; R_ref=NaN, species=Species())
   size(v, 2) == 6 || error("The number of columns must be equal to 6")
   N_particle = size(v, 1)
-  state = similar(v, State.T, N_particle)
-  state .= State.Alive
+  state = similar(v, UInt8, N_particle)
+  state .= STATE_ALIVE
   return Bunch(species, R_ref, Coords(state, v, q))
 end
 

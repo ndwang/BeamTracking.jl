@@ -3,8 +3,8 @@ using GTPSA,
       ReferenceFrameRotations,
       StaticArrays, 
       SIMD,
+      SIMDMathFunctions,
       VectorizationBase,
-      EnumX,
       Unrolled,
       MacroTools,
       Adapt,
@@ -13,15 +13,16 @@ using GTPSA,
 
 using KernelAbstractions
       
-import GTPSA: sincu, sinhcu
+import GTPSA: sincu, sinhcu, normTPS
 import Base: setproperty!
+import SIMD: Vec
 
 # Put AtomicAndPhysicalConstants in a box for now for safety
 include("Constants.jl")
 using .Constants: Constants, Species, massof, chargeof, nameof, C_LIGHT, isnullspecies
 export Species
 
-export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, quat_mul
+export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, quat_mul, atan2
 export LinearTracking, Linear
 export ExactTracking, Exact
 export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
