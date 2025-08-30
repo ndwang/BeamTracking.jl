@@ -192,6 +192,44 @@ r = SA[q[Q0]*r[1] + q[QY]*r[3] - q[QZ]*r[2] - q0_inv*q[QX],
        q[Q0]*r[3] + q[QX]*r[2] - q[QY]*r[1] - q0_inv*q[QZ]] / (q' * q)
 end
 
+
+# Rotation matrix
+
+"""
+  rot_quaternion(x_rot, y_rot, z_rot)
+
+Constructs a rotation quaternion based on the given Bryan-Tait angles.
+
+Bmad/SciBmad follows the MAD convention of applying z, x, y rotations in that order.
+
+The inverse quaternion reverses the order of operations and their signs.
+
+
+Arguments:
+- `x_rot::Number`: Rotation angle around the x-axis.
+- `y_rot::Number`: Rotation angle around the y-axis.
+- `z_rot::Number`: Rotation angle around the z-axis.
+
+"""
+function rot_quaternion(x_rot, y_rot, z_rot)
+  qz = SA[cos(z_rot/2) 0 0 sin(z_rot/2)]
+  qx = SA[cos(x_rot/2) sin(x_rot/2) 0 0]
+  qy = SA[cos(y_rot/2) 0 sin(y_rot/2) 0]
+  q = quat_mul(qx, qz[Q0], qz[QX], qz[QY], qz[QZ])
+  q = quat_mul(qy, q[Q0], q[QX], q[QY], q[QZ])
+  return SA[q[Q0] q[QX] q[QY] q[QZ]]
+end
+
+# Inverse rotation quaternion
+function inv_rot_quaternion(x_rot, y_rot, z_rot)
+  qz = SA[cos(z_rot/2) 0 0 -sin(z_rot/2)]
+  qx = SA[cos(x_rot/2) -sin(x_rot/2) 0 0]
+  qy = SA[cos(y_rot/2) 0 -sin(y_rot/2) 0]
+  q = quat_mul(qx, qy[Q0], qy[QX], qy[QY], qy[QZ])
+  q = quat_mul(qz, q[Q0], q[QX], q[QY], q[QZ])
+  return SA[q[Q0] q[QX] q[QY] q[QZ]]
+end
+
 # Particle energy conversions =============================================================
 R_to_E(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT*chargeof(species))^2 + massof(species)^2)
 E_to_R(species::Species, E) = @FastGTPSA massof(species)*sinh(acosh(E/massof(species)))/C_LIGHT/chargeof(species) 

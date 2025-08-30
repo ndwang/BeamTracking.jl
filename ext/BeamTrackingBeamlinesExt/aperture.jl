@@ -8,27 +8,25 @@
   y1 = alignmentP.y1_limit
   y2 = alignmentP.y2_limit
 
-  if alignmentP.aperture_shape == ApertureShape.elliptical && (x1 == -Inf || x2 == Inf || y1 == -Inf || y2 == Inf)
-    return nothing
+  if alignmentP.aperture_shape == ApertureShape.Elliptical && (x1 == -Inf || x2 == Inf || y1 == -Inf || y2 == Inf)
+    error("Not all x1_limit, x2_limit, y1_limit, y2_limit parameters for elliptical aperture set.")
   end
 
   if entering
-    if alignmentP.aperture_at != ApertureAt.Entrance && alignmentP.aperture_at != BothEnds
+    if alignmentP.aperture_at != ApertureAt.Entrance && alignmentP.aperture_at != ApertureAt.BothEnds
       return nothing
     end
   else
-    if alignmentP.aperture_at != ApertureAt.Exit && alignmentP.aperture_at != BothEnds
+    if alignmentP.aperture_at != ApertureAt.Exit && alignmentP.aperture_at != ApertureAt.BothEnds
       return nothing
     end
   end
 
   #
 
-  tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, bunch.R_ref)
-
   if alignmentP.aperture_shape == ApertureShape.Rectangular
-    return KernelCall(track_aperture_rectangular!, (x1, x2, y1, y2))
+    return KernelCall(BeamTracking.track_aperture_rectangular!, (x1, x2, y1, y2))
   else
-    return KernelCall(track_aperture_elliptical!, (x1, x2, y1, y2))
+    return KernelCall(BeamTracking.track_aperture_elliptical!, (x1, x2, y1, y2))
   end
 end

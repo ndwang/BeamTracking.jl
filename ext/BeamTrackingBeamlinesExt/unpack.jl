@@ -44,7 +44,7 @@ function universal!(
     end
   end
 
-  kc = KernelChain(Val{1}())
+  kc = KernelChain(Val{5}())
 
   # Entrance aperture and alignment. 1 => entering element
 

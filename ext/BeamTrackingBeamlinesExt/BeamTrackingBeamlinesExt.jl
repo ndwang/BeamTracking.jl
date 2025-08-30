@@ -119,12 +119,12 @@ end
 
 =#
 
+include("aperture.jl")
+include("alignment.jl")
 include("unpack.jl")
 include("scibmadstandard.jl")
 include("linear.jl")
 include("exact.jl")
 include("integration.jl")
-include("aperture.jl")
-include("alignment.jl")
 
 end
