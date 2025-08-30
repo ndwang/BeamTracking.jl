@@ -31,8 +31,8 @@ export rot_quaternion, inv_rot_quaternion
 include("utils.jl")
 include("types.jl")
 include("kernel.jl")
-include("kernels/AlignmentTracking.jl")
-include("kernels/ApertureTracking.jl")
+include("kernels/alignment.jl")
+include("kernels/aperture.jl")
 include("kernels/coord_rotation.jl")
 
 include("modules/ExactTracking.jl") #; TRACKING_METHOD(::ExactTracking) = Exact
