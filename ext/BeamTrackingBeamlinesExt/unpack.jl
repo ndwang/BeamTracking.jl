@@ -3,6 +3,7 @@ function _track!(
   i,
   coords::Coords,
   bunch::Bunch,
+  t_ref::Ref,
   ele::Union{LineElement,BitsLineElement}, 
   tm;
   kwargs...
@@ -16,7 +17,7 @@ function _track!(
   dp = deval(ele.ApertureParams)
 
   # Function barrier
-  universal!(i, coords, tm, bunch, L, ap, bp, bm, pp, dp; kwargs...)
+  universal!(i, coords, tm, bunch, t_ref, L, ap, bp, bm, pp, dp; kwargs...)
 end
 
 # Step 2: Push particles through -----------------------------------------
@@ -25,6 +26,7 @@ function universal!(
   coords,
   tm,
   bunch,
+  t_ref,
   L, 
   alignmentparams, 
   bendparams,
@@ -34,6 +36,8 @@ function universal!(
   kwargs...
 ) 
   kc = KernelChain(Val{1}())
+  # Evolve time
+  t_ref[] += L/R_to_v(bunch.species, bunch.R_ref)
   if isactive(alignmentparams)
     if isactive(patchparams)
       error("Tracking through a LineElement containing both PatchParams and AlignmentParams is undefined")

@@ -180,7 +180,8 @@ pc_to_R(species::Species, pc) = @FastGTPSA pc/C_LIGHT/chargeof(species)
 
 R_to_gamma(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT/massof(species))^2+1)
 R_to_pc(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT
-R_to_beta_gamma(species::Species, R_ref) = @FastGTPSA R_ref*chargeof(species)*C_LIGHT/massof(species)
+R_to_beta_gamma(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT/massof(species)
+R_to_v(species::Species, R) = @FastGTPSA chargeof(species)*C_LIGHT / sqrt(1+(massof(species)/(R*C_LIGHT))^2)
 
 # Fake APC because APC is not working for now :(
 function anom(species::Species) 

@@ -11,10 +11,11 @@ include("utils.jl")
 function track!(
   bunch::Bunch, 
   ele::LineElement; 
+  t_ref::Ref=Ref(0.0),
   kwargs...
 )
   coords = bunch.coords
-  @noinline _track!(nothing, coords, bunch, ele, ele.tracking_method; kwargs...)
+  @noinline _track!(nothing, coords, bunch, t_ref, ele, ele.tracking_method; kwargs...)
   return bunch
 end
 
