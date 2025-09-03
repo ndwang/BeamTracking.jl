@@ -22,10 +22,7 @@ TimeDependentParam(a::Number) = TimeDependentParam((t)->a)
 TimeDependentParam(a::TimeDependentParam) = a
 
 # Make these apply via convert
-Base.convert(::Type{T}, a) where {D<:TimeDependentParam} = D(a)
-
-#teval(tp::TimeDependentParam, t) = tp(t)
-#teval(tp, t) = tp
+Base.convert(::Type{D}, a) where {D<:TimeDependentParam} = D(a)
 
 # Now define the math operations:
 for op in (:+,:-,:*,:/,:^)
@@ -57,3 +54,60 @@ end
 
 Base.promote_rule(::Type{TimeDependentParam}, ::Type{U}) where {U<:Number} = TimeDependentParam
 Base.broadcastable(o::TimeDependentParam) = Ref(o)
+
+# A framework is now needed to convert an arbitrary KernelChain into pure functions
+
+@inline teval(f::Function, t) = f(t)
+@inline teval(f, t) = f
+time_lower(tp::TimeDependentParam) = tp.f
+time_lower(tp::Number) = tp
+function time_lower(tp::SArray{N}) where {N}
+  outtype = Base.promote_type(map(x->Base.promote_op(time_lower(x), Float32), tp)...)
+  return @noinline _time_lower(tp, outtype)
+end
+
+function _time_lower(tp::SArray{N}, ::Type{T}) where {N,T}
+  fcns = map(ti->(
+    let f=ti.f
+      return t->T(f(t))::T
+    end
+  ), tp)
+  return _time_lower_2(fcns, T)
+end
+
+function _time_lower_2(fcns::SArray{N}, ::Type{T}) where {N,T}
+  return (t)->map(f->f(t), fcns)
+end
+
+  #=
+  return (t)->(
+      intype = typeof(t);
+      outT = promote_type(typeof(t),T);
+      map()
+      StaticArrays.sacollect(SArray{N,outT}, begin
+      let f=fcns[i]
+        outT(f(t)::T)::outT
+      end
+    end for i in 1:length(SArray{N}))
+    )
+      =#
+
+
+#=
+function time_lower(tp::T) where {T<:AbstractArray}
+  return (t)->
+    let t=t
+      map(tp) do ti
+      intype = typeof(t)
+      #outtype = Base.promote_type(map(x->Base.promote_op(time_lower(x), intype), tp)...)
+      return Base.promote_type(outtype, Float64)
+      end
+    #let f=ti.f
+    #  return f(t)::outtype
+    #end
+    #ti->(let f=ti.f; f(t); end)
+  end
+end
+=#
+time_lower(kc::KernelCall) = KernelCall(kc.kernel, time_lower(kc.args))
+time_lower(kc::KernelChain) = broadcast(time_lower, kc)

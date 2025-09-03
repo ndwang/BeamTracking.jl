@@ -1,3 +1,5 @@
+Base.promote_rule(::Type{DefExpr{T}}, ::Type{TimeDependentParam}) where {T} = DefExpr{TimeDependentParam}
+
 function check_bl_bunch!(bl::Beamline, bunch::Bunch, notify::Bool=true)
   R_ref = getfield(bl, :R_ref)
   species_ref = getfield(bl, :species_ref)
