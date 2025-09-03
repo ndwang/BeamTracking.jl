@@ -23,6 +23,7 @@ TimeDependentParam(a::TimeDependentParam) = a
 
 # Make these apply via convert
 Base.convert(::Type{D}, a) where {D<:TimeDependentParam} = D(a)
+Base.convert(::Type{D}, a::D) where {D<:TimeDependentParam} = a
 
 # Now define the math operations:
 for op in (:+,:-,:*,:/,:^)
@@ -61,24 +62,27 @@ Base.broadcastable(o::TimeDependentParam) = Ref(o)
 @inline teval(f, t) = f
 time_lower(tp::TimeDependentParam) = tp.f
 time_lower(tp::Number) = tp
-function time_lower(tp::SArray{N}) where {N}
-  outtype = Base.promote_type(map(x->Base.promote_op(time_lower(x), Float32), tp)...)
+function time_lower(tp::SArray{N,TimeDependentParam}) where {N}
+  f = Tuple(map(ti->ti.f, tp))
+  return t->SArray{N}(map(fi->fi(t), f))
+  #outtype = Base.promote_type(map(x->Base.promote_op(time_lower(x), Float32), tp)...)
   return @noinline _time_lower(tp, outtype)
 end
-
+#=
 function _time_lower(tp::SArray{N}, ::Type{T}) where {N,T}
-  fcns = map(ti->(
+  fcns = map(ti->(ti.
     let f=ti.f
       return t->T(f(t))::T
     end
   ), tp)
+  return Tuple(fcns)
   return _time_lower_2(fcns, T)
 end
 
 function _time_lower_2(fcns::SArray{N}, ::Type{T}) where {N,T}
   return (t)->map(f->f(t), fcns)
 end
-
+=#
   #=
   return (t)->(
       intype = typeof(t);
