@@ -16,5 +16,6 @@ end
   y = (2*v[i,YI] - (y2 + y1)) / (y2 - y1)
   r = x*x + y*y
 
-  coords.state[i] = vifelse((r > 1) | (x2 < x1) | (y2 < y1), STATE_LOST, coords.state[i])
+  coords.state[i] = vifelse(r > 1, STATE_LOST, coords.state[i])
+  coords.state[i] = vifelse((x2 < x1) | (y2 < y1), STATE_LOST, coords.state[i])
 end
