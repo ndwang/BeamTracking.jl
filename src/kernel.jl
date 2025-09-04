@@ -64,23 +64,31 @@ end
 
 _generic_kernel!(i, coords, kc) = __generic_kernel!(i, coords, kc.chain, kc.ref)
 
-@unroll function __generic_kernel!(i, coords::Coords, chain, ref)
+@unroll function __generic_kernel!(i, coords::Coords, chain, ref::Nothing)
   @unroll for kcall in chain
-    # Evaluate time-dependent arguments
-    # we need to get the particle time, for that we need particle's velocity
-    # We have pz = dP/P0 = (P-P0)/P0 = P/P0-1 = (gamma*beta)/(gamma0*beta0)-1
-    # so pz + 1 = (gamma*beta)/(gamma0*beta0) 
-    # And then
-    # (pz + 1)*beta_0*gamma_0 = gamma*beta = beta/sqrt(1-beta^2)
-    # [(pz + 1)*beta_0*gamma_0]^2*(1-beta^2) = beta^2
-    # [(pz + 1)*beta_0*gamma_0]^2 = beta^2*(1+[(pz + 1)*beta_0*gamma_0]^2)
-    # So
-    # beta = (pz + 1)*beta_0*gamma_0/sqrt(1+[(pz + 1)*beta_0*gamma_0]^2)
-    # 
-    # Therefore, we should pass to the kernel beta_0*gamma_0 and t_ref to get beta
     (kcall.kernel)(i, coords, kcall.args...)
   end
   return nothing
+end
+
+@unroll function __generic_kernel!(i, coords::Coords, chain, ref::RefState)
+  @unroll for kcall in chain
+    args = process_args(coords, kcall.args, ref)
+    (kcall.kernel)(i, coords, args...)
+  end
+  return nothing
+end
+
+#process_args(coords, args, ref::Nothing) = args
+
+function process_args(coords, args, ref)
+  if any(arg->arg isa TimeFunction, args)
+    let t = compute_time(coords.v[ZI], coords.v[PZI], ref)
+      return map(arg->teval(arg, t), args)
+    end
+  else
+    return args
+  end
 end
 
 # Generic function to launch a kernel on the bunch coordinates matrix

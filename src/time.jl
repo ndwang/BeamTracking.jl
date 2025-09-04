@@ -5,10 +5,15 @@
 # Therefore not nesting of the TimeDependentParams to 
 # capture the "state" is necessary - they will all be just 
 # Functions of regular numbers
+struct TimeFunction{F<:Function}
+  f::F
+end
+(tf::TimeFunction)(t) = tf.f(t)
 
 struct TimeDependentParam
-  f::Function
-  TimeDependentParam(f::Function=(t)->t) = new(f)
+  f::TimeFunction
+  TimeDependentParam(f::TimeFunction=TimeFunction((t)->t)) = new(f)
+  TimeDependentParam(f::Function) = new(TimeFunction(f))
 end
 
 # Convenience ctor
@@ -58,13 +63,12 @@ end
 Base.promote_rule(::Type{TimeDependentParam}, ::Type{U}) where {U<:Number} = TimeDependentParam
 Base.broadcastable(o::TimeDependentParam) = Ref(o)
 
-# A framework is now needed to convert an arbitrary KernelChain into pure functions
-
-@inline teval(f::Function, t) = f(t)
+@inline teval(f::TimeFunction, t) = f(t)
 @inline teval(f, t) = f
-time_lower(tp::TimeDependentParam) = tp.f
+
+time_lower(tp::TimeDependentParam) = TimeFunction(tp.f)
 time_lower(tp) = tp
 function time_lower(tp::SArray{N,TimeDependentParam}) where {N}
   f = Tuple(map(ti->ti.f, tp))
-  return t->SArray{N}(map(fi->fi(t), f))
+  return TimeFunction(t->SArray{N}(map(fi->fi(t), f)))
 end
