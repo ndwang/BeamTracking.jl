@@ -30,8 +30,9 @@ export rot_quaternion, inv_rot_quaternion
 
 include("utils.jl")
 include("types.jl")
-include("kernel.jl")
 include("time.jl")
+include("kernel.jl")
+
 
 include("kernels/alignment.jl")
 include("kernels/aperture.jl")
