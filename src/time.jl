@@ -68,9 +68,11 @@ Base.isapprox(::Number, ::TimeDependentParam; kwargs...) = false
 
 @inline teval(f::TimeFunction, t) = f(t)
 @inline teval(f, t) = f
+@inline teval(f::Tuple, t) = map(ti->teval(ti, t), f)
 
 time_lower(tp::TimeDependentParam) = tp.f
 time_lower(tp) = tp
+time_lower(tp::Tuple) = map(ti->time_lower(ti), tp)
 function time_lower(tp::SArray{N,TimeDependentParam}) where {N}
   f = Tuple(map(ti->ti.f, tp))
   return TimeFunction(t->SArray{N}(map(fi->fi(t), f)))

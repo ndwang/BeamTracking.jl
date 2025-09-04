@@ -184,7 +184,6 @@ function universal!(
   end
 
   #
-
   runkernels!(i, coords, kc; kwargs...)
   return nothing
 end
