@@ -28,13 +28,14 @@ TimeDependentParam(a::TimeDependentParam) = a
 
 # Make these apply via convert
 Base.convert(::Type{D}, a) where {D<:TimeDependentParam} = D(a)
+Base.convert(::Type{D}, a::Number) where {D<:TimeDependentParam} = D(a)
 Base.convert(::Type{D}, a::D) where {D<:TimeDependentParam} = a
 
 # Now define the math operations:
 for op in (:+,:-,:*,:/,:^)
   @eval begin
-    Base.$op(da::TimeDependentParam, b)   = (let fa = da.f, b = b; return TimeDependentParam((t)-> $op(fa(t), b)); end)
-    Base.$op(a,   db::TimeDependentParam) = (let fb = db.f, a = a; return TimeDependentParam((t)-> $op(a, fb(t))); end)
+    Base.$op(da::TimeDependentParam, b::Number)   = (let fa = da.f, b = b; return TimeDependentParam((t)-> $op(fa(t), b)); end)
+    Base.$op(a::Number,   db::TimeDependentParam) = (let fb = db.f, a = a; return TimeDependentParam((t)-> $op(a, fb(t))); end)
     function Base.$op(da::TimeDependentParam, db::TimeDependentParam)
       let fa = da.f, fb = db.f
         return TimeDependentParam((t)-> $op(fa(t), fb(t)))
@@ -77,3 +78,4 @@ function time_lower(tp::SArray{N,TimeDependentParam}) where {N}
   f = Tuple(map(ti->ti.f, tp))
   return TimeFunction(t->SArray{N}(map(fi->fi(t), f)))
 end
+time_lower(tp::SArray{N,Any}) where {N} = time_lower(TimeDependentParam.(tp))
