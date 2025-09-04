@@ -50,6 +50,7 @@ end
 
 @unroll function _generic_kernel!(i, coords::Coords, kc::KernelChain)
   @unroll for kcall in kc
+    # Evaluate time-dependent arguments
     (kcall.kernel)(i, coords, kcall.args...)
   end
   return nothing
