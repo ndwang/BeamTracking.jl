@@ -34,6 +34,7 @@ end
 function track!(
   bunch::Bunch, 
   bl::Beamline; 
+  t_ref::Ref=Ref{eltype(bunch.coords.v)}(0),
   outer_particle_loop::Bool=false,
   kwargs...
 )
@@ -45,7 +46,7 @@ function track!(
 
   if !outer_particle_loop
     for ele in bl.line
-      track!(bunch, ele; kwargs...)
+      track!(bunch, ele; t_ref=t_ref, kwargs...)
     end
   else
     kc = (KernelCall(outer_track!, (bunch, bl)),)
@@ -59,6 +60,7 @@ end
 function track!(
   bunch::Bunch, 
   bbl::BitsBeamline{TM}; 
+  t_ref::Ref=Ref{eltype(bunch.coords.v)}(0),
   outer_particle_loop::Bool=false
 ) where {TM}
 
@@ -78,7 +80,7 @@ function track!(
           i = start_i
           while true
             ele = BitsLineElement(bbl, i)
-            _track!(nothing, bunch.coords, bunch, ele, TM)
+            _track!(nothing, bunch.coords, bunch, t_ref, ele, TM)
             i += 1
             if i > length(bbl.rep) || bbl.rep[i] != 0
               break
@@ -89,7 +91,7 @@ function track!(
     else
       for i in 1:length(bbl.params)
         ele = BitsLineElement(bbl, i)
-        _track!(nothing, bunch.coords, bunch, ele, TM)
+        _track!(nothing, bunch.coords, bunch, t_ref, ele, TM)
       end
     end
   else

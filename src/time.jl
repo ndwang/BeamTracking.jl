@@ -66,7 +66,7 @@ Base.broadcastable(o::TimeDependentParam) = Ref(o)
 @inline teval(f::TimeFunction, t) = f(t)
 @inline teval(f, t) = f
 
-time_lower(tp::TimeDependentParam) = TimeFunction(tp.f)
+time_lower(tp::TimeDependentParam) = tp.f
 time_lower(tp) = tp
 function time_lower(tp::SArray{N,TimeDependentParam}) where {N}
   f = Tuple(map(ti->ti.f, tp))
