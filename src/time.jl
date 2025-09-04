@@ -38,13 +38,15 @@ for op in (:+,:-,:*,:/,:^)
   end
 end
 
-for t = (:sqrt, :exp, :log, :sin, :cos, :tan, :cot, :sinh, :cosh, :tanh, :inv,
+for t = (:+, :-, :sqrt, :exp, :log, :sin, :cos, :tan, :cot, :sinh, :cosh, :tanh, :inv,
   :coth, :asin, :acos, :atan, :acot, :asinh, :acosh, :atanh, :acoth, :sinc, :csc, 
   :csch, :acsc, :acsch, :sec, :sech, :asec, :asech, :conj, :log10, :isnan)
   @eval begin
     Base.$t(d::TimeDependentParam) = (let f = d.f; return TimeDependentParam((t)-> ($t)(f(t))); end)
   end
 end
+
+Base.atan(d1::TimeDependentParam, d2::TimeDependentParam) = (let f1 = d1.f, f2 = d2.f; return TimeDependentParam((t)->atan(f1(t),f2(t))); end)
 
 for t = (:unit, :sincu, :sinhc, :sinhcu, :asinc, :asincu, :asinhc, :asinhcu, :erf, 
          :erfc, :erfcx, :erfi, :wf, :rect)
@@ -61,7 +63,7 @@ Base.broadcastable(o::TimeDependentParam) = Ref(o)
 @inline teval(f::Function, t) = f(t)
 @inline teval(f, t) = f
 time_lower(tp::TimeDependentParam) = tp.f
-time_lower(tp::Number) = tp
+time_lower(tp) = tp
 function time_lower(tp::SArray{N,TimeDependentParam}) where {N}
   f = Tuple(map(ti->ti.f, tp))
   return t->SArray{N}(map(fi->fi(t), f))

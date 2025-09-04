@@ -11,7 +11,7 @@ include("utils.jl")
 function track!(
   bunch::Bunch, 
   ele::LineElement; 
-  t_ref::Ref=Ref(0.0),
+  t_ref::Ref=Ref{eltype(bunch.coords.v)}(0),
   kwargs...
 )
   coords = bunch.coords

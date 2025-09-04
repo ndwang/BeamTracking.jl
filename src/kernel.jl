@@ -8,6 +8,10 @@ blank_kernel!(args...) = nothing
 @kwdef struct KernelCall{K,A}
   kernel::K = blank_kernel!
   args::A   = ()
+  function KernelCall(kernel, args)
+    _args = map(t->time_lower(t), args)
+    new{typeof(kernel),typeof(_args)}(kernel, _args)
+  end 
 end
 
 # Alias
