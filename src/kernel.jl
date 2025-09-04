@@ -14,33 +14,47 @@ blank_kernel!(args...) = nothing
   end 
 end
 
+# Store the state of the reference coordinate system
+# Needed for time-dependent parameters
+struct RefState{T,U}
+  t::T          # Reference time
+  beta_gamma::U # Reference energy
+end
+
 # Alias
-const KernelChain = Tuple{Vararg{<:KernelCall}}
+struct KernelChain{C<:Tuple{Vararg{<:KernelCall}}, S<:Union{Nothing,RefState}}
+  chain::C  # The tuple of KernelCalls
+  ref::S    # An optional RefState for time-dependent parameters
+  KernelChain(chain, ref=nothing) = new{typeof(chain), typeof(ref)}(chain, ref)
+end
+
+KernelChain(::Val{N}, ref=nothing) where {N} = KernelChain(ntuple(t->KernelCall(), Val{N}()), ref)
 
 push(kc::KernelChain, kcall::Nothing) = kc
 
-@unroll function push(kc::KernelChain, kcall)
+push(kc::KernelChain, kcall) = @reset kc.chain = _push(kc.chain, kcall)
+
+@unroll function _push(chain, kcall)
   i = 0
-  @unroll for kcalli in kc
+  @unroll for kcalli in chain
     i += 1
     if kcalli.kernel == blank_kernel!
-      return @reset kc[i] = kcall
+      return @reset chain[i] = kcall
     end
   end
   error("Unable to push KernelCall to kernel chain: kernel chain is full")
 end
 
-KernelChain(::Val{N}) where {N} = ntuple(t->KernelCall(), Val{N}())
-KernelChain(N::Integer) = ntuple(t->KernelCall(), Val{N}())
-
+#=
 @unroll function check_args(kc::KernelChain)
-  @unroll for kcalli in kc
+  @unroll for kcalli in kc.chain
     check_args(kcalli)
   end
   return true
 end
 
 check_args(kcalli) = true
+=#
 
 # KA does not like Vararg
 @kernel function generic_kernel!(coords::Coords, @Const(kc::KernelChain))
@@ -48,9 +62,22 @@ check_args(kcalli) = true
   @inline _generic_kernel!(i, coords, kc)
 end
 
-@unroll function _generic_kernel!(i, coords::Coords, kc::KernelChain)
-  @unroll for kcall in kc
+_generic_kernel!(i, coords, kc) = __generic_kernel!(i, coords, kc.chain, kc.ref)
+
+@unroll function __generic_kernel!(i, coords::Coords, chain, ref)
+  @unroll for kcall in chain
     # Evaluate time-dependent arguments
+    # we need to get the particle time, for that we need particle's velocity
+    # We have pz = dP/P0 = (P-P0)/P0 = P/P0-1 = (gamma*beta)/(gamma0*beta0)-1
+    # so pz + 1 = (gamma*beta)/(gamma0*beta0) 
+    # And then
+    # (pz + 1)*beta_0*gamma_0 = gamma*beta = beta/sqrt(1-beta^2)
+    # [(pz + 1)*beta_0*gamma_0]^2*(1-beta^2) = beta^2
+    # [(pz + 1)*beta_0*gamma_0]^2 = beta^2*(1+[(pz + 1)*beta_0*gamma_0]^2)
+    # So
+    # beta = (pz + 1)*beta_0*gamma_0/sqrt(1+[(pz + 1)*beta_0*gamma_0]^2)
+    # 
+    # Therefore, we should pass to the kernel beta_0*gamma_0 and t_ref to get beta
     (kcall.kernel)(i, coords, kcall.args...)
   end
   return nothing
@@ -148,7 +175,7 @@ function check_kwargs(mac, kwargs...)
 end
 
 # Also allow launch! on single KernelCalls
-@inline launch!(coords::Coords, kcall::KernelCall; kwargs...) = launch!(coords, (kcall,); kwargs...)
+@inline launch!(coords::Coords, kcall::KernelCall; kwargs...) = launch!(coords, KernelChain((kcall,)); kwargs...)
 
 macro makekernel(args...)
   kwargs = args[1:length(args)-1]

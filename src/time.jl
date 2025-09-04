@@ -68,6 +68,3 @@ function time_lower(tp::SArray{N,TimeDependentParam}) where {N}
   f = Tuple(map(ti->ti.f, tp))
   return t->SArray{N}(map(fi->fi(t), f))
 end
-
-#time_lower(kc::KernelCall) = KernelCall(kc.kernel, time_lower(kc.args))
-#time_lower(kc::KernelChain) = broadcast(time_lower, kc)

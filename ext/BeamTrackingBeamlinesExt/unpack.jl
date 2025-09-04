@@ -35,13 +35,14 @@ function universal!(
   apertureparams;
   kwargs...
 ) 
+  beta_gamma_ref = R_to_beta_gamma(bunch.species, bunch.R_ref)
   # Current KernelChain length is 5 because we have up to
   # 2 aperture, 2 alignment, 1 body kernels
   # TODO: make this 6 when we include update_P0!
-  kc = KernelChain(Val{5}())
+  kc = KernelChain(Val{5}(), RefState(t_ref[], beta_gamma_ref))
 
-  # Evolve time
-  t_ref[] += L/R_to_v(bunch.species, bunch.R_ref)
+  # Evolve time through whole element
+  t_ref[] += L/beta_gamma_to_v(beta_gamma_ref)
 
   # Entrance aperture and alignment
   if isactive(alignmentparams)
