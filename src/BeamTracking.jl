@@ -14,7 +14,8 @@ using GTPSA,
   Unrolled,
   MacroTools,
   Adapt,
-  Accessors
+  Accessors,
+  SIMDMathFunctions
 
 using KernelAbstractions
 
