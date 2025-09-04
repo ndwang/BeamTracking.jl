@@ -63,6 +63,9 @@ end
 Base.promote_rule(::Type{TimeDependentParam}, ::Type{U}) where {U<:Number} = TimeDependentParam
 Base.broadcastable(o::TimeDependentParam) = Ref(o)
 
+Base.isapprox(::TimeDependentParam, ::Number) = false
+Base.isapprox(::Number, ::TimeDependentParam) = false
+
 @inline teval(f::TimeFunction, t) = f(t)
 @inline teval(f, t) = f
 
