@@ -2,6 +2,8 @@ using BeamTracking
 using Beamlines
 
 @eles begin
+  d_error = LineElement(L=1, x1_limit=1, dx=5)
+
   d1_rect = Drift(L=1, x1_limit = 1, x2_limit = 2, y1_limit = 3, y2_limit = 5, aperture_shape = ApertureShape.Rectangular, aperture_active = false, tracking_method = Linear())
   d2_rect = Drift(L=1,               x2_limit = 2, y1_limit = 3, y2_limit = 5, aperture_shape = ApertureShape.Rectangular, aperture_at = ApertureAt.Exit, tracking_method = Linear())
   d3_rect = Drift(L=1,               x2_limit = 2, y1_limit = 3, y2_limit = 5, aperture_shape = ApertureShape.Rectangular, aperture_at = ApertureAt.BothEnds, tracking_method = Linear())
@@ -12,6 +14,7 @@ using Beamlines
   d3_ellip =  Drift(L=1, x1_limit = 1, x2_limit = 2, y1_limit = 3, y2_limit = 5, tracking_method = Linear())
   d4_ellip =  Drift(L=1, x1_limit = 1, x2_limit = Inf, y1_limit = 3, y2_limit = 5, tracking_method = Linear())
 end
+b_error = Beamline([d_error], R_ref = 1.0, species_ref=Species("electron"))
 
 b1r = Beamline([d1_rect], R_ref = 1.0, species_ref=Species("electron"))
 b2r = Beamline([d2_rect], R_ref = 1.0, species_ref=Species("electron"))

@@ -215,22 +215,44 @@ Arguments:
 
 """
 function rot_quaternion(x_rot, y_rot, z_rot)
-  qz = SA[cos(z_rot/2) 0 0 sin(z_rot/2)]
-  qx = SA[cos(x_rot/2) sin(x_rot/2) 0 0]
-  qy = SA[cos(y_rot/2) 0 sin(y_rot/2) 0]
+  qz = SA[cos(z_rot/2), 0, 0, sin(z_rot/2)]
+  qx = SA[cos(x_rot/2), sin(x_rot/2), 0, 0]
+  qy = SA[cos(y_rot/2), 0, sin(y_rot/2), 0]
   q = quat_mul(qx, qz[Q0], qz[QX], qz[QY], qz[QZ])
   q = quat_mul(qy, q[Q0], q[QX], q[QY], q[QZ])
-  return SA[q[Q0] q[QX] q[QY] q[QZ]]
+  return SA[q[Q0], q[QX], q[QY], q[QZ]]
 end
 
 # Inverse rotation quaternion
 function inv_rot_quaternion(x_rot, y_rot, z_rot)
-  qz = SA[cos(z_rot/2) 0 0 -sin(z_rot/2)]
-  qx = SA[cos(x_rot/2) -sin(x_rot/2) 0 0]
-  qy = SA[cos(y_rot/2) 0 -sin(y_rot/2) 0]
+  qz = SA[cos(z_rot/2), 0, 0, -sin(z_rot/2)]
+  qx = SA[cos(x_rot/2), -sin(x_rot/2), 0, 0]
+  qy = SA[cos(y_rot/2), 0, -sin(y_rot/2), 0]
   q = quat_mul(qx, qy[Q0], qy[QX], qy[QY], qy[QZ])
   q = quat_mul(qz, q[Q0], q[QX], q[QY], q[QZ])
-  return SA[q[Q0] q[QX] q[QY] q[QZ]]
+  return SA[q[Q0], q[QX], q[QY], q[QZ]]
+end
+
+# Particle z, pz to time
+# Evaluate time-dependent arguments
+# we need to get the particle time, for that we need particle's velocity
+# We have pz = dP/P0 = (P-P0)/P0 = P/P0-1 = (gamma*beta)/(gamma0*beta0)-1
+# so pz + 1 = (gamma*beta)/(gamma0*beta0) 
+# And then
+# (pz + 1)*beta_0*gamma_0 = gamma*beta = beta/sqrt(1-beta^2)
+# [(pz + 1)*beta_0*gamma_0]^2*(1-beta^2) = beta^2
+# [(pz + 1)*beta_0*gamma_0]^2 = beta^2*(1+[(pz + 1)*beta_0*gamma_0]^2)
+# So
+# beta = (pz + 1)*beta_0*gamma_0/sqrt(1+[(pz + 1)*beta_0*gamma_0]^2)
+# 
+# Therefore, we should pass to the kernel beta_0*gamma_0 and t_ref to get beta
+function compute_time(z, pz, ref)
+  @FastGTPSA begin 
+    K = (pz + 1)*ref.beta_gamma
+    v = K/sqrt(1 + K*K)*C_LIGHT
+    t = -z/v + ref.t
+  end
+  return t
 end
 
 # Particle energy conversions =============================================================
@@ -240,7 +262,9 @@ pc_to_R(species::Species, pc) = @FastGTPSA pc/C_LIGHT/chargeof(species)
 
 R_to_gamma(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT/massof(species))^2+1)
 R_to_pc(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT
-R_to_beta_gamma(species::Species, R_ref) = @FastGTPSA R_ref*chargeof(species)*C_LIGHT/massof(species)
+R_to_beta_gamma(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT/massof(species)
+R_to_v(species::Species, R) = @FastGTPSA chargeof(species)*C_LIGHT / sqrt(1+(massof(species)/(R*C_LIGHT))^2)
+beta_gamma_to_v(beta_gamma) = @FastGTPSA C_LIGHT*beta_gamma/sqrt(1+beta_gamma^2)
 
 # Fake APC because APC is not working for now :(
 function anom(species::Species) 

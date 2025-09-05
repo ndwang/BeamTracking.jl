@@ -3,6 +3,7 @@ function _track!(
   i,
   coords::Coords,
   bunch::Bunch,
+  t_ref::Ref,
   ele::Union{LineElement,BitsLineElement}, 
   tm;
   kwargs...
@@ -16,7 +17,7 @@ function _track!(
   dp = deval(ele.ApertureParams)
 
   # Function barrier
-  universal!(i, coords, tm, bunch, L, ap, bp, bm, pp, dp; kwargs...)
+  universal!(i, coords, tm, bunch, t_ref, L, ap, bp, bm, pp, dp; kwargs...)
 end
 
 # Step 2: Push particles through -----------------------------------------
@@ -25,6 +26,7 @@ function universal!(
   coords,
   tm,
   bunch,
+  t_ref,
   L, 
   alignmentparams, 
   bendparams,
@@ -33,9 +35,14 @@ function universal!(
   apertureparams;
   kwargs...
 ) 
+  beta_gamma_ref = R_to_beta_gamma(bunch.species, bunch.R_ref)
   # Current KernelChain length is 5 because we have up to
   # 2 aperture, 2 alignment, 1 body kernels
-  kc = KernelChain(Val{5}())
+  # TODO: make this 6 when we include update_P0!
+  kc = KernelChain(Val{5}(), RefState(t_ref[], beta_gamma_ref))
+
+  # Evolve time through whole element
+  t_ref[] += L/beta_gamma_to_v(beta_gamma_ref)
 
   # Entrance aperture and alignment
   if isactive(alignmentparams)
@@ -177,7 +184,6 @@ function universal!(
   end
 
   #
-
   runkernels!(i, coords, kc; kwargs...)
   return nothing
 end
@@ -239,21 +245,21 @@ end
 
 
 # === Elements thin vs thick check === #
-@inline pure_bsolenoid(tm, bunch, bm0, L)                            = L ≈ 0 ? thin_pure_bsolenoid(tm, bunch, bm0)                            : thick_pure_bsolenoid(tm, bunch, bm0, L)      
-@inline bsolenoid(tm, bunch, bmultipoleparams, L)                    = L ≈ 0 ? thin_bsolenoid(tm, bunch, bmultipoleparams)                    : thick_bsolenoid(tm, bunch, bmultipoleparams, L)         
-@inline pure_bdipole(tm, bunch, bm1, L)                              = L ≈ 0 ? thin_pure_bdipole(tm, bunch, bm1)                              : thick_pure_bdipole(tm, bunch, bm1, L)          
-@inline bdipole(tm, bunch, bmultipoleparams, L)                      = L ≈ 0 ? thin_bdipole(tm, bunch, bmultipoleparams)                      : thick_bdipole(tm, bunch, bmultipoleparams, L)             
-@inline pure_bquadrupole(tm, bunch, bm2, L)                          = L ≈ 0 ? thin_pure_bquadrupole(tm, bunch, bm2)                          : thick_pure_bquadrupole(tm, bunch, bm2, L)        
-@inline bquadrupole(tm, bunch, bmultipoleparams, L)                  = L ≈ 0 ? thin_bquadrupole(tm, bunch, bmultipoleparams)                  : thick_bquadrupole(tm, bunch, bmultipoleparams, L)           
-@inline pure_bmultipole(tm, bunch, bmk, L)                           = L ≈ 0 ? thin_pure_bmultipole(tm, bunch, bmk)                           : thick_pure_bmultipole(tm, bunch, bmk, L)                   
-@inline bmultipole(tm, bunch, bmultipoleparams, L)                   = L ≈ 0 ? thin_bmultipole(tm, bunch, bmultipoleparams)                   : thick_bmultipole(tm, bunch, bmultipoleparams, L)                      
-@inline bend_no_field(tm, bunch, bendparams, L)                      = L ≈ 0 ? thin_bend_no_field(tm, bunch, bendparams)                      : thick_bend_no_field(tm, bunch, bendparams, L)
-@inline bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)           = L ≈ 0 ? thin_bend_pure_bsolenoid(tm, bunch, bendparams, bm0)           : thick_bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)      
-@inline bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams, L)   = L ≈ 0 ? thin_bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams)   : thick_bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams, L)         
-@inline bend_pure_bdipole(tm, bunch, bendparams, bm1, L)             = L ≈ 0 ? thin_bend_pure_bdipole(tm, bunch, bendparams, bm1)             : thick_bend_pure_bdipole(tm, bunch, bendparams, bm1, L)          
-@inline bend_bdipole(tm, bunch, bendparams, bmultipoleparams, L)     = L ≈ 0 ? thin_bend_bdipole(tm, bunch, bendparams, bmultipoleparams)     : thick_bend_bdipole(tm, bunch, bendparams, bmultipoleparams, L)             
-@inline bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L)         = L ≈ 0 ? thin_bend_pure_bquadrupole(tm, bunch, bendparams, bm2)         : thick_bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L)        
-@inline bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams, L) = L ≈ 0 ? thin_bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams) : thick_bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams, L)           
-@inline bend_pure_bmultipole(tm, bunch, bendparams, bmk, L)          = L ≈ 0 ? thin_bend_pure_bmultipole(tm, bunch, bendparams, bmk)          : thick_bend_pure_bmultipole(tm, bunch, bendparams, bmk, L)                   
-@inline bend_bmultipole(tm, bunch, bendparams, bmultipoleparams, L)  = L ≈ 0 ? thin_bend_bmultipole(tm, bunch, bendparams, bmultipoleparams)  : thick_bend_bmultipole(tm, bunch, bendparams, bmultipoleparams, L)                      
+@inline pure_bsolenoid(tm, bunch, bm0, L)                            = L == 0 ? thin_pure_bsolenoid(tm, bunch, bm0)                            : thick_pure_bsolenoid(tm, bunch, bm0, L)      
+@inline bsolenoid(tm, bunch, bmultipoleparams, L)                    = L == 0 ? thin_bsolenoid(tm, bunch, bmultipoleparams)                    : thick_bsolenoid(tm, bunch, bmultipoleparams, L)         
+@inline pure_bdipole(tm, bunch, bm1, L)                              = L == 0 ? thin_pure_bdipole(tm, bunch, bm1)                              : thick_pure_bdipole(tm, bunch, bm1, L)          
+@inline bdipole(tm, bunch, bmultipoleparams, L)                      = L == 0 ? thin_bdipole(tm, bunch, bmultipoleparams)                      : thick_bdipole(tm, bunch, bmultipoleparams, L)             
+@inline pure_bquadrupole(tm, bunch, bm2, L)                          = L == 0 ? thin_pure_bquadrupole(tm, bunch, bm2)                          : thick_pure_bquadrupole(tm, bunch, bm2, L)        
+@inline bquadrupole(tm, bunch, bmultipoleparams, L)                  = L == 0 ? thin_bquadrupole(tm, bunch, bmultipoleparams)                  : thick_bquadrupole(tm, bunch, bmultipoleparams, L)           
+@inline pure_bmultipole(tm, bunch, bmk, L)                           = L == 0 ? thin_pure_bmultipole(tm, bunch, bmk)                           : thick_pure_bmultipole(tm, bunch, bmk, L)                   
+@inline bmultipole(tm, bunch, bmultipoleparams, L)                   = L == 0 ? thin_bmultipole(tm, bunch, bmultipoleparams)                   : thick_bmultipole(tm, bunch, bmultipoleparams, L)                      
+@inline bend_no_field(tm, bunch, bendparams, L)                      = L == 0 ? thin_bend_no_field(tm, bunch, bendparams)                      : thick_bend_no_field(tm, bunch, bendparams, L)
+@inline bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)           = L == 0 ? thin_bend_pure_bsolenoid(tm, bunch, bendparams, bm0)           : thick_bend_pure_bsolenoid(tm, bunch, bendparams, bm0, L)      
+@inline bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams, L)   = L == 0 ? thin_bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams)   : thick_bend_bsolenoid(tm, bunch, bendparams, bmultipoleparams, L)         
+@inline bend_pure_bdipole(tm, bunch, bendparams, bm1, L)             = L == 0 ? thin_bend_pure_bdipole(tm, bunch, bendparams, bm1)             : thick_bend_pure_bdipole(tm, bunch, bendparams, bm1, L)          
+@inline bend_bdipole(tm, bunch, bendparams, bmultipoleparams, L)     = L == 0 ? thin_bend_bdipole(tm, bunch, bendparams, bmultipoleparams)     : thick_bend_bdipole(tm, bunch, bendparams, bmultipoleparams, L)             
+@inline bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L)         = L == 0 ? thin_bend_pure_bquadrupole(tm, bunch, bendparams, bm2)         : thick_bend_pure_bquadrupole(tm, bunch, bendparams, bm2, L)        
+@inline bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams, L) = L == 0 ? thin_bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams) : thick_bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams, L)           
+@inline bend_pure_bmultipole(tm, bunch, bendparams, bmk, L)          = L == 0 ? thin_bend_pure_bmultipole(tm, bunch, bendparams, bmk)          : thick_bend_pure_bmultipole(tm, bunch, bendparams, bmk, L)                   
+@inline bend_bmultipole(tm, bunch, bendparams, bmultipoleparams, L)  = L == 0 ? thin_bend_bmultipole(tm, bunch, bendparams, bmultipoleparams)  : thick_bend_bmultipole(tm, bunch, bendparams, bmultipoleparams, L)                      
 
