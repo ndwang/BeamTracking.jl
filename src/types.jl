@@ -25,7 +25,7 @@ struct Coords{S,V,Q}
   v::V     # Matrix of particle coordinates
   q::Q     # Matrix of particle quaternions if spin else nothing 
   function Coords(state, v, q)
-    if eltype(v) == eltype(q)
+    if !isnothing(q) && eltype(v) != eltype(q)
       error("Cannot initialize Coords with orbital coordinates of type $(eltype(v))
              and quaternion coordinates of type $(typeof(q)).")
     end
