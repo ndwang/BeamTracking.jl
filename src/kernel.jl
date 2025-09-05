@@ -45,17 +45,6 @@ push(kc::KernelChain, kcall) = @reset kc.chain = _push(kc.chain, kcall)
   error("Unable to push KernelCall to kernel chain: kernel chain is full")
 end
 
-#=
-@unroll function check_args(kc::KernelChain)
-  @unroll for kcalli in kc.chain
-    check_args(kcalli)
-  end
-  return true
-end
-
-check_args(kcalli) = true
-=#
-
 # KA does not like Vararg
 @kernel function generic_kernel!(coords::Coords, @Const(kc::KernelChain))
   i = @index(Global, Linear)
@@ -64,32 +53,23 @@ end
 
 _generic_kernel!(i, coords, kc) = __generic_kernel!(i, coords, kc.chain, kc.ref)
 
-@unroll function __generic_kernel!(i, coords::Coords, chain, ref::Nothing)
+@unroll function __generic_kernel!(i, coords::Coords, chain, ref)
   @unroll for kcall in chain
-    (kcall.kernel)(i, coords, kcall.args...)
+    args = process_args(i, coords, kcall.args, ref)
+    (kcall.kernel)(i, coords, args...)
   end
   return nothing
 end
-
-@unroll function __generic_kernel!(i, coords::Coords, chain, ref::RefState)
-  @unroll for kcall in chain
-    #args = process_args(i, coords, kcall.args, ref)
-    (kcall.kernel)(i, coords, kcall.args...)
-  end
-  return nothing
-end
-
-#process_args(coords, args, ref::Nothing) = args
 
 function process_args(i, coords, args, ref)
-  #=if static_timecheck(args) #any(arg->arg isa TimeFunction, args)
-    #let t = compute_time(coords.v[i,ZI], coords.v[i,PZI], ref)
+  if !isnothing(ref) && static_timecheck(args) 
+    let t = compute_time(coords.v[i,ZI], coords.v[i,PZI], ref)
       new_args = map(arg->teval(arg, t), args)
       return map(arg->teval(arg, t), args)
-    #end
-  else=#
+    end
+  else
     return args
-  #end
+  end
 end
 
 # Generic function to launch a kernel on the bunch coordinates matrix
@@ -100,7 +80,7 @@ end
   kc::KernelChain;
   groupsize::Union{Nothing,Integer}=nothing, #backend isa CPU ? floor(Int,REGISTER_SIZE/sizeof(eltype(v))) : 256 
   multithread_threshold::Integer=Threads.nthreads() > 1 ? 1750*Threads.nthreads() : typemax(Int),
-  use_KA::Bool=true, #!(get_backend(coords.v) isa CPU && isnothing(groupsize)),
+  use_KA::Bool=!(get_backend(coords.v) isa CPU && isnothing(groupsize)),
   use_explicit_SIMD::Bool=!use_KA # Default to use explicit SIMD on CPU
 ) where {V}
   v = coords.v
