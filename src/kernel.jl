@@ -24,7 +24,7 @@ end
 # Alias
 struct KernelChain{C<:Tuple{Vararg{<:KernelCall}}, S<:Union{Nothing,RefState}}
   chain::C  # The tuple of KernelCalls
-  ref::S    # An optional RefState for time-dependent parameters
+  ref::S    # An optional RefState for the initial time-dependent parameters
   KernelChain(chain, ref=nothing) = new{typeof(chain), typeof(ref)}(chain, ref)
 end
 
