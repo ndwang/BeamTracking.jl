@@ -123,7 +123,7 @@ end
   mm = bm.order
   kn, ks = get_strengths(bm, L, R_ref)
   k1 = sqrt(kn[2]^2 + ks[2]^2) * (mm[2] == 2)
-  if k1 ≈ 0
+  if k1 == 0
     return thick_bdipole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
   end
   tilt = (atan(ks[2], kn[2]) / 2) * (mm[2] == 2)
@@ -147,7 +147,7 @@ end
   mm = bm.order
   kn, ks = get_strengths(bm, L, R_ref)
   k1 = sqrt(kn^2 + ks^2)
-  if k1 ≈ 0
+  if k1 == 0
     return thick_pure_bquadrupole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
   end
   tilt = atan(ks, kn) / 2
@@ -166,7 +166,7 @@ end
   mm = bm.order
   kn, ks = get_strengths(bm, L, R_ref)
   k1 = sqrt(kn[1]^2 + ks[1]^2)
-  if k1 ≈ 0
+  if k1 == 0
     return thick_bquadrupole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
   end
   tilt = atan(ks[1], kn[1]) / 2

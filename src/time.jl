@@ -66,6 +66,9 @@ Base.broadcastable(o::TimeDependentParam) = Ref(o)
 
 Base.isapprox(::TimeDependentParam, ::Number; kwargs...) = false
 Base.isapprox(::Number, ::TimeDependentParam; kwargs...) = false
+Base.:(==)(::TimeDependentParam, ::Number) = false
+Base.:(==)(::Number, ::TimeDependentParam) = false
+Base.isinf(::TimeDependentParam) = false
 
 @inline teval(f::TimeFunction, t) = f(t)
 @inline teval(f, t) = f
