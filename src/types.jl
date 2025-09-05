@@ -29,7 +29,7 @@ struct Coords{S,V,Q}
       error("Cannot initialize Coords with orbital coordinates of type $(eltype(v))
              and quaternion coordinates of type $(typeof(q)).")
     end
-    return new{typeof(state),typeof(q),typeof(v)}(state, v, q)
+    return new{typeof(state),typeof(v),typeof(q)}(state, v, q)
   end
 end
 
