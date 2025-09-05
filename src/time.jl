@@ -81,3 +81,16 @@ function time_lower(tp::SArray{N,TimeDependentParam}) where {N}
   return TimeFunction(t->SArray{N}(map(fi->fi(t), f)))
 end
 time_lower(tp::SArray{N,Any}) where {N} = time_lower(TimeDependentParam.(tp))
+
+#static_timecheck(::Type{<:TimeFunction}) = true
+static_timecheck(tp) = false
+static_timecheck(::TimeFunction) = true
+@unroll function static_timecheck(t::Tuple)
+  @unroll for ti in t
+    if static_timecheck(ti)
+      return true
+    end
+  end
+  return false
+end
+#static_timecheck(tp::T) where {T<:Tuple} = Val{any(t->static_timecheck(t) isa Val{true}, tp)}()

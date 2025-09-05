@@ -73,8 +73,8 @@ end
 
 @unroll function __generic_kernel!(i, coords::Coords, chain, ref::RefState)
   @unroll for kcall in chain
-    args = process_args(i, coords, kcall.args, ref)
-    (kcall.kernel)(i, coords, args...)
+    #args = process_args(i, coords, kcall.args, ref)
+    (kcall.kernel)(i, coords, kcall.args...)
   end
   return nothing
 end
@@ -82,13 +82,13 @@ end
 #process_args(coords, args, ref::Nothing) = args
 
 function process_args(i, coords, args, ref)
-  #if any(arg->arg isa TimeFunction, args)
-    let t = compute_time(coords.v[i,ZI], coords.v[i,PZI], ref)
+  #=if static_timecheck(args) #any(arg->arg isa TimeFunction, args)
+    #let t = compute_time(coords.v[i,ZI], coords.v[i,PZI], ref)
       new_args = map(arg->teval(arg, t), args)
       return map(arg->teval(arg, t), args)
-    end
-  #else
-  #  return args
+    #end
+  else=#
+    return args
   #end
 end
 
