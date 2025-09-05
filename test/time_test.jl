@@ -30,9 +30,9 @@ function test_time(
   ele_minus = LineElement()
   ele_time = LineElement()
   for (k,val) in pairs(dynamic_params)
-    setproperty!(ele_plus, k, ft(val)(v[5]))
-    setproperty!(ele_minus, k, ft(val)(v[5]/BeamTracking.C_LIGHT-pi))
-    setproperty!(ele_time, k, ft(val))
+    setproperty!(ele_plus, k, Beamlines.deval(ft(val))(v[5]))
+    setproperty!(ele_minus, k, Beamlines.deval(ft(val))(v[5]/BeamTracking.C_LIGHT-pi))
+    setproperty!(ele_time, k, Beamlines.deval(ft(val)))
   end
   for (k,val) in pairs(static_params)
     setproperty!(ele_plus, k, val)
@@ -85,6 +85,36 @@ end
   # BKB not working at the moment because bend multipoles not 
   # implemented and Ks0 (also stored) becomes a TimeDependentParam
   # test_time((;Kn0=1e-4, e1=2e-2, e2=3e-2), (;L=1.4))
+
+  # Same but with DefExpr:
+  Kn1 = 0.36
+  Ks2 = -1.2
+  L = 3.4
+  Kn12 = 105.
+  Kn3 = 14
+  Kn0 = 1e-2
+  Ksol = -0.23
+  test_time((;Kn1=DefExpr(()->Kn1)), (;L=DefExpr(()->L)))
+  test_time((;Kn1=DefExpr(()->Kn1), Ks2=DefExpr(()->Ks2), Kn12=DefExpr(()->Kn12)), (;L=DefExpr(()->L)))
+
+  # SKS:
+  test_time((;Ksol=DefExpr(()->Ksol)), (;L=DefExpr(()->L)))
+  test_time((;Ksol=DefExpr(()->Ksol), Kn1=DefExpr(()->Kn1), Ks2=DefExpr(()->Ks2), Kn12=DefExpr(()->Kn12)), (;L=DefExpr(()->L)))
+
+  # DKD:
+  test_time((;Kn0=DefExpr(()->Kn0), Kn1=DefExpr(()->Kn1), Kn3=DefExpr(()->Kn3)), (;L=DefExpr(()->L)))
+
+  # Now with different types of multipoles entered:
+  test_time((;Bn1=DefExpr(()->Kn1)), (;L=DefExpr(()->0.5)))
+  test_time((;Bn1L=DefExpr(()->Kn1), Ks2L=DefExpr(()->Ks2), Bn12=DefExpr(()->Kn12)), (;L=DefExpr(()->3.4)))
+
+  # SKS:
+  test_time((;Bsol=DefExpr(()->Ksol)), (;L=DefExpr(()->3.4)))
+  test_time((;BsolL=DefExpr(()->Ksol)), (;L=DefExpr(()->3.4)))
+  test_time((;KsolL=DefExpr(()->Ksol), Bn1L=DefExpr(()->Kn1), Bs2=DefExpr(()->Ks2), Kn12L=DefExpr(()->Kn12)), (;L=DefExpr(()->3.4)))
+
+  # DKD:
+  test_time((;Bn0L=DefExpr(()->Kn0), Kn1L=DefExpr(()->Kn1), Bn3=DefExpr(()->Kn3)), (;L=DefExpr(()->L)))
 
   # Linear tracking does not currently support TimeDependentParams
 
