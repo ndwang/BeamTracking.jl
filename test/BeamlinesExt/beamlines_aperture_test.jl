@@ -15,6 +15,11 @@ v2 = [
      ]
 
 @testset "Aperture" begin
+  @testset "No patch" begin
+    bunch_error = Bunch(deepcopy(v1), species=Species("electron"))
+    @test_throws ErrorException track!(bunch_error, b_error)
+  end
+
   @testset "Rectangular" begin
     b1 = Bunch(deepcopy(v1), species=Species("electron"))
     track!(b1, b1r)
