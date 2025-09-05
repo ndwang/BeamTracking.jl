@@ -13,6 +13,8 @@ end
 # Alias
 const KernelChain = Tuple{Vararg{<:KernelCall}}
 
+push(kc::KernelChain, kcall::Nothing) = kc
+
 @unroll function push(kc::KernelChain, kcall)
   i = 0
   @unroll for kcalli in kc
@@ -57,8 +59,8 @@ end
   kc::KernelChain;
   groupsize::Union{Nothing,Integer}=nothing, #backend isa CPU ? floor(Int,REGISTER_SIZE/sizeof(eltype(v))) : 256 
   multithread_threshold::Integer=Threads.nthreads() > 1 ? 1750*Threads.nthreads() : typemax(Int),
-  use_KA::Bool=true, #!(get_backend(coords.v) isa CPU && isnothing(groupsize)),
-  use_explicit_SIMD::Bool=!use_KA # Default to use explicit SIMD on CPU
+  use_KA::Bool = true, #!(get_backend(coords.v) isa CPU && isnothing(groupsize)),
+  use_explicit_SIMD::Bool = !use_KA # Default to use explicit SIMD on CPU
 ) where {V}
   v = coords.v
   N_particle = size(v, 1)

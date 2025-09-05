@@ -16,7 +16,7 @@ const D1 = Descriptor(6, 1)   # 6 variables 1st order
 const D10 = Descriptor(6, 10) # 6 variables 10th order
 
 function test_matrix(
-  M_expected,
+  M_expected,    # Expected matrix
   kernel_call;
   type_stable=VERSION >= v"1.11", 
   no_scalar_allocs=!(any(t->eltype(t) <: TPS, kernel_call.args)), # only for non-parametric 
@@ -183,7 +183,8 @@ function quaternion_coeffs_approx_equal(q_expected, q_calculated, ϵ)
   return all_ok
 end
 
-include("LinearTracking.jl")
-include("ExactTracking.jl")
-include("IntegrationTracking.jl")
-include("BeamlinesExt.jl")
+include("ApertureTracking_test.jl")
+include("LinearTracking_test.jl")
+include("ExactTracking_test.jl")
+include("IntegrationTracking_test.jl")
+include("BeamlinesExt_test.jl")
