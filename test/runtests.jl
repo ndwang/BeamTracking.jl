@@ -16,7 +16,7 @@ const D1 = Descriptor(6, 1)   # 6 variables 1st order
 const D10 = Descriptor(6, 10) # 6 variables 10th order
 
 function test_matrix(
-  M_expected,
+  M_expected,    # Expected matrix
   kernel_call;
   type_stable=VERSION >= v"1.11", 
   no_scalar_allocs=!(any(t->eltype(t) <: TPS, kernel_call.args)), # only for non-parametric 
