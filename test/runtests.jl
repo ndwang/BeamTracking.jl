@@ -183,7 +183,7 @@ function quaternion_coeffs_approx_equal(q_expected, q_calculated, ϵ)
   return all_ok
 end
 
-include("ApertureTracking_test.jl")
+include("aperture_tracking_test.jl")
 include("LinearTracking_test.jl")
 include("ExactTracking_test.jl")
 include("IntegrationTracking_test.jl")
