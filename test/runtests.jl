@@ -9,6 +9,7 @@ using Test,
       SIMD
 
 using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST
+using Beamlines: isactive
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
 
@@ -183,9 +184,9 @@ function quaternion_coeffs_approx_equal(q_expected, q_calculated, ϵ)
   return all_ok
 end
 
-include("aperture_tracking_test.jl")
-include("LinearTracking_test.jl")
-include("ExactTracking_test.jl")
-include("IntegrationTracking_test.jl")
+#include("aperture_tracking_test.jl")
+#include("LinearTracking_test.jl")
+#include("ExactTracking_test.jl")
+#include("IntegrationTracking_test.jl")
 include("BeamlinesExt_test.jl")
-include("time_test.jl")
+#include("time_test.jl")

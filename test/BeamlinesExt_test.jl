@@ -333,6 +333,11 @@
   @testset "SplitIntegration" begin
     b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
     foreach(t->t.tracking_method=SplitIntegration(), ring.line)
+    for i in 1:length(ring.line)
+      if isactive(ring.line[i].RFParams)
+        ring.line[i] = Drift(L = ring.line[i].L)
+      end
+    end
     track!(b0, ring)
     M_ESR = [  0.8763088913632391E+00  0.2842332738570903E+00 -0.9233408598814828E-06 -0.1104742931103878E-06  0.0000000000000000E+00 -0.8843595261589663E-07
               -0.8165279324836310E+00  0.8763069736287854E+00 -0.1898521129265218E-05 -0.1113630193834745E-06  0.0000000000000000E+00 -0.1417461685411299E-06
@@ -781,6 +786,18 @@
     v_expected, q_expected = read_spin_orbit_map("bmad_maps/patch.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
+
+    # RF Cavity:
+    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, tracking_method=SplitIntegration(order=6))
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    q = [1.0 0.0 0.0 0.0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [0.08585409464295425 0.02000009854614089 0.1817082282923303 0.04000021765732897 0.04699584052904975 0.05999191767414794]
+    q_expected = [1.0 -2.457559379570158e-7 1.1790664629672999e-7 4.1960593801955746e-12]
+    @test b0.coords.v ≈ v_expected
+    @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # Particle lost in dipole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))

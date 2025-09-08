@@ -210,6 +210,33 @@ end
   end
 end
 
+
 # =========== PATCH ============= #
 @inline pure_patch(tm::SplitIntegration, bunch, patchparams, L)  = 
   pure_patch(Exact(), bunch, patchparams, L)
+
+
+# =========== RF ============= #
+@inline function thick_pure_rf(tm::Union{SplitIntegration,DriftKick}, bunch, rf, L)
+  R_ref = bunch.R_ref
+  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
+  E0_over_Rref = rf.voltage/L/R_ref
+  omega = 2*pi*rf.rf_frequency
+  phi0 = rf.phi0
+  t0 = phi0/omega
+  params = (beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), omega, E0_over_Rref, t0, SA[], SA[], SA[], L)
+  return integration_launcher!(IntegrationTracking.cavity!, params, tm, L)
+end
+
+@inline function thick_bsolenoid_rf(tm::Union{SplitIntegration,SolenoidKick}, bunch, bm, rf, L)
+  R_ref = bunch.R_ref
+  tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
+  E0_over_Rref = rf.voltage/L/R_ref
+  omega = 2*pi*rf.rf_frequency
+  phi0 = rf.phi0
+  t0 = phi0/omega
+  mm = bm.order
+  kn, ks = get_strengths(bm, L, R_ref)
+  params = (beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), omega, E0_over_Rref, t0, mm, kn, ks, L)
+  return integration_launcher!(IntegrationTracking.cavity!, params, tm, L)
+end
