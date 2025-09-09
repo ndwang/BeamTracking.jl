@@ -145,9 +145,9 @@ end
 function update_t0(ker, params, ds)
   @FastGTPSA begin @inbounds begin
     if ker == cavity!
-      t0 = params[7] + ds/(params[1]*C_LIGHT)
+      t0 = params[9] + ds/(params[1]*C_LIGHT)
       new_params = (params[1], params[2], params[3], params[4], params[5], 
-      params[6], t0, params[8], params[9], params[10])
+      params[6], params[7], params[8], t0, params[10], params[11], params[12])
     else
       new_params = params
     end
@@ -546,7 +546,7 @@ end
 #
 # ===============  R F  ===============
 #
-@makekernel fastgtpsa=true function cavity!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, a, omega, E0_over_Rref, t0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function cavity!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, E_ref, p0c, a, omega, E0_over_Rref, t0, mm, kn, ks, L)
   multipoles = (length(mm) > 0)
   sol = (multipoles && mm[1] == 0)
   if sol
@@ -561,11 +561,11 @@ end
   end
 
   if isnothing(coords.q)
-    cavity_kick!(                   i, coords, tilde_m, omega, E0_over_Rref, t0, L)
+    cavity_kick!(                   i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L)
   else
-    cavity_kick!(                   i, coords, tilde_m, omega, E0_over_Rref, t0, L / 2)
+    cavity_kick!(                   i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L / 2)
     rotate_spin_cavity!(            i, coords, a, tilde_m, omega, E0_over_Rref, t0, mm, kn, ks, L)
-    cavity_kick!(                   i, coords, tilde_m, omega, E0_over_Rref, t0, L / 2)
+    cavity_kick!(                   i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L / 2)
   end
 
   if multipoles
@@ -580,19 +580,54 @@ end
 end
 
 
-@makekernel fastgtpsa=true function cavity_kick!(i, coords::Coords, tilde_m, omega, E0_over_Rref, t0, L)
+@makekernel fastgtpsa=true function bmad_to_mad!(i, coords::Coords, beta_0, tilde_m, E_ref, p0c)
+  v = coords.v
+
+  rel_p = 1 + v[i,PZI]
+  beta_gamma = rel_p/tilde_m
+  gamma = sqrt(1 + beta_gamma*beta_gamma)
+  beta = beta_gamma/gamma
+  tau = v[i,ZI]/beta
+
+  gamma_0_inv = tilde_m*beta_0
+  E = E_ref*gamma*gamma_0_inv
+
+  v[i,ZI]  = tau
+  v[i,PZI] = E/p0c - 1/beta_0
+end
+
+
+@makekernel fastgtpsa=true function mad_to_bmad!(i, coords::Coords, beta_0, tilde_m, E_ref, p0c)
+  v = coords.v
+
+  E = E_ref + p0c*v[i,PZI]
+  gamma_0_inv = tilde_m*beta_0
+  gamma = E/E_ref/gamma_0_inv
+  beta = sqrt(1-1/(gamma*gamma))
+  z = v[i,ZI]*beta
+  
+  pc = beta*E
+  p0 = p0c
+
+  v[i,ZI]  =  z
+  v[i,PZI] = (pc-p0c)/p0c
+end
+
+
+@makekernel fastgtpsa=true function cavity_kick!(i, coords::Coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L)
   v = coords.v
   alive = (coords.state[i] == STATE_ALIVE)
+
+  bmad_to_mad!(i, coords, beta_0, tilde_m, E_ref, p0c)
+
   r2 = v[i,XI]*v[i,XI] + v[i,YI]*v[i,YI]
   b01 = 2.404825557695773 # first zero of J0
   d = C_LIGHT*b01/omega
   arg = (b01*b01)/(d*d)*r2
   b0, b1 = bessel01_RF(arg)
   b1 = b1 * b01/d
-  beta_gamma = (1 + v[i,PZI])/tilde_m
-  beta = beta_gamma/sqrt(1 + beta_gamma*beta_gamma)
-  vel = beta*C_LIGHT
-  t = t0 - v[i,ZI]/vel
+
+  t = t0 - v[i,ZI]/C_LIGHT
 
   px_0 = v[i,PXI]
   py_0 = v[i,PYI]
@@ -605,11 +640,13 @@ end
 
   new_px = px_0 - coeff*v[i,XI]
   new_py = py_0 - coeff*v[i,YI]
-  new_pz = pz_0 + L*E0_over_Rref/vel*b0*s
+  new_pz = pz_0 + L*E0_over_Rref/C_LIGHT*b0*s
 
   v[i,PXI] = vifelse(alive, new_px, px_0)
   v[i,PYI] = vifelse(alive, new_py, pz_0)
   v[i,PZI] = vifelse(alive, new_pz, py_0)
+
+  mad_to_bmad!(i, coords, beta_0, tilde_m, E_ref, p0c)
 end
 
 

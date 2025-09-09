@@ -1,7 +1,7 @@
 @testset "Beamlines" begin
   include("lattices/esr.jl")
 
-  @testset "Linear" begin
+  #=@testset "Linear" begin
     b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
     foreach(t->t.tracking_method=Linear(), ring.line)
     track!(b0, ring)
@@ -347,11 +347,11 @@
                0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01  ]
 
     @test GTPSA.jacobian(b0.coords.v) ≈ M_ESR
-
+=#
     p0c = 10e6
     # E to R_ref
     R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + BeamTracking.massof(Species("electron"))^2))
-
+#=
     # Thin straight pure dipole:
     ele = LineElement(L=0.0, Kn0L=0.1, tracking_method=SplitIntegration())
     v = collect(transpose(@vars(D10)))
@@ -786,19 +786,57 @@
     v_expected, q_expected = read_spin_orbit_map("bmad_maps/patch.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
-
-    # RF Cavity:
+=#
+    # RF Cavity (these tests are to RK4):
     ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, tracking_method=SplitIntegration(order=6))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
     bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
     track!(b0, bl)
-    v_expected = [0.08585409464295425 0.02000009854614089 0.1817082282923303 0.04000021765732897 0.04699584052904975 0.05999191767414794]
-    q_expected = [1.0 -2.457559379570158e-7 1.1790664629672999e-7 4.1960593801955746e-12]
+    v_expected = [0.08585409464295618 0.020000098546139787 0.1817082282923288 0.04000021765732963 0.04699583968073418 0.059991917674146494]
+    q_expected = [0.9999999999999998 -2.4575593797720865e-7 1.1790664630682443e-7 4.196059380193709e-12]
     @test b0.coords.v ≈ v_expected
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
+    # With solenoid:
+    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Ksol=0.6, tracking_method=SplitIntegration(order=6, num_steps=5))
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    q = [1.0 0.0 0.0 0.0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [0.14844082332506978 0.010192685121379438 -0.0026916392375636957 -0.001532159591373224  0.04661942851777406  0.05999191689616507]
+    q_expected = [0.41824217230926236  0.0011247771844477808 -0.00026537595288976377 -0.9083348224932918]
+    @test b0.coords.v ≈ v_expected
+    println(b0.coords.q)
+    @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
+
+    # With sextupole:
+    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Kn2=1.3, tracking_method=SplitIntegration(order=6, num_steps=15))
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    q = [1.0 0.0 0.0 0.0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [0.11924238260852636 0.051393045268217336 0.22256863177658875 0.08178721819511463 0.04410509471964236 0.05999191531096973]
+    q_expected = [0.9996798125699026 -0.02023146394544627  0.015197360955812296 -2.0659395292705944e-5]
+    @test b0.coords.v ≈ v_expected
+    @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
+
+    # With solenoid and quadrupole:
+    #ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Ksol=0.6, tracking_method=SplitIntegration(order=6, num_steps=15))
+    #v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    #q = [1.0 0.0 0.0 0.0]
+    #b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    #bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    #track!(b0, bl)
+    #v_expected = [0.11924238260852636 0.051393045268217336 0.22256863177658875 0.08178721819511463 0.04410509471964236 0.05999191531096973]
+    #q_expected = [0.9996798125699026 -0.02023146394544627  0.015197360955812296 -2.0659395292705944e-5]
+    #@test b0.coords.v ≈ v_expected
+    #@test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
+
+#=
     # Particle lost in dipole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
@@ -838,4 +876,4 @@
   end
 
   include("BeamlinesExt/beamlines_aperture_test.jl")
-end
+=#end

@@ -90,7 +90,6 @@ function universal!(
       if !isactive(bmultipoleparams)
         kc = push(kc, @inline(pure_rf(tm, bunch, rfparams, L)))
       else
-        n_multipoles = get_n_multipoles(bmultipoleparams)
         if 0 in bmultipoleparams.order
           kc = push(kc, @inline(bsolenoid_rf(tm, bunch, bmultipoleparams, rfparams, L)))
         else
