@@ -146,4 +146,4 @@ end
 @inline thick_bend_pure_bmultipole(tm::Linear, bunch, bendparams, bmk, L) = thick_bend_no_field(tm, bunch, bendparams, L)
 @inline thick_bend_bmultipole(tm::Linear, bunch, bendparams, bmultipoleparams, L) = thick_bend_no_field(tm, bunch, bendparams, L)
 # Ignore RF (for now):
-@inline thick_pure_rf(tm::Linear, bunch, rfparams, L) = drift(tm, bunch, L)
+@inline thick_pure_rf(tm::Linear, bunch, rfparams, beamlineparams, L) = drift(tm, bunch, L)

@@ -1,7 +1,7 @@
 @testset "Beamlines" begin
   include("lattices/esr.jl")
 
-  #=@testset "Linear" begin
+  @testset "Linear" begin
     b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
     foreach(t->t.tracking_method=Linear(), ring.line)
     track!(b0, ring)
@@ -347,11 +347,11 @@
                0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01  ]
 
     @test GTPSA.jacobian(b0.coords.v) ≈ M_ESR
-=#
+
     p0c = 10e6
     # E to R_ref
     R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + BeamTracking.massof(Species("electron"))^2))
-#=
+
     # Thin straight pure dipole:
     ele = LineElement(L=0.0, Kn0L=0.1, tracking_method=SplitIntegration())
     v = collect(transpose(@vars(D10)))
@@ -786,7 +786,7 @@
     v_expected, q_expected = read_spin_orbit_map("bmad_maps/patch.jl")
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
-=#
+
     # RF Cavity (these tests are to RK4):
     ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, tracking_method=SplitIntegration(order=6))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
@@ -824,7 +824,7 @@
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # With solenoid and quadrupole:
-    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Ksol=-0.3 , Kn1=0.15, tracking_method=SplitIntegration(order=6, num_steps=20))
+    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Ksol=-0.3, Kn1=0.15, tracking_method=SplitIntegration(order=6, num_steps=20))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -855,7 +855,6 @@
     @test GTPSA.jacobian(b0.coords.v) ≈ v_expected
     @test GTPSA.jacobian(b0.coords.q) ≈ q_expected
 
-#=
     # Particle lost in dipole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
@@ -895,4 +894,4 @@
   end
 
   include("BeamlinesExt/beamlines_aperture_test.jl")
-=#end
+end
