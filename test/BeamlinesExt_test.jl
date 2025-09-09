@@ -835,6 +835,26 @@
     @test b0.coords.v ≈ v_expected
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
+    # TPS:
+    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, phi0=0.1, tracking_method=SplitIntegration(order=6))
+    v = collect(transpose(@vars(D1)))
+    q = TPS64{D1}[1 0 0 0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [1.0000041035633165 4.016753187689034 0.0 0.0 0.0 0.0; 
+                  2.0410855318765503e-6 1.0000040949566955 0.0 0.0 0.0 0.0; 
+                  0.0 0.0 1.0000041035633165 4.016753187689034 0.0 0.0; 
+                  0.0 0.0 2.0410855318765503e-6 1.0000040949566955 0.0 0.0; 
+                  0.0 0.0 0.0 0.0 0.9999999135318747 0.010461615526127363; 
+                  0.0 0.0 0.0 0.0 4.0928253044280366e-6 1.0000001292857006]
+    q_expected = [0.0 0.0 0.0 0.0 0.0 0.0; 
+                  -0.0 -0.0 -1.043774646053323e-6 -2.2220872786727707e-5 -0.0 -0.0; 
+                  1.043774646053323e-6 2.2220872786727707e-5 0.0 0.0 0.0 0.0; 
+                  0.0 0.0 0.0 0.0 0.0 0.0]
+    @test GTPSA.jacobian(b0.coords.v) ≈ v_expected
+    @test GTPSA.jacobian(b0.coords.q) ≈ q_expected
+
 #=
     # Particle lost in dipole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
