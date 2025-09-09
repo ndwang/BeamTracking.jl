@@ -453,7 +453,7 @@ function omega_multipole(i, coords::Coords, a, g, tilde_m, mm, kn, ks, L)
 
     if mm[1] == 0
       ax = -v[i,YI] * kn[1] / 2
-      ay = v[i,XI] * kn[1] / 2
+      ay =  v[i,XI] * kn[1] / 2
     else
       ax = zero(v[i,XI])
       ay = ax
@@ -607,7 +607,6 @@ end
   z = v[i,ZI]*beta
   
   pc = beta*E
-  p0 = p0c
 
   v[i,ZI]  =  z
   v[i,PZI] = (pc-p0c)/p0c
@@ -681,8 +680,13 @@ function omega_cavity(i, coords::Coords, a, tilde_m, omega, E0_over_Rref, t0, mm
     bz = ex
     b_vec = (bx, by, bz)
 
-    ax = ex
-    ay = ex
+    if length(mm) > 0 &&  mm[1] == 0
+      ax = -v[i,YI] * kn[1] / 2
+      ay =  v[i,XI] * kn[1] / 2
+    else
+      ax = ex
+      ay = ex
+    end
 
     ox, oy, oz = omega_field(i, coords, a, 0, beta, gamma, ax, ay, e_vec, b_vec, L)
     if length(mm) > 0
