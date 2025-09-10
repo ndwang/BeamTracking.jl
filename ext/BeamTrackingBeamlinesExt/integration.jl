@@ -250,7 +250,7 @@ end
   else
     omega = 2*pi*rf.rf_frequency
   end
-  phi0 = rf.phi0
+  phi0 = rf.phi0 + pi
   t0 = phi0/omega 
   E_ref = BeamTracking.R_to_E(bunch.species, R_ref)
   p0c = BeamTracking.R_to_pc(bunch.species, R_ref)
@@ -268,7 +268,7 @@ end
   else
     omega = 2*pi*rf.rf_frequency
   end
-  phi0 = rf.phi0
+  phi0 = rf.phi0 + pi
   t0 = phi0/omega
   mm = bm.order
   kn, ks = get_strengths(bm, L, R_ref)
