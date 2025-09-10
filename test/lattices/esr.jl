@@ -1,4 +1,4 @@
-using Beamlines
+using BeamTracking, Beamlines
 
 @eles begin
 IP6__1 =  Marker()
