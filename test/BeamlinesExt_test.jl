@@ -788,7 +788,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
 
     # RF Cavity (these tests are to RK4):
-    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, tracking_method=SplitIntegration(order=6))
+    ele = LineElement(L=4.01667, voltage=-3321.0942126011, rf_frequency=591142.68014977, tracking_method=SplitIntegration(order=6))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -800,7 +800,7 @@
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # With solenoid:
-    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Ksol=0.6, tracking_method=SplitIntegration(order=6, num_steps=5))
+    ele = LineElement(L=4.01667, voltage=-3321.0942126011, rf_frequency=591142.68014977, Ksol=0.6, tracking_method=SplitIntegration(order=6, num_steps=5))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -812,7 +812,7 @@
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # With sextupole:
-    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Kn2=1.3, tracking_method=SplitIntegration(order=6, num_steps=15))
+    ele = LineElement(L=4.01667, voltage=-3321.0942126011, rf_frequency=591142.68014977, Kn2=1.3, tracking_method=SplitIntegration(order=6, num_steps=15))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -824,7 +824,7 @@
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # With solenoid and quadrupole:
-    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Ksol=-0.3, Kn1=0.15, tracking_method=SplitIntegration(order=6, num_steps=20))
+    ele = LineElement(L=4.01667, voltage=-3321.0942126011, rf_frequency=591142.68014977, Ksol=-0.3, Kn1=0.15, tracking_method=SplitIntegration(order=6, num_steps=20))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -836,7 +836,7 @@
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # TPS:
-    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, phi0=0.1, tracking_method=SplitIntegration(order=6))
+    ele = LineElement(L=4.01667, voltage=-3321.0942126011, rf_frequency=591142.68014977, phi0=0.1, tracking_method=SplitIntegration(order=6))
     v = collect(transpose(@vars(D1)))
     q = TPS64{D1}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -857,7 +857,7 @@
 
     # Harmon:
     ele_drift = LineElement(L=1515.42266673, tracking_method = SplitIntegration())
-    ele = LineElement(L=4.01667, voltage=3321.0942126011, harmon=3, tracking_method=SplitIntegration(order=6))
+    ele = LineElement(L=4.01667, voltage=-3321.0942126011, harmon=3, tracking_method=SplitIntegration(order=6))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
