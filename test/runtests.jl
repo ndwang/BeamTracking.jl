@@ -9,6 +9,7 @@ using Test,
       SIMD
 
 using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST
+using Beamlines: isactive
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
 

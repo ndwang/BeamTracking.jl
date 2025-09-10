@@ -32,7 +32,6 @@ v2 = [
     b3 = Bunch(deepcopy(v1), species=Species("electron"))
     track!(b3, b3r)
     @test b3.coords.state == [STATE_LOST, STATE_LOST, STATE_LOST, STATE_ALIVE, STATE_LOST, STATE_LOST]
-    println(b3.coords.v[3,:])
 
     b4 = Bunch(deepcopy(v1), species=Species("electron"))
     track!(b4, b4r)
