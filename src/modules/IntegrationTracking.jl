@@ -11,7 +11,7 @@ macro def_integrator_struct(name)
       num_steps::Int 
       ds_step::Float64
   
-      function $(esc(name))(; order::Int=2, num_steps::Int=-1, ds_step::Float64=-1.0)
+      function $(esc(name))(; order::Int=4, num_steps::Int=-1, ds_step::Float64=-1.0)
         _order = order
         _num_steps = num_steps
         _ds_step = ds_step
@@ -680,7 +680,7 @@ function omega_cavity(i, coords::Coords, a, tilde_m, omega, E0_over_Rref, t0, mm
     bz = ex
     b_vec = (bx, by, bz)
 
-    if length(mm) > 0 &&  mm[1] == 0
+    if length(mm) > 0 && mm[1] == 0
       ax = -v[i,YI] * kn[1] / 2
       ay =  v[i,XI] * kn[1] / 2
     else

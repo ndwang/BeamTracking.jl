@@ -512,7 +512,7 @@
            || b0.coords.q ≈ -[0.99999555887473 0.00000197685011 0.00297918168991 0.00008187412527])
 
     # Pure solenoid:
-    ele = LineElement(L=1.0, Ksol=2.0, tracking_method=SplitIntegration())
+    ele = LineElement(L=1.0, Ksol=2.0, tracking_method=SplitIntegration(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -524,7 +524,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Solenoid with quadrupole:
-    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick())
+    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -560,7 +560,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Straight pure dipole (DK):
-    ele = LineElement(L=2.0, Kn0=0.1, tilt0=pi/3, tracking_method=DriftKick())
+    ele = LineElement(L=2.0, Kn0=0.1, tilt0=pi/3, tracking_method=DriftKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -584,7 +584,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-6)
 
     # Straight dipole with quadrupole (DK):
-    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.03, tracking_method=DriftKick())
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.03, tracking_method=DriftKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -620,7 +620,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 4e-7)
 
     # Pure quadrupole (MK):
-    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick())
+    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -632,7 +632,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Skew quadrupole (MK):
-    ele = LineElement(L=2.0, Kn1=0.1, tilt1=pi/4, tracking_method=MatrixKick())
+    ele = LineElement(L=2.0, Kn1=0.1, tilt1=pi/4, tracking_method=MatrixKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -644,7 +644,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-9)
 
     # Skew quadrupole another way (MK):
-    ele = LineElement(L=2.0, Ks1=-0.1, tracking_method=MatrixKick())
+    ele = LineElement(L=2.0, Ks1=-0.1, tracking_method=MatrixKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -656,7 +656,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-9)
 
     # Pure quadrupole (DK):
-    ele = LineElement(L=2.0, Kn1=0.1, tilt1=0.1*pi, tracking_method=DriftKick())
+    ele = LineElement(L=2.0, Kn1=0.1, tilt1=0.1*pi, tracking_method=DriftKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -668,7 +668,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Quadrupole with octupole (MK):
-    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick())
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -680,7 +680,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-7)
 
     # MK multiple steps:
-    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick(num_steps=2))
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick(order=2, num_steps=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -692,7 +692,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-7)
 
     # Quadrupole with octupole (DK):
-    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=DriftKick())
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=DriftKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -704,7 +704,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 4e-8)
 
     # Pure sextupole:
-    ele = LineElement(L=2.0, Kn2=10.0, tilt2=0.2*pi, tracking_method=SplitIntegration())
+    ele = LineElement(L=2.0, Kn2=10.0, tilt2=0.2*pi, tracking_method=SplitIntegration(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -728,7 +728,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-7)
 
     # Sextupole with decapole:
-    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration())
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -854,6 +854,19 @@
                   0.0 0.0 0.0 0.0 0.0 0.0]
     @test GTPSA.jacobian(b0.coords.v) ≈ v_expected
     @test GTPSA.jacobian(b0.coords.q) ≈ q_expected
+
+    # Harmon:
+    ele_drift = LineElement(L=1515.42266673, tracking_method = SplitIntegration())
+    ele = LineElement(L=4.01667, voltage=3321.0942126011, harmon=3, tracking_method=SplitIntegration(order=6))
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    q = [1.0 0.0 0.0 0.0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele_drift, ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl.line[2])
+    v_expected = [0.08585409464295618 0.020000098546139787 0.1817082282923288 0.04000021765732963 0.04699583968073418 0.059991917674146494]
+    q_expected = [0.9999999999999998 -2.4575593797720865e-7 1.1790664630682443e-7 4.196059380193709e-12]
+    @test b0.coords.v ≈ v_expected
+    @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # Particle lost in dipole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))

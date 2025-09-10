@@ -244,9 +244,14 @@ end
   R_ref = bunch.R_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
   E0_over_Rref = rf.voltage/L/R_ref
-  omega = 2*pi*rf.rf_frequency
+  if rf.harmon_master
+    circumference = bl.beamline.line[end].s_downstream
+    omega = 2*pi*rf.harmon*C_LIGHT*beta_0/circumference
+  else
+    omega = 2*pi*rf.rf_frequency
+  end
   phi0 = rf.phi0
-  t0 = phi0/omega
+  t0 = phi0/omega 
   E_ref = BeamTracking.R_to_E(bunch.species, R_ref)
   p0c = BeamTracking.R_to_pc(bunch.species, R_ref)
   params = (beta_0, gamsqr_0, tilde_m, E_ref, p0c, BeamTracking.anom(bunch.species), omega, E0_over_Rref, t0, SA[], SA[], SA[], L)
@@ -259,7 +264,7 @@ end
   E0_over_Rref = rf.voltage/L/R_ref
   if rf.harmon_master
     circumference = bl.beamline.line[end].s_downstream
-    omega = 2*pi*harmon*C_LIGHT*beta_0/circumference
+    omega = 2*pi*rf.harmon*C_LIGHT*beta_0/circumference
   else
     omega = 2*pi*rf.rf_frequency
   end
