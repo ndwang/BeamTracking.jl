@@ -243,7 +243,7 @@ end
 @inline function thick_pure_rf(tm::Union{SplitIntegration,DriftKick}, bunch, rf, bl, L)
   R_ref = bunch.R_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
-  E0_over_Rref = rf.voltage/L/abs(R_ref)
+  E0_over_Rref = rf.voltage/L/R_ref
   if rf.harmon_master
     circumference = bl.beamline.line[end].s_downstream
     omega = 2*pi*rf.harmon*C_LIGHT*beta_0/circumference
@@ -261,7 +261,7 @@ end
 @inline function thick_bsolenoid_rf(tm::Union{SplitIntegration,SolenoidKick}, bunch, bm, rf, bl, L)
   R_ref = bunch.R_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
-  E0_over_Rref = rf.voltage/L/abs(R_ref)
+  E0_over_Rref = rf.voltage/L/R_ref
   if rf.harmon_master
     circumference = bl.beamline.line[end].s_downstream
     omega = 2*pi*rf.harmon*C_LIGHT*beta_0/circumference
