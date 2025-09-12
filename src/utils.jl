@@ -255,6 +255,75 @@ function compute_time(z, pz, ref)
   return t
 end
 
+
+"""
+This function computes J_0(sqrt(x)) and J_1(sqrt(x))/sqrt(x), which are 
+necessary for tracking through a cylindrical pillbox cavity.
+"""
+@inline function bessel01_RF(x)
+  threshold = 2.9e-7 # sqrt(64*eps(Float64))
+  sq = sqrt(x)
+  b0_out = besselj(0, sq)
+  b1 = besselj(1, sq)
+  b1 = b1/sq
+  b1_out = ifelse(x > threshold, b1, 1/2-x/16)
+  return b0_out, b1_out
+end
+
+
+"""
+This function computes J_0(sqrt(x)) and J_1(sqrt(x))/sqrt(x), which are 
+necessary for tracking through a cylindrical pillbox cavity.
+"""
+@inline function bessel01_RF(x::Vec{N, T}) where {N, T}
+  threshold = 2.9e-7 # sqrt(64*eps(Float64))
+  sq = sqrt(x)
+  b0_out = SIMDMathFunctions.vmap(besselj0, sq)
+  b1 = SIMDMathFunctions.vmap(besselj1, sq)
+  b1 = b1/sq
+  b1_out = vifelse(x > threshold, b1, 1/2-x/16)
+  return b0_out, b1_out
+end
+
+
+"""
+This function computes J_0(sqrt(x)) and J_1(sqrt(x))/sqrt(x), which are 
+necessary for tracking through a cylindrical pillbox cavity.
+"""
+function bessel01_RF(x::TPS{T}) where {T}
+  ε = eps(T)
+  N_max = 100
+  N = 1
+  conv0 = false
+  conv1 = false
+  y = one(x)
+  prev0 = one(x)
+  prev1 = one(x)
+  result0 = one(x)
+  result1 = one(x)/2
+  @FastGTPSA begin
+    while !(conv0 && conv1) && N < N_max
+      y = -y*x/(4*N*N)
+      result0 = result0 + y
+      result1 = result1 + y/(2*(N + 1))
+      N += 1
+      if normTPS(result0 - prev0) < ε
+        conv0 = true
+      end
+      if normTPS(result1 - prev1) < ε
+        conv1 = true
+      end
+      prev0 = result0
+      prev1 = result1
+    end
+  end
+  if N == N_max
+    @warn "bessel01_RF convergence not reached in $N_max iterations"
+  end
+  return result0, result1
+end
+
+
 # Particle energy conversions =============================================================
 R_to_E(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT*chargeof(species))^2 + massof(species)^2)
 E_to_R(species::Species, E) = @FastGTPSA massof(species)*sinh(acosh(E/massof(species)))/C_LIGHT/chargeof(species) 
