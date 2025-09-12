@@ -34,8 +34,8 @@ include("types.jl")
 include("time.jl")
 include("kernel.jl")
 
-include("kernels/alignment_tracking.jl")
-include("kernels/aperture_tracking.jl")
+include("kernels/alignment_kernal.jl")
+include("kernels/aperture_kernal.jl")
 include("kernels/coord_rotation.jl")
 include("modules/ExactTracking.jl") #; TRACKING_METHOD(::ExactTracking) = Exact
 include("modules/LinearTracking.jl") #; TRACKING_METHOD(::LinearTracking) = Linear
