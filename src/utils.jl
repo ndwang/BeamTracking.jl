@@ -5,25 +5,18 @@ AcceleratorSimUtils.jl in the end.
 
 =#
 
-@inline vifelse(
-  cond::Union{Bool,SIMD.Vec{N, Bool}}, 
-  a::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes}, 
-  b::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes, T}
-) where {N,T} = SIMD.vifelse(cond, a, b)
 
-@inline vifelse(
-  cond::Union{Bool,SIMD.Vec{N, Bool}}, 
-  a::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes, T}, 
-  b::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes}
-) where {N,T} = SIMD.vifelse(cond, a, b)
 
-@inline vifelse(
-  cond::Union{Bool,SIMD.Vec{N, Bool}}, 
-  a::T, 
-  b::T
-) where {N,T} = SIMD.vifelse(cond, a, b)
-
-@inline vifelse(cond::Union{Bool,SIMD.Vec{N, Bool}}, a, b) where {N} = ifelse(cond, a, b)
+# Straight from SIMD.jl:
+@inline vifelse(v::Bool, v1::SIMD.Vec{N, T}, v2::SIMD.Vec{N, T}) where {N, T} = SIMD.vifelse(v, v1, v2)
+@inline vifelse(v::Bool, v1::SIMD.Vec{N, T}, v2::ScalarTypes) where {N, T} = SIMD.vifelse(v, v1, v2)
+@inline vifelse(v::Bool, v1::ScalarTypes, v2::SIMD.Vec{N, T}) where {N, T} = SIMD.vifelse(v, v1, v2)
+@inline vifelse(v::Bool, v1::T, v2::T) where {T} = SIMD.vifelse(v, v1, v2)
+@inline vifelse(v::SIMD.Vec{N, Bool}, v1::SIMD.Vec{N, T}, v2::SIMD.Vec{N, T}) where {N, T} = SIMD.vifelse(v, v1, v2)
+@inline vifelse(v::SIMD.Vec{N, Bool}, v1::T2, v2::SIMD.Vec{N, T}) where {N, T, T2 <:ScalarTypes} = SIMD.vifelse(v, v1, v2)
+@inline vifelse(v::SIMD.Vec{N, Bool}, v1::SIMD.Vec{N, T}, v2::T2) where {N, T, T2 <:ScalarTypes} = SIMD.vifelse(v, v1, v2)
+# Fallback for type unstable:
+@inline vifelse(v::Union{Bool,SIMD.Vec{N, Bool}}, v1, v2) where {N} = ifelse(v, v1, v2)
 
 #  Math =======================================================================
 # u corresponds to unnormalized
