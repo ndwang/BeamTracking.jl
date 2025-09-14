@@ -17,10 +17,10 @@
   quat_rotate!(p, q)
   coords.q = vifelse(isnothing(coords.q), coords.q, quat_mul(q, coords.q))
 
-  v[i,XI]  = velseif(coords.state[i]==STATE_ALIVE, r[1], v[i,XI])
-  v[i,YI]  = velseif(coords.state[i]==STATE_ALIVE, r[2], v[i,YI])
-  v[i,PXI] = velseif(coords.state[i]==STATE_ALIVE, p[1], v[i,PXI])
-  v[i,PYI] = velseif(coords.state[i]==STATE_ALIVE, p[2], v[i,PYI])
+  v[i,XI]  = vifelse(coords.state[i]==STATE_ALIVE, r[1], v[i,XI])
+  v[i,YI]  = vifelse(coords.state[i]==STATE_ALIVE, r[2], v[i,YI])
+  v[i,PXI] = vifelse(coords.state[i]==STATE_ALIVE, p[1], v[i,PXI])
+  v[i,PYI] = vifelse(coords.state[i]==STATE_ALIVE, p[2], v[i,PYI])
 
   exact_drift!(i, coords, beta_0, gamsqr_0, tilde_m, ele_orient * L2 - r[3])
 end
