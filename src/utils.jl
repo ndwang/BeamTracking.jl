@@ -7,8 +7,20 @@ AcceleratorSimUtils.jl in the end.
 
 @inline vifelse(
   cond::Union{Bool,SIMD.Vec{N, Bool}}, 
-  a::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes, T}, 
+  a::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes}, 
   b::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes, T}
+) where {N,T} = SIMD.vifelse(cond, a, b)
+
+@inline vifelse(
+  cond::Union{Bool,SIMD.Vec{N, Bool}}, 
+  a::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes, T}, 
+  b::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes}
+) where {N,T} = SIMD.vifelse(cond, a, b)
+
+@inline vifelse(
+  cond::Union{Bool,SIMD.Vec{N, Bool}}, 
+  a::T, 
+  b::T
 ) where {N,T} = SIMD.vifelse(cond, a, b)
 
 @inline vifelse(cond::Union{Bool,SIMD.Vec{N, Bool}}, a, b) where {N} = ifelse(cond, a, b)
