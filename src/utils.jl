@@ -11,7 +11,7 @@ AcceleratorSimUtils.jl in the end.
   b::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes, T}
 ) where {N,T} = SIMD.vifelse(cond, a, b)
 
-@inline vifelse(cond::Union{Bool,SIMD.Vec{N, Bool}}, a, b) = ifelse(cond, a, b)
+@inline vifelse(cond::Union{Bool,SIMD.Vec{N, Bool}}, a, b) where {N} = ifelse(cond, a, b)
 
 #  Math =======================================================================
 # u corresponds to unnormalized
