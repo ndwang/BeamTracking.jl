@@ -5,6 +5,14 @@ AcceleratorSimUtils.jl in the end.
 
 =#
 
+@inline vifelse(
+  cond::Union{Bool,SIMD.Vec{N, Bool}}, 
+  a::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes, T}, 
+  b::Union{SIMD.Vec{N, T}, SIMD.ScalarTypes, T}
+) where {N,T} = SIMD.vifelse(cond, a, b)
+
+@inline vifelse(cond::Union{Bool,SIMD.Vec{N, Bool}}, a, b) = ifelse(cond, a, b)
+
 #  Math =======================================================================
 # u corresponds to unnormalized
 
@@ -30,7 +38,7 @@ function sincu(x)
   #end
 
   threshold = 0.0004 # (120*eps(Float64))^(1/4)
-  return vifelse(abs(x) > threshold, sin(x)/x, 1-x*x/6)
+  return vifelse(abs(x) > threshold, sin(x)/x, 1-x^2/6)
 end
 
 # sinhcu copied from Boost library and correct limit behavior added
@@ -48,7 +56,7 @@ function sinhcu(x)
   #end
 
   threshold = 0.0004 # (120*eps(Float64))^(1/4)
-  return vifelse(abs(x) > threshold, sinh(x)/x, 1+x*x/6)
+  return vifelse(abs(x) > threshold, sinh(x)/x, 1+x^2/6)
 end
 
 
@@ -57,15 +65,15 @@ function atan2(y, x)
 end
 
 
-function atan2(y::Vec{N, T}, x::Vec{N, T}) where {N, T}
+function atan2(y::SIMD.Vec{N, T}, x::SIMD.Vec{N, T}) where {N, T}
   arctan = atan(y/x)
   return vifelse(x > 0, arctan,
-         vifelse((x < 0)  & (y >= 0),  arctan + Vec{N, T}(T(pi)),
-         vifelse((x < 0)  & (y < 0),   arctan - Vec{N, T}(T(pi)),
-         vifelse((x == 0) & (y > 0),   Vec{N, T}(pi/2),
-         vifelse((x == 0) & (y < 0),   Vec{N, T}(-pi/2),
-         vifelse((x == 0) & (y == 0),  Vec{N, T}(0), 
-         Vec{N, T}(NaN)))))))
+         vifelse((x < 0)  & (y >= 0),  arctan + SIMD.Vec{N, T}(T(pi)),
+         vifelse((x < 0)  & (y < 0),   arctan - SIMD.Vec{N, T}(T(pi)),
+         vifelse((x == 0) & (y > 0),   SIMD.Vec{N, T}(pi/2),
+         vifelse((x == 0) & (y < 0),   SIMD.Vec{N, T}(-pi/2),
+         vifelse((x == 0) & (y == 0),  SIMD.Vec{N, T}(0), 
+         SIMD.Vec{N, T}(NaN)))))))
 end
 
 
@@ -275,7 +283,7 @@ end
 This function computes J_0(sqrt(x)) and J_1(sqrt(x))/sqrt(x), which are 
 necessary for tracking through a cylindrical pillbox cavity.
 """
-@inline function bessel01_RF(x::Vec{N, T}) where {N, T}
+@inline function bessel01_RF(x::SIMD.Vec{N, T}) where {N, T}
   threshold = 2.9e-7 # sqrt(64*eps(Float64))
   sq = sqrt(x)
   b0_out = SIMDMathFunctions.vmap(besselj0, sq)

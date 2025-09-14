@@ -12,10 +12,10 @@ using GTPSA,
       SpecialFunctions
 
 using KernelAbstractions
+using SIMD: SIMD
       
 import GTPSA: sincu, sinhcu, normTPS
 import Base: setproperty!
-import SIMD: Vec
 
 # Put AtomicAndPhysicalConstants in a box for now for safety
 include("Constants.jl")
