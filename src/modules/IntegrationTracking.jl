@@ -679,7 +679,7 @@ end
 """
 This function rotates particle i's quaternion in a cavity.
 """
-@makekernel fastgtpsa=false function rotate_spin_cavity!(i, coords::Coords, a, tilde_m, omega, E0_over_Rref, t0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function rotate_spin_cavity!(i, coords::Coords, a, tilde_m, omega, E0_over_Rref, t0, mm, kn, ks, L)
   q2 = coords.q
   alive = (coords.state[i] == STATE_ALIVE)
   q1 = expq(omega_cavity(i, coords, a, tilde_m, omega, E0_over_Rref, t0, mm, kn, ks, L), alive)
