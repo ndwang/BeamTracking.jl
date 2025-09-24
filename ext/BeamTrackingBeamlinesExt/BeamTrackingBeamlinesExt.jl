@@ -34,6 +34,7 @@ end
 function track!(
   bunch::Bunch,
   bl::Beamline;
+  t_ref::Ref=Ref{eltype(bunch.coords.v)}(0),
   outer_particle_loop::Bool=false,
   kwargs...
 )
