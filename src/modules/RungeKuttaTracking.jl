@@ -7,7 +7,7 @@ Module implementing particle tracking through arbitrary electromagnetic fields u
 """
 module RungeKuttaTracking
 using ..BeamTracking
-using ..BeamTracking: @makekernel, BunchView
+using ..BeamTracking: @makekernel, Coords
 
 const TRACKING_METHOD = RungeKutta
 
@@ -25,13 +25,10 @@ Perform a single 4th order Runge-Kutta step.
 - `params`: Additional parameters for the field function
 """
 function rk4_step!(u, t, h, field_func, params)
-  # Intermediate stages
-  k1 = field_func(u, 0.0, params)
-  k2 = field_func(u .+ (h / 2) .* k1, h / 2, params)
-  k3 = field_func(u .+ (h / 2) .* k2, h / 2, params)
-  k4 = field_func(u .+ h .* k3, h, params)
-
-  # Final update
+  k1 = field_func(u, t, params)
+  k2 = field_func(u .+ (h / 2) .* k1, t + h / 2, params)
+  k3 = field_func(u .+ (h / 2) .* k2, t + h / 2, params)
+  k4 = field_func(u .+ h .* k3, t + h, params)
   u .+= (h / 6) .* (k1 .+ 2 .* k2 .+ 2 .* k3 .+ k4)
 end
 
@@ -42,14 +39,14 @@ Track a particle through a drift space with arbitrary field using 4th order Rung
 
 # Arguments
 - `i`: Particle index
-- `b`: BunchView containing particle coordinates
+- `b`: Coords containing particle coordinates
 - `t_span`: Time span [t_start, t_end]
 - `field_func`: Function that returns the field. Must be of the form `field_func(u, t, params)`.
     Return value should be [px, Ex, py, Ey, pz, Ez].
 - `params`: Additional parameters for the field function
 - `n_steps`: Number of integration steps
 """
-@makekernel function rk4_track!(i, b::BunchView, t_span, field_func, params, n_steps)
+@makekernel function rk4_track!(i, b::Coords, t_span, field_func, params, n_steps)
   # Create a view of the particle coordinates
   u = view(b.v, i, :)
 

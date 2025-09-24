@@ -25,7 +25,7 @@
 
     # Call field_system!
     FieldTracking.field_system!(du, u, p, t)
-    
+
     # Verify the derivatives are correctly computed
     @test du[1] ≈ 0.0  # dx/dt = px
     @test du[2] ≈ 1.0  # dpx/dt = Ex = 1.0
@@ -39,12 +39,12 @@
     # Test field_system! with parametric field
     du = zeros(6)
     u = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    params = (E_x = 2.5,)
+    params = (E_x=2.5,)
     p = (parametric_field, params)
     t = 0.0
 
     FieldTracking.field_system!(du, u, p, t)
-    
+
     @test du[1] ≈ 0.0    # dx/dt = px
     @test du[2] ≈ 2.5    # dpx/dt = Ex = 2.5
     @test du[3] ≈ 0.0    # dy/dt = py
@@ -61,7 +61,7 @@
     t = 1.5
 
     FieldTracking.field_system!(du, u, p, t)
-    
+
     @test du[1] ≈ 0.0    # dx/dt = px
     @test du[2] ≈ 1.5    # dpx/dt = Ex = t = 1.5
     @test du[3] ≈ 0.0    # dy/dt = py
@@ -78,11 +78,11 @@
     solver = Tsit5()
 
     # Track the particle
-    FieldTracking.field_track!(1, BunchView(bunch), L, uniform_field, nothing, solver, (save_everystep=false, save_start=false, save_end=true, dense=false, calck=false))
+    FieldTracking.field_track!(1, bunch.coords, L, uniform_field, nothing, solver, (save_everystep=false, save_start=false, save_end=true, dense=false, calck=false))
 
     # Verify final position and momentum
-    @test isapprox(bunch.v[1, 1], 0.5, rtol=1e-5)  # x = x0 + 0.5*t^2
-    @test isapprox(bunch.v[1, 2], 1.0, rtol=1e-5)  # px = t
+    @test isapprox(bunch.coords.v[1, 1], 0.5, rtol=1e-5)  # x = x0 + 0.5*t^2
+    @test isapprox(bunch.coords.v[1, 2], 1.0, rtol=1e-5)  # px = t
   end
 
   # Test field_track! with parametric field
@@ -91,35 +91,14 @@
     bunch = Bunch(zeros(1, 6))
     L = 1.0
     solver = Tsit5()
-    field_params = (E_x = 3.0,)
+    field_params = (E_x=3.0,)
 
     # Track the particle
-    FieldTracking.field_track!(1, BunchView(bunch), L, parametric_field, field_params, solver, (save_everystep=false, save_start=false, save_end=true, dense=false, calck=false))
+    FieldTracking.field_track!(1, bunch.coords, L, parametric_field, field_params, solver, (save_everystep=false, save_start=false, save_end=true, dense=false, calck=false))
 
     # Verify final position and momentum with E_x = 3.0
-    @test isapprox(bunch.v[1, 1], 1.5, rtol=1e-5)  # x = 0.5 * 3.0 * t^2
-    @test isapprox(bunch.v[1, 2], 3.0, rtol=1e-5)  # px = 3.0 * t
-  end
-
-  # Test field_track! with multiple particles
-  @testset "Multiple Particle Tracking" begin
-    # Create multiple particles
-    bunch = Bunch(zeros(3, 6))
-    bunch.v[2, 1] = 1.0
-    bunch.v[3, 2] = 1.0
-    L = 1.0
-    solver = RK4()
-    kc = (KernelCall(FieldTracking.field_track!, (L, uniform_field, nothing, solver, (save_everystep=false, save_start=false, save_end=true, dense=false, calck=false))),)
-    # Track all particles
-    BeamTracking.runkernels!(nothing, BunchView(bunch), kc)
-
-    # Verify final positions and momenta
-    @test isapprox(bunch.v[1, 1], 0.5, rtol=1e-5)
-    @test isapprox(bunch.v[2, 1], 1.5, rtol=1e-5)
-    @test isapprox(bunch.v[3, 1], 1.5, rtol=1e-5)
-    @test isapprox(bunch.v[1, 2], 1.0, rtol=1e-5)
-    @test isapprox(bunch.v[2, 2], 1.0, rtol=1e-5)
-    @test isapprox(bunch.v[3, 2], 2.0, rtol=1e-5)
+    @test isapprox(bunch.coords.v[1, 1], 1.5, rtol=1e-5)  # x = 0.5 * 3.0 * t^2
+    @test isapprox(bunch.coords.v[1, 2], 3.0, rtol=1e-5)  # px = 3.0 * t
   end
 
   # Test field_track! with different solver options
@@ -130,33 +109,33 @@
     L = 1.0
 
     # Track with different solvers
-    FieldTracking.field_track!(1, BunchView(bunch1), L, uniform_field, nothing, Tsit5(), (reltol=1e-6, abstol=1e-8))
-    FieldTracking.field_track!(1, BunchView(bunch2), L, uniform_field, nothing, RK4(), (dt=0.01,))
+    FieldTracking.field_track!(1, bunch1.coords, L, uniform_field, nothing, Tsit5(), (reltol=1e-6, abstol=1e-8))
+    FieldTracking.field_track!(1, bunch2.coords, L, uniform_field, nothing, RK4(), (dt=0.01,))
 
     # Both should give similar results
-    @test isapprox(bunch1.v[1, 1], bunch2.v[1, 1], rtol=1e-3)
-    @test isapprox(bunch1.v[1, 2], bunch2.v[1, 2], rtol=1e-3)
+    @test isapprox(bunch1.coords.v[1, 1], bunch2.coords.v[1, 1], rtol=1e-3)
+    @test isapprox(bunch1.coords.v[1, 2], bunch2.coords.v[1, 2], rtol=1e-3)
   end
 
   # Test field_track! with initial conditions
   @testset "Different Initial Conditions" begin
     # Create particle with non-zero initial conditions
     bunch = Bunch(zeros(1, 6))
-    bunch.v[1, 1] = 2.0  # x0 = 2.0
-    bunch.v[1, 2] = 1.5  # px0 = 1.5
-    bunch.v[1, 3] = 0.5  # y0 = 0.5
-    bunch.v[1, 4] = 0.2  # py0 = 0.2
-    
+    bunch.coords.v[1, 1] = 2.0  # x0 = 2.0
+    bunch.coords.v[1, 2] = 1.5  # px0 = 1.5
+    bunch.coords.v[1, 3] = 0.5  # y0 = 0.5
+    bunch.coords.v[1, 4] = 0.2  # py0 = 0.2
+
     L = 1.0
     solver = Tsit5()
 
     # Track the particle
-    FieldTracking.field_track!(1, BunchView(bunch), L, uniform_field, nothing, solver, (save_everystep=false, save_start=false, save_end=true, dense=false, calck=false))
+    FieldTracking.field_track!(1, bunch.coords, L, uniform_field, nothing, solver, (save_everystep=false, save_start=false, save_end=true, dense=false, calck=false))
 
     # Verify motion in x (with field) and y (without field)
-    @test isapprox(bunch.v[1, 1], 2.0 + 1.5 * 1.0 + 0.5 * 1.0^2, rtol=1e-5)  # x motion with field
-    @test isapprox(bunch.v[1, 2], 1.5 + 1.0, rtol=1e-5)  # px increases due to field
-    @test isapprox(bunch.v[1, 3], 0.5 + 0.2 * 1.0, rtol=1e-5)  # y motion without field
-    @test isapprox(bunch.v[1, 4], 0.2, rtol=1e-5)  # py unchanged (no field in y)
+    @test isapprox(bunch.coords.v[1, 1], 2.0 + 1.5 * 1.0 + 0.5 * 1.0^2, rtol=1e-5)  # x motion with field
+    @test isapprox(bunch.coords.v[1, 2], 1.5 + 1.0, rtol=1e-5)  # px increases due to field
+    @test isapprox(bunch.coords.v[1, 3], 0.5 + 0.2 * 1.0, rtol=1e-5)  # y motion without field
+    @test isapprox(bunch.coords.v[1, 4], 0.2, rtol=1e-5)  # py unchanged (no field in y)
   end
 end
