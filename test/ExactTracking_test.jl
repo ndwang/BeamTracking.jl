@@ -777,7 +777,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     L = 0.5
     theta = g * L 
     k0 = 1.001
-    test_matrix(exact_bend_1, KernelCall(ExactTracking.exact_bend!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_1, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
 
     exact_bend_2 = 
       [ 0.1139493927324543E+01  0.6225083696592777E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 -0.1231653667943533E-15   
@@ -790,7 +790,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     k0 = 0
     L = 0.5
     theta = g * L
-    test_matrix(exact_bend_2, KernelCall(ExactTracking.exact_bend!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_2, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
 
     exact_bend_3 = 
       [ 0.1000000000000000E+01 0.5598925109558526E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.1330944687907870E+00  
@@ -803,7 +803,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     g = 0
     L = 0.5
     theta = g * L
-    test_matrix(exact_bend_3, KernelCall(ExactTracking.exact_bend!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_3, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
 
     exact_bend_4 = 
       [ 0.1127528195871212E+01  0.6609770864392946E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 -0.1472939489803990E+00   
@@ -816,7 +816,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     g = 0.4
     L = 0.5
     theta = g * L
-    test_matrix(exact_bend_4, KernelCall(ExactTracking.exact_bend!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_4, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
 
     exact_bend_5 = 
       [ 0.1283686050523820E+01 0.7804509524043607E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00  0.1379043012645095E+00  
@@ -829,7 +829,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     g = -0.8
     L = 0.5
     theta = g * L
-    test_matrix(exact_bend_5, KernelCall(ExactTracking.exact_bend!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_5, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
 
     exact_bend_6 = 
       [ 0.9005939074669641E+00 0.4858928367401870E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 -0.1117303574601966E+00  
@@ -842,7 +842,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     g = -1
     L = 0.5
     theta = g * L
-    test_matrix(exact_bend_6, KernelCall(ExactTracking.exact_bend!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_6, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
   end
 
 
@@ -858,18 +858,18 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     W = SA[cx*cy*cz + sx*sy*sz, 
            cy*cz*sx + cx*sy*sz,
            cx*cz*sy - cy*sx*sz,
-           -cz*sx*sy + cx*cy*sz]'
+           -cz*sx*sy + cx*cy*sz]
 
-    # Test w_quaternion function
-    @test ExactTracking.w_quaternion(dx_rot, dy_rot, dz_rot) ≈ W
+    # Test rot_quaternion function
+    @test rot_quaternion(dx_rot, dy_rot, dz_rot) ≈ W
 
     Winv = SA[cx*cy*cz + sx*sy*sz,
               -cy*cz*sx - cx*sy*sz,
               -cx*cz*sy + cy*sx*sz,
-              cz*sx*sy - cx*cy*sz]'
+              cz*sx*sy - cx*cy*sz]
 
-    # Test w_inv_quaternion function
-    @test ExactTracking.w_inv_quaternion(dx_rot, dy_rot, dz_rot) ≈ Winv
+    # Test inv_rot_quaternion function
+    @test inv_rot_quaternion(dx_rot, dy_rot, dz_rot) ≈ Winv
   end
 
   @testset "Kernels" begin
@@ -883,7 +883,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
         dx = T(2)
         dy = T(3)
         dz = T(4)
-        winv = ExactTracking.w_inv_quaternion(T(-5),T(6),T(7))
+        winv = ExactTracking.inv_rot_quaternion(T(-5),T(6),T(7))
         w31 = 2*(winv[QX]*winv[QZ] - winv[QY]*winv[Q0])
         w32 = 2*(winv[QY]*winv[QZ] + winv[QX]*winv[Q0])
         w33 = 1 - 2*(winv[QX]^2 + winv[QY]^2)
