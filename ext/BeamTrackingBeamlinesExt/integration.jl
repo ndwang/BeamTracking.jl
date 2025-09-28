@@ -64,7 +64,7 @@ end
 @inline drift(tm::Union{SplitIntegration,DriftKick}, bunch, L) = drift(Exact(), bunch, L)
 
 @inline function thick_pure_bsolenoid(tm::Union{SplitIntegration,SolenoidKick}, bunch, bm, L) 
-  if isnothing(bunch.coords.q)
+  if isnothing(bunch.coords.q) # and no radiation
     return thick_pure_bsolenoid(Exact(), bunch, bm, L)
   else
     R_ref = bunch.R_ref
@@ -73,7 +73,9 @@ end
     Ksol, Ksol_skew = get_strengths(bm, L, R_ref)
     kn = SA[Ksol]
     ks = SA[Ksol_skew]
-    params = (beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), Ksol, mm, kn, ks)
+    q = BeamTracking.chargeof(bunch.species)
+    mc2 = BeamTracking.massof(bunch.species)
+    params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), Ksol, mm, kn, ks)
     return integration_launcher!(IntegrationTracking.sks_multipole!, params, tm, L)
   end
 end
@@ -84,7 +86,9 @@ end
   mm = bm.order
   kn, ks = get_strengths(bm, L, R_ref)
   Ksol = kn[1]
-  params = (beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), Ksol, mm, kn, ks)
+  q = BeamTracking.chargeof(bunch.species)
+  mc2 = BeamTracking.massof(bunch.species)
+  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), Ksol, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.sks_multipole!, params, tm, L)
 end
 
@@ -93,7 +97,9 @@ end
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
   mm = bm.order
   kn, ks = get_strengths(bm, L, R_ref)
-  params = (beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), SA[mm], SA[kn], SA[ks])
+  q = BeamTracking.chargeof(bunch.species)
+  mc2 = BeamTracking.massof(bunch.species)
+  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), SA[mm], SA[kn], SA[ks])
   return integration_launcher!(IntegrationTracking.dkd_multipole!, params, tm, L)
 end
 
@@ -102,7 +108,9 @@ end
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
   mm = bm.order
   kn, ks = get_strengths(bm, L, R_ref)
-  params = (beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), mm, kn, ks)
+  q = BeamTracking.chargeof(bunch.species)
+  mc2 = BeamTracking.massof(bunch.species)
+  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), mm, kn, ks)
   return integration_launcher!(IntegrationTracking.dkd_multipole!, params, tm, L)
 end
 
@@ -118,7 +126,9 @@ end
     tilt = atan2(ks, kn)
     w = rot_quaternion(0,0,tilt)
     w_inv = inv_rot_quaternion(0,0,tilt)
-    params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, w, w_inv, k0, SA[mm], SA[kn], SA[ks])
+    q = BeamTracking.chargeof(bunch.species)
+    mc2 = BeamTracking.massof(bunch.species)
+    params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, w, w_inv, k0, SA[mm], SA[kn], SA[ks])
     return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
   end
 end
@@ -132,7 +142,9 @@ end
   tilt = atan2(ks[1], kn[1])
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
-  params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, w, w_inv, k0, mm, kn, ks)
+  q = BeamTracking.chargeof(bunch.species)
+  mc2 = BeamTracking.massof(bunch.species)
+  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, BeamTracking.anom(bunch.species), 0, 0, 0, w, w_inv, k0, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
 end
 
@@ -152,7 +164,9 @@ end
   tilt = ifelse(mm[2] == 2, quad_tilt, quad_tilt_0)
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
-  params = (beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), w, w_inv, k1, mm, kn, ks)
+  q = BeamTracking.chargeof(bunch.species)
+  mc2 = BeamTracking.massof(bunch.species)
+  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), w, w_inv, k1, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, L)
 end
 
@@ -176,7 +190,9 @@ end
   tilt = atan2(ks, kn) / 2
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
-  params = (beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), w, w_inv, k1, SA[mm], SA[kn], SA[ks])
+  q = BeamTracking.chargeof(bunch.species)
+  mc2 = BeamTracking.massof(bunch.species)
+  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), w, w_inv, k1, SA[mm], SA[kn], SA[ks])
   return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, L)
 end
 
@@ -195,7 +211,9 @@ end
   tilt = atan2(ks[1], kn[1]) / 2
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
-  params = (beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), w, w_inv, k1, mm, kn, ks)
+  q = BeamTracking.chargeof(bunch.species)
+  mc2 = BeamTracking.massof(bunch.species)
+  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, BeamTracking.anom(bunch.species), w, w_inv, k1, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, L)
 end
 
@@ -213,7 +231,7 @@ end
   thick_bend_no_field(Exact(), bunch, bendparams, L)
 
 @inline function thick_bend_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm1, L)
-  if isnothing(bunch.coords.q)
+  if isnothing(bunch.coords.q) # and no radiation
     return thick_bend_pure_bdipole(Exact(), bunch, bendparams, bm1, L)
   else
     R_ref = bunch.R_ref
@@ -228,7 +246,9 @@ end
     Ks0 ≈ 0 || error("A skew dipole field cannot yet be used in a bend")
     w = rot_quaternion(0,0,tilt)
     w_inv = inv_rot_quaternion(0,0,tilt)
-    params = (tilde_m, beta_0, BeamTracking.anom(bunch.species), e1, e2, g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])
+    q = BeamTracking.chargeof(bunch.species)
+    mc2 = BeamTracking.massof(bunch.species)
+    params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, BeamTracking.anom(bunch.species), e1, e2, g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])
     return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
   end
 end

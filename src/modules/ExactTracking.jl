@@ -270,7 +270,7 @@ provided, a linear hard-edge fringe map is applied at both ends.
   arg = v[i,PXI] / pt
   abs_arg = abs(arg)
   arg_1 = one(arg)
-  good_arg = (abs_arg <= arg_1)
+  good_arg = (abs_arg < arg_1)
   coords.state[i] = vifelse(!good_arg & alive, STATE_LOST, coords.state[i])
   alive = (coords.state[i] == STATE_ALIVE)
 
