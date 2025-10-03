@@ -83,8 +83,8 @@ bv_m4  = [               3.00, 2.40, 1.80, 1.20 ] .* fact2_5  # T/m^{n-1}
 # -- species
 #e_minus = Species("electron")
 #p_plus =  Species("proton")
-#mec2 = BeamTracking.massof(e_minus) # 0.51099895069 MeV
-#mpc2 = BeamTracking.massof(p_plus)  # 938.27208943 MeV
+#mec2 = massof(e_minus) # 0.51099895069 MeV
+#mpc2 = massof(p_plus)  # 938.27208943 MeV
 mec2 = 0.51099895069e6 # eV
 mpc2 = 938.27208943e6  # eV
 
@@ -762,7 +762,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
 
     ###### Exact Sector Bend ##########
     p0c = 10E6
-    tilde_m = BeamTracking.massof(Species("electron"))/p0c
+    tilde_m = massof(Species("electron"))/p0c
     beta_0 = 1/sqrt(1 + tilde_m^2)
     I = SA[1 0 0; 0 1 0; 0 0 1]
 
@@ -875,7 +875,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
   @testset "Kernels" begin
     function patch_args(::Type{T}) where {T}
         p0c = T(10e6)
-        mc2 = T(BeamTracking.massof(Species("electron")))
+        mc2 = T(massof(Species("electron")))
         tilde_m = mc2/p0c
         gamsqr_0 = 1 + 1/tilde_m^2
         beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -893,7 +893,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
 
     function patch_norot_args(::Type{T}) where {T}
         p0c = T(10e6)
-        mc2 = T(BeamTracking.massof(Species("electron")))
+        mc2 = T(massof(Species("electron")))
         tilde_m = mc2/p0c
         gamsqr_0 = 1 + 1/tilde_m^2
         beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -908,7 +908,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     function drift_args(::Type{T}) where {T}
         L = T(1)
         p0c = T(10e6)
-        mc2 = T(BeamTracking.massof(Species("electron")))
+        mc2 = T(massof(Species("electron")))
         tilde_m = mc2/p0c
         gamsqr_0 = 1 + 1/tilde_m^2
         beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -919,7 +919,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
         L = T(1)
         ks = T(2)
         p0c = T(10e6)
-        mc2 = T(BeamTracking.massof(Species("electron")))
+        mc2 = T(massof(Species("electron")))
         tilde_m = mc2/p0c
         gamsqr_0 = 1 + 1/tilde_m^2
         beta_0 = 1/sqrt(1 + tilde_m^2)

@@ -349,21 +349,6 @@ R_to_beta_gamma(species::Species, R) = @FastGTPSA R*chargeof(species)*C_LIGHT/ma
 R_to_v(species::Species, R) = @FastGTPSA chargeof(species)*C_LIGHT / sqrt(1+(massof(species)/(R*C_LIGHT))^2)
 beta_gamma_to_v(beta_gamma) = @FastGTPSA C_LIGHT*beta_gamma/sqrt(1+beta_gamma^2)
 
-# Fake APC because APC is not working for now :(
-function anom(species::Species) 
-  if nameof(species) == "electron"
-    return 0.00115965218046
-  elseif nameof(species) == "positron"
-    return 0.0011596521735304233
-  elseif nameof(species) == "proton"
-    return 1.7928473446300592
-  elseif nameof(species) == "anti-proton"
-    return 1.7928473446300592
-  else
-    return 0.0
-  end
-end
-
 #=
 
 

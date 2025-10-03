@@ -9,7 +9,8 @@ using GTPSA,
       MacroTools,
       Adapt,
       Accessors,
-      SpecialFunctions
+      SpecialFunctions,
+      AtomicAndPhysicalConstants
 
 using KernelAbstractions
 using SIMD: SIMD
@@ -17,17 +18,13 @@ using SIMD: SIMD
 import GTPSA: sincu, sinhcu, normTPS
 import Base: setproperty!
 
-# Put AtomicAndPhysicalConstants in a box for now for safety
-include("Constants.jl")
-using .Constants: Constants, Species, massof, chargeof, nameof, C_LIGHT, isnullspecies
-export Species
-
 export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, quat_mul, atan2, Time, TimeDependentParam
 export LinearTracking, Linear
 export ExactTracking, Exact
 export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
 export track!
 export rot_quaternion, inv_rot_quaternion
+export Species
 
 include("utils.jl")
 include("types.jl")
