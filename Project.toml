@@ -27,7 +27,7 @@ BeamTrackingBeamlinesExt = "Beamlines"
 [compat]
 Accessors = "0.1.42"
 Adapt = "4.3.0"
-AtomicAndPhysicalConstants = "0.8"
+AtomicAndPhysicalConstants = "0.8.1"
 Beamlines = "0.6.3"
 GTPSA = "1.4.7"
 KernelAbstractions = "0.9.35"
