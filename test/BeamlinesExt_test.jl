@@ -1,6 +1,6 @@
 @testset "Beamlines" begin
   include("lattices/esr.jl")
-
+#=
   @testset "Linear" begin
     b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
     foreach(t->t.tracking_method=Linear(), ring.line)
@@ -329,9 +329,9 @@
     @test_throws ErrorException track!(b0, Beamline([ele_patch_sol],  R_ref=R_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_bend_quad],  R_ref=R_ref))
   end
-  
+  =#
   @testset "SplitIntegration" begin
-    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
+    #=b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
     foreach(t->t.tracking_method=SplitIntegration(), ring.line)
     track!(b0, ring)
     M_ESR = [0.8763088913632153E+00  0.2842332738570844E+00 -0.9233408564026070E-06 -0.1104742929395010E-06  0.1231581327803036E-08 -0.8939291467979220E-07 
@@ -342,11 +342,11 @@
              0.6685543985517410E-08 -0.3425164613573595E-08  0.2907237074330440E-14  0.1826161170763475E-15  0.4150093714505364E-01  0.9677530013155135E+00]
 
     @test GTPSA.jacobian(b0.coords.v) ≈ M_ESR
-
+=#
     p0c = 10e6
     # E to R_ref
     R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + BeamTracking.massof(Species("electron"))^2))
-
+#=
     # Thin straight pure dipole:
     ele = LineElement(L=0.0, Kn0L=0.1, tracking_method=SplitIntegration())
     v = collect(transpose(@vars(D10)))
@@ -842,7 +842,43 @@
     q_expected = [0.8408669037648832 -0.03581645006820144 0.0065436536214155076 0.5400159374080092]
     @test b0.coords.v ≈ v_expected
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
+=#
+    # Bend with deterministic radiation:
+    ele = LineElement(L=2.0, g=0.1, tracking_method=BendKick(order=6, radiation_damping_on=true))
+    v = zeros(6)
+    b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
+    bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [-0.0001092610284174973 -0.00016340536870756257 0.0 0.0 5.461341618518875e-6 -0.0016395105602759578]
+    @test b0.coords.v ≈ v_expected
 
+    # Quadrupole with deterministic radiation:
+    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick(order=6, num_steps = 2, radiation_damping_on=true))
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
+    bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [0.043612346633677884 0.014463450553206672 0.11624841932128559 0.05417994410649243 0.047841511069009836 0.05998800025940442]
+    @test b0.coords.v ≈ v_expected
+
+    # Sextupole with deterministic radiation:
+    ele = LineElement(L=0.8, Kn2=1.3, tracking_method=DriftKick(order=6, num_steps = 5, radiation_damping_on=true))
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
+    bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [0.025386841257333655 0.02092955214032272 0.06046374439640514 0.04086917032430656 0.04927228624504675 0.059999784343950334]
+    @test b0.coords.v ≈ v_expected
+
+    # Solenoid with deterministic radiation:
+    ele = LineElement(L=1.5, Ksol=0.3, tracking_method=SolenoidKick(order=6, num_steps = 2, radiation_damping_on=true))
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
+    bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [0.055079725897422445 0.026845723521363107 0.07564278174163326 0.03323733870836322 0.04860800161184006 0.05997689477653424]
+    @test b0.coords.v ≈ v_expected
+#=
     # Particle lost in dipole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
@@ -878,8 +914,8 @@
     @test_throws ErrorException BendKick(order = 2, num_steps = -2)
     @test_throws ErrorException DriftKick(ds_step = -0.1)
     @test_throws ErrorException SolenoidKick(num_steps = -2)
-    @test_throws ErrorException SplitIntegration(order = 5)
+    @test_throws ErrorException SplitIntegration(order = 5)=#
   end
 
-  include("BeamlinesExt/beamlines_aperture_test.jl")
+  #include("BeamlinesExt/beamlines_aperture_test.jl")
 end

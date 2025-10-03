@@ -64,7 +64,7 @@ end
 @inline drift(tm::Union{SplitIntegration,DriftKick}, bunch, L) = drift(Exact(), bunch, L)
 
 @inline function thick_pure_bsolenoid(tm::Union{SplitIntegration,SolenoidKick}, bunch, bm, L) 
-  if isnothing(bunch.coords.q) # and no radiation
+  if isnothing(bunch.coords.q) && !(tm.radiation_damping_on || tm.radiation_fluctuations_on)
     return thick_pure_bsolenoid(Exact(), bunch, bm, L)
   else
     R_ref = bunch.R_ref
@@ -157,7 +157,7 @@ end
   quad_0 = zero(quad)
   k1 = ifelse(mm[2] == 2, quad, quad_0)
   if k1 == 0
-    return thick_bdipole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
+    return thick_bdipole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step, radiation_damping_on=tm.radiation_damping_on, radiation_fluctuations_on=tm.radiation_fluctuations_on), bunch, bm, L)
   end
   quad_tilt = atan2(ks[2], kn[2]) / 2
   quad_tilt_0 = zero(quad_tilt)
@@ -172,9 +172,9 @@ end
 
 @inline function thick_bdipole(tm::SplitIntegration, bunch, bm, L)
   if bm.order[2] == 2
-    return thick_bdipole(MatrixKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
+    return thick_bdipole(MatrixKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step, radiation_damping_on=tm.radiation_damping_on, radiation_fluctuations_on=tm.radiation_fluctuations_on), bunch, bm, L)
   else
-    return thick_bdipole(BendKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
+    return thick_bdipole(BendKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step, radiation_damping_on=tm.radiation_damping_on, radiation_fluctuations_on=tm.radiation_fluctuations_on), bunch, bm, L)
   end
 end
 
@@ -185,7 +185,7 @@ end
   kn, ks = get_strengths(bm, L, R_ref)
   k1 = sqrt(kn^2 + ks^2)
   if k1 == 0
-    return thick_pure_bquadrupole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
+    return thick_pure_bquadrupole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step, radiation_damping_on=tm.radiation_damping_on, radiation_fluctuations_on=tm.radiation_fluctuations_on), bunch, bm, L)
   end
   tilt = atan2(ks, kn) / 2
   w = rot_quaternion(0,0,tilt)
@@ -206,7 +206,7 @@ end
   kn, ks = get_strengths(bm, L, R_ref)
   k1 = sqrt(kn[1]^2 + ks[1]^2)
   if k1 == 0
-    return thick_bquadrupole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
+    return thick_bquadrupole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step, radiation_damping_on=tm.radiation_damping_on, radiation_fluctuations_on=tm.radiation_fluctuations_on), bunch, bm, L)
   end
   tilt = atan2(ks[1], kn[1]) / 2
   w = rot_quaternion(0,0,tilt)
@@ -220,10 +220,10 @@ end
 @inline thick_bquadrupole(tm::DriftKick, bunch, bm, L) = thick_bdipole(tm, bunch, bm, L)
 
 @inline thick_pure_bmultipole(tm::Union{SplitIntegration,DriftKick}, bunch, bm, L) = 
-  thick_pure_bdipole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
+  thick_pure_bdipole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step, radiation_damping_on=tm.radiation_damping_on, radiation_fluctuations_on=tm.radiation_fluctuations_on), bunch, bm, L)
 
 @inline thick_bmultipole(tm::Union{SplitIntegration,DriftKick}, bunch, bm, L) = 
-  thick_bdipole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step), bunch, bm, L)
+  thick_bdipole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step, radiation_damping_on=tm.radiation_damping_on, radiation_fluctuations_on=tm.radiation_fluctuations_on), bunch, bm, L)
 
 
 # =========== BENDING ELEMENTS ============= #
@@ -231,7 +231,7 @@ end
   thick_bend_no_field(Exact(), bunch, bendparams, L)
 
 @inline function thick_bend_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm1, L)
-  if isnothing(bunch.coords.q) # and no radiation
+  if isnothing(bunch.coords.q) && !(tm.radiation_damping_on || tm.radiation_fluctuations_on)
     return thick_bend_pure_bdipole(Exact(), bunch, bendparams, bm1, L)
   else
     R_ref = bunch.R_ref
