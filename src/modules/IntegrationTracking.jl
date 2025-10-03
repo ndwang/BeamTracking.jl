@@ -592,36 +592,48 @@ end
 #
 # ===============  R F  ===============
 #
-@makekernel fastgtpsa=true function cavity!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, E_ref, p0c, a, omega, E0_over_Rref, t0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function cavity!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, beta_0, gamsqr_0, tilde_m, E_ref, p0c, a, omega, E0_over_Rref, t0, mm, kn, ks, L)
   multipoles = (length(mm) > 0)
   sol = (multipoles && mm[1] == 0)
   if sol
-    ExactTracking.exact_solenoid!(  i, coords, kn[1], beta_0, gamsqr_0, tilde_m, L / 2)
+    ExactTracking.exact_solenoid!(i, coords, kn[1], beta_0, gamsqr_0, tilde_m, L / 2)
   else
-    ExactTracking.exact_drift!(     i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
+    ExactTracking.exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
   end
   #t0 = t0 + (L/2)/(beta_0*C_LIGHT)
 
   if multipoles
-    ExactTracking.multipole_kick!(  i, coords, mm, kn * L / 2, ks * L / 2, -1)
+    if radiation_damping
+      deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
+    end
+    if radiation_fluctuations
+      stochastic_radiation!(      i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
+    end
+    ExactTracking.multipole_kick!(i, coords, mm, kn * L / 2, ks * L / 2, -1)
   end
 
   if isnothing(coords.q)
-    cavity_kick!(                   i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L)
+    cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L)
   else
-    cavity_kick!(                   i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L / 2)
-    rotate_spin_cavity!(            i, coords, a, tilde_m, omega, E0_over_Rref, t0, mm, kn, ks, L)
-    cavity_kick!(                   i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L / 2)
+    cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L / 2)
+    rotate_spin_cavity!(          i, coords, a, tilde_m, omega, E0_over_Rref, t0, mm, kn, ks, L)
+    cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L / 2)
   end
 
   if multipoles
-    ExactTracking.multipole_kick!(  i, coords, mm, kn * L / 2, ks * L / 2, -1)
+    ExactTracking.multipole_kick!(i, coords, mm, kn * L / 2, ks * L / 2, -1)
+    if radiation_fluctuations
+      stochastic_radiation!(      i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
+    end
+    if radiation_damping
+      deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
+    end
   end
 
   if sol
-    ExactTracking.exact_solenoid!(  i, coords, kn[1], beta_0, gamsqr_0, tilde_m, L / 2)
+    ExactTracking.exact_solenoid!(i, coords, kn[1], beta_0, gamsqr_0, tilde_m, L / 2)
   else
-    ExactTracking.exact_drift!(     i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
+    ExactTracking.exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
   end
 end
 
