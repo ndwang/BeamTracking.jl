@@ -1,4 +1,5 @@
 using Test,
+      AtomicAndPhysicalConstants,
       BeamTracking,
       Beamlines,
       JET,
@@ -122,7 +123,7 @@ function test_map(
     elseif haskey(kwargs, :E) && haskey(kwargs, :species)
       R_ref = BeamTracking.E_to_R(kwargs[:species], kwargs[:E])
     elseif haskey(kwargs, :p0c) && haskey(kwargs, :species)
-      R_ref = BeamTracking.E_to_R(kwargs[:species], sqrt(kwargs[:p0c]^2 + BeamTracking.BeamTracking.massof(kwargs[:species])^2))
+      R_ref = BeamTracking.E_to_R(kwargs[:species], sqrt(kwargs[:p0c]^2 + massof(kwargs[:species])^2))
     else
       error("`R_ref`, `E` or `p0c`, as well as `species` must both be provided as keyword arguments")
     end
