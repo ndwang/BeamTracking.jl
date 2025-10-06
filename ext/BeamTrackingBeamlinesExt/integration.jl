@@ -276,7 +276,7 @@ end
   p0c = BeamTracking.R_to_pc(bunch.species, R_ref)
   q = BeamTracking.chargeof(bunch.species)
   mc2 = BeamTracking.massof(bunch.species)
-  params = (q, mc2, beta_0, tm.radiation_damping_on, tm.radiation_fluctuations_on, gamsqr_0, tilde_m, E_ref, p0c, BeamTracking.anom(bunch.species), omega, E0_over_Rref, t0, SA[], SA[], SA[])
+  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, E_ref, p0c, BeamTracking.anom(bunch.species), omega, E0_over_Rref, t0, SA[], SA[], SA[])
   return integration_launcher!(IntegrationTracking.cavity!, params, tm, L)
 end
 

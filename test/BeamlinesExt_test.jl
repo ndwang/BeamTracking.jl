@@ -880,7 +880,7 @@
     @test b0.coords.v ≈ v_expected
 
     # Cavity-solenoid with deterministic radiation:
-    ele = LineElement(L=0.5, Ksol=0.3, rf_frequency = 1e8, voltage=-0.25e6, tracking_method=SplitIntegration(order=6, num_steps = 5, radiation_damping_on=true))
+    ele = LineElement(L=0.5, Ksol=0.3, rf_frequency=1e8, voltage=-0.25e6, tracking_method=SplitIntegration(order=6, num_steps = 5, radiation_damping_on=true))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
     bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))

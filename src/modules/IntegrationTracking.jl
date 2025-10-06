@@ -676,7 +676,6 @@ end
   alive = (coords.state[i] == STATE_ALIVE)
 
   bmad_to_mad!(i, coords, beta_0, tilde_m, E_ref, p0c)
-
   #r2 = v[i,XI]*v[i,XI] + v[i,YI]*v[i,YI]
   #b01 = 2.404825557695773 # first zero of J0
   #d = C_LIGHT*b01/omega
