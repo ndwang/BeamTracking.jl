@@ -48,7 +48,7 @@ function universal!(
   # Current KernelChain length is 5 because we have up to
   # 2 aperture, 2 alignment, 1 body kernels
   # TODO: make this 6 when we include update_P0!
-  kc = KernelChain(Val{6}(), RefState(t_ref[], beta_gamma_ref))
+  kc = KernelChain(Val{8}(), RefState(t_ref[], beta_gamma_ref))
 
   # Evolve time through whole element
   t_ref[] += L/beta_gamma_to_v(beta_gamma_ref)
@@ -82,8 +82,12 @@ function universal!(
     kc = push(kc, @inline(aperture(tm, bunch, apertureparams, true)))
   end
 
-  # Element fringe and body
+  # Entrance fringe
+  if isactive(bendparams) && isactive(bmultipoleparams)
+    kc = push(kc, @inline(bend_entrance_fringe(tm, bunch, bendparams, bmultipoleparams, L)))
+  end
 
+  # Element body
   if isactive(patchparams)    
     if isactive(alignmentparams)
       error("Tracking through a LineElement containing both PatchParams and AlignmentParams is undefined")
@@ -200,6 +204,11 @@ function universal!(
     kc = push(kc, @inline(drift(tm, bunch, L)))
   end
 
+  # Exit fringe
+  if isactive(bendparams) && isactive(bmultipoleparams)
+    kc = push(kc, @inline(bend_exit_fringe(tm, bunch, bendparams, bmultipoleparams, L)))
+  end
+
   # Exit aperture and alignment
   if isactive(alignmentparams)
     if isactive(apertureparams)
@@ -250,6 +259,9 @@ end
 @inline thick_pure_bmultipole(tm, bunch, bmk, L)                                      = error("Undefined for tracking method $tm")
 @inline thick_bmultipole(tm, bunch, bmultipoleparams, L)                              = error("Undefined for tracking method $tm")
 @inline thick_bmultipole_rf(tm, bunch, bmultipoleparams, rfparams, beamlineparams, L) = error("Undefined for tracking method $tm")
+
+@inline bend_entrance_fringe(tm, bunch, bendparams, bmultipoleparams, L) = error("Undefined for tracking method $tm")
+@inline bend_exit_fringe(tm, bunch, bendparams, bmultipoleparams, L)     = error("Undefined for tracking method $tm")
 
 
 # === Elements with curving coordinate system "bend" === #
