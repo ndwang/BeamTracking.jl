@@ -42,7 +42,7 @@ function track!(
     return bunch
   end
 
-  check_bl_bunch!(bl, bunch)
+  check_bl_bunch!(bl, t_ref, bunch)
 
   if !outer_particle_loop
     for ele in bl.line

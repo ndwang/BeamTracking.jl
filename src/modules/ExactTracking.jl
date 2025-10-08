@@ -14,16 +14,15 @@ const TRACKING_METHOD = Exact
 
 # Update the reference energy of the canonical coordinates
 # BUG: z and pz are not updated correctly
-#=
-@makekernel fastgtpsa=true function update_P0!(i, coords, R_ref_initial, R_ref_final)
-  @inbounds begin
-    @FastGTPSA! v[i,PXI] = v[i,PXI] * R_ref_initial / R_ref_final
-    @FastGTPSA! v[i,PYI] = v[i,PYI] * R_ref_initial / R_ref_final
-    @FastGTPSA! v[i,PZI] = v[i,PZI] * R_ref_initial / R_ref_final
-  end
-  return v
+
+@makekernel fastgtpsa=true function update_P0!(i, coords::Coords, R_ref_initial, R_ref_final)
+  v = coords.v 
+
+  v[i,PXI] = v[i,PXI] * R_ref_initial / R_ref_final
+  v[i,PYI] = v[i,PYI] * R_ref_initial / R_ref_final
+  #v[i,PZI] = (R_ref_initial * (1 + v[i,PZI]) - R_ref_final) / R_ref_final
 end
-=#
+
 
 #
 # ===============  E X A C T   D R I F T  ===============

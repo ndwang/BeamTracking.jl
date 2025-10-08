@@ -85,8 +85,7 @@ end
 
 # Update momenta for change to R_ref or change to species
 function setproperty!(bunch::Bunch, key::Symbol, value)
-  if key == :R_ref
-    error("Updating reference energy of bunch calculation not yet implemented")
+  #if key == :R_ref
     #=
     if value == bunch.R_ref
       return value
@@ -95,7 +94,7 @@ function setproperty!(bunch::Bunch, key::Symbol, value)
     launch!(Exact.update_P0!, v, nothing, bunch.R_ref, value)
     setfield!(bunch, :R_ref, B(value))
     =#
-  elseif key == :species
+  if key == :species
     error("Updating species of bunch (which affects R_ref) not yet implemented")
     #=
     if value == bunch.species

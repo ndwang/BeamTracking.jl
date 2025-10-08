@@ -48,10 +48,22 @@ function universal!(
   # Current KernelChain length is 5 because we have up to
   # 2 aperture, 2 alignment, 1 body kernels
   # TODO: make this 6 when we include update_P0!
-  kc = KernelChain(Val{5}(), RefState(t_ref[], beta_gamma_ref))
+  kc = KernelChain(Val{6}(), RefState(t_ref[], beta_gamma_ref))
 
   # Evolve time through whole element
   t_ref[] += L/beta_gamma_to_v(beta_gamma_ref)
+
+  # Ramping
+  if isactive(beamlineparams)
+    if beamlineparams.beamline.R_ref isa TimeDependentParam
+      R_ref_initial = bunch.R_ref
+      R_ref_final = beamlineparams.beamline.R_ref(t_ref[])
+      if !(R_ref_initial ≈ R_ref_final)
+        kc = push(kc, KernelCall(ExactTracking.update_P0!, (R_ref_initial, R_ref_final)))
+        bunch.R_ref = R_ref_final
+      end
+    end
+  end
 
   # Entrance aperture and alignment
   if isactive(alignmentparams)

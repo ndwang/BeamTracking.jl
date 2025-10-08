@@ -3,11 +3,11 @@ Base.promote_rule(::Type{DefExpr{T}}, ::Type{TimeDependentParam}) where {T} = De
 Beamlines.DefExpr{T}(a::TimeDependentParam) where {T} = DefExpr{T}(()->convert(T,a))
 #DefExpr{T}(a::DefExpr) where {T} = DefExpr{T}(()->convert(T,a()))
 
-function check_bl_bunch!(bl::Beamline, bunch::Bunch, notify::Bool=true)
+function check_bl_bunch!(bl::Beamline, t_ref, bunch::Bunch, notify::Bool=true)
   R_ref = getfield(bl, :R_ref)
   species_ref = getfield(bl, :species_ref)
   check_species!(species_ref, bunch, notify)
-  check_R_ref!(R_ref, bunch, notify)
+  check_R_ref!(R_ref, bunch, notify; t_ref=t_ref[])
   return
 end
 
@@ -27,7 +27,11 @@ function check_species!(species_ref::Species, bunch::Bunch, notify=true)
   return
 end
 
-function check_R_ref!(R_ref, bunch::Bunch, notify=true)
+function check_R_ref!(R_ref, bunch::Bunch, notify=true; t_ref=0)
+  if R_ref isa TimeDependentParam
+    bunch.R_ref = R_ref(t_ref)  
+    return
+  end
   if isnan(bunch.R_ref)
     if isnothing(R_ref)
       if notify
