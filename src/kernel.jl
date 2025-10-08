@@ -139,12 +139,12 @@ end
     kernel!(coords, kc; ndrange=N_particle)
     KernelAbstractions.synchronize(backend)
   end
-  return v
+  return nothing
 end
 
 # Call kernels directly
-@inline runkernels!(i::Nothing, coords::Coords, kc::KernelChain; kwargs...) =  launch!(coords, kc; kwargs...)
-@inline runkernels!(i, coords::Coords, kc::KernelChain; kwargs...) = _generic_kernel!(i, coords, kc)
+runkernels!(i::Nothing, coords::Coords, kc::KernelChain; kwargs...) = launch!(coords, kc; kwargs...)
+runkernels!(i, coords::Coords, kc::KernelChain; kwargs...) = _generic_kernel!(i, coords, kc)
 
 function check_kwargs(mac, kwargs...)
   valid_kwargs = [:(fastgtpsa)=>Bool, :(inbounds)=>Bool]

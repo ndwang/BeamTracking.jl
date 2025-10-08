@@ -9,7 +9,10 @@ function _track!(
   kwargs...
 )
   # Unpack the line element (type unstable)
-  L = ele.L # Automatically calls deval (element-level get)
+  L = float(ele.L) # Automatically calls deval (element-level get)
+  # float call is required because L is allowed to be any type
+  # in order to keep binaries smaller for tracking routines, 
+  # we don't want to compile separate routines for Int64
   ap = deval(ele.AlignmentParams)
   bp = deval(ele.BendParams)
   bm = deval(ele.BMultipoleParams)
@@ -40,7 +43,7 @@ function universal!(
   bmultipoleparams,
   patchparams,
   apertureparams,
-  rfparams, 
+  rfparams,
   beamlineparams;
   kwargs...
 ) 
@@ -205,8 +208,8 @@ function universal!(
     kc = push(kc, @inline(aperture(tm, bunch, apertureparams, false)))
   end
 
-  #
-  runkernels!(i, coords, kc; kwargs...)
+  # noinline necessary here for small binaries and faster execution
+  @noinline runkernels!(i, coords, kc; kwargs...)
   return nothing
 end
 
