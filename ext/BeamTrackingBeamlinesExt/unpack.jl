@@ -60,7 +60,7 @@ function universal!(
       R_ref_final = beamlineparams.beamline.R_ref(t_ref[])
       if !(R_ref_initial ≈ R_ref_final)
         kc = push(kc, KernelCall(ExactTracking.update_P0!, (R_ref_initial, R_ref_final)))
-        bunch.R_ref = R_ref_final
+        setfield!(bunch, :R_ref, R_ref_final)
       end
     end
   end

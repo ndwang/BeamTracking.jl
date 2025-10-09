@@ -27,11 +27,7 @@ function check_species!(species_ref::Species, bunch::Bunch, notify=true)
   return
 end
 
-function check_R_ref!(R_ref, bunch::Bunch, notify=true; t_ref=0)
-  if R_ref isa TimeDependentParam
-    bunch.R_ref = R_ref(t_ref)  
-    return
-  end
+function check_R_ref!(R_ref, bunch::Bunch, notify=true; t_ref=0.0)
   if isnan(bunch.R_ref)
     if isnothing(R_ref)
       if notify
@@ -39,11 +35,19 @@ function check_R_ref!(R_ref, bunch::Bunch, notify=true; t_ref=0)
       end
     else
       if notify
-        println("Setting bunch.R_ref = $R_ref (reference R_ref from the Beamline)")
+        if R_ref isa TimeDependentParam
+          println("Setting bunch.R_ref = $(R_ref(t_ref)) (reference R_ref from the Beamline)")
+        else
+          println("Setting bunch.R_ref = $R_ref (reference R_ref from the Beamline)")
+        end
       end
-      setfield!(bunch, :R_ref, typeof(bunch.R_ref)(R_ref)) #R_ref = R_ref
+      if R_ref isa TimeDependentParam
+        setfield!(bunch, :R_ref, typeof(bunch.R_ref)(R_ref(t_ref)))
+      else
+        setfield!(bunch, :R_ref, typeof(bunch.R_ref)(R_ref))
+      end
     end
-  elseif !isnothing(R_ref)  && !(R_ref ≈ bunch.R_ref) && notify
+  elseif !isnothing(R_ref)  && !(R_ref ≈ bunch.R_ref) && !(R_ref isa TimeDependentParam) && notify
     println("WARNING:The reference energy of the bunch does NOT equal the reference energy of the Beamline. 
               Normalized field strengths in tracking ALWAYS use the reference energy of the bunch.")
   end

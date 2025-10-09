@@ -85,27 +85,12 @@ end
 
 # Update momenta for change to R_ref or change to species
 function setproperty!(bunch::Bunch, key::Symbol, value)
-  #if key == :R_ref
-    #=
+  if key == :R_ref
     if value == bunch.R_ref
       return value
     end
-    v = soaview(bunch)
-    launch!(Exact.update_P0!, v, nothing, bunch.R_ref, value)
-    setfield!(bunch, :R_ref, B(value))
-    =#
-  if key == :species
-    error("Updating species of bunch (which affects R_ref) not yet implemented")
-    #=
-    if value == bunch.species
-      return value
-    end
-    v = soaview(bunch)
-    R_ref_final = bunch.R_ref*chargeof(bunch.species)/chargeof(value)
-    launch!(Exact.update_P0!, v, nothing, bunch.R_ref, R_ref_final)
-    setfield!(bunch, :R_ref, B(R_ref_final))
-    setfield!(bunch, :species, value)
-    =#
+    launch!(bunch.coords, KernelCall(ExactTracking.update_P0!, (bunch.R_ref, value)))
+    setfield!(bunch, :R_ref, value)
   else
     setfield!(bunch, key, value)
   end

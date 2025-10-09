@@ -10,8 +10,6 @@ Lb = 2 * asin(2.66666666666666652E+000 * 1.96327112309048618E-002 / 2)/1.9632711
  csnk = Marker()
  wsnk = Marker()
  end1 = Marker()
-rfbc = RFCavity(L =  1.00000000000000000E+000, harmon = 1,
-   voltage =  3.20000000000000000E+5)
 end
 
 
