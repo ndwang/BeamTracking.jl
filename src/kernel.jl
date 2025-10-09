@@ -1,5 +1,5 @@
 
-const REGISTER_SIZE = VectorizationBase.register_size()
+const REGISTER_SIZE = register_size()
 
 # This is here in case kernel chain needs to be run 
 # but is not fully filled. It does nothing
@@ -95,8 +95,8 @@ end
   end
 =#
   if !use_KA
-    if use_explicit_SIMD && V <: SIMD.FastContiguousArray && eltype(V) <: SIMD.ScalarTypes && VectorizationBase.pick_vector_width(eltype(V)) > 1 # do SIMD
-      simd_lane_width = VectorizationBase.pick_vector_width(eltype(V))
+    if use_explicit_SIMD && V <: SIMD.FastContiguousArray && eltype(V) <: SIMD.ScalarTypes && pick_vector_width(eltype(V)) > 1 # do SIMD
+      simd_lane_width = pick_vector_width(eltype(V))
       lane = SIMD.VecRange{Int(simd_lane_width)}(0)
       rmn = rem(N_particle, simd_lane_width)
       N_SIMD = N_particle - rmn
