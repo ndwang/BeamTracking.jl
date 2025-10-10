@@ -304,7 +304,7 @@ Arguments
 - 'ks'       -- skew multipole strengths 
 - 'L'        -- length
 """
-@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, a, e1, e2, g, w, w_inv, k0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, a, g, w, w_inv, k0, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
@@ -315,7 +315,7 @@ Arguments
   end
 
     ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
-    ExactTracking.exact_bend!(                  i, coords, e1, e2, g*L, g, k0, tilde_m, beta_0, L)
+    ExactTracking.exact_bend!(    i, coords, g*L, g, k0, tilde_m, beta_0, L)
     ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
 
   if !isnothing(coords.q)
