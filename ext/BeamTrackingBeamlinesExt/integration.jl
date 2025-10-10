@@ -1,5 +1,5 @@
 # =========== HELPER FUNCTIONS ============= #
-@inline function integration_launcher!(ker, params, tm, L)
+@inline function integration_launcher!(ker, params, tm, f1, f2, L)
   order = tm.order
   ds_step = tm.ds_step
   num_steps = tm.num_steps
@@ -10,13 +10,13 @@
     ds_step = L / num_steps
   end
   if order == 2
-    return KernelCall(IntegrationTracking.order_two_integrator!, (ker, params, ds_step, num_steps, L))
+    return KernelCall(IntegrationTracking.order_two_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
   elseif order == 4
-    return KernelCall(IntegrationTracking.order_four_integrator!, (ker, params, ds_step, num_steps, L))
+    return KernelCall(IntegrationTracking.order_four_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
   elseif order == 6
-    return KernelCall(IntegrationTracking.order_six_integrator!, (ker, params, ds_step, num_steps, L))
+    return KernelCall(IntegrationTracking.order_six_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
   elseif order == 8
-    return KernelCall(IntegrationTracking.order_eight_integrator!, (ker, params, ds_step, num_steps, L))
+    return KernelCall(IntegrationTracking.order_eight_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
   end
 end
 
@@ -74,7 +74,7 @@ end
     kn = SA[Ksol]
     ks = SA[Ksol_skew]
     params = (beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), Ksol, mm, kn, ks)
-    return integration_launcher!(IntegrationTracking.sks_multipole!, params, tm, L)
+    return integration_launcher!(IntegrationTracking.sks_multipole!, params, tm, 0, 0, L)
   end
 end
 
@@ -85,7 +85,7 @@ end
   kn, ks = get_strengths(bm, L, R_ref)
   Ksol = kn[1]
   params = (beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), Ksol, mm, kn, ks)
-  return integration_launcher!(IntegrationTracking.sks_multipole!, params, tm, L)
+  return integration_launcher!(IntegrationTracking.sks_multipole!, params, tm, 0, 0, L)
 end
 
 @inline function thick_pure_bdipole(tm::DriftKick, bunch, bm, L)
@@ -94,7 +94,7 @@ end
   mm = bm.order
   kn, ks = get_strengths(bm, L, R_ref)
   params = (beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), SA[mm], SA[kn], SA[ks])
-  return integration_launcher!(IntegrationTracking.dkd_multipole!, params, tm, L)
+  return integration_launcher!(IntegrationTracking.dkd_multipole!, params, tm, 0, 0, L)
 end
 
 @inline function thick_bdipole(tm::DriftKick, bunch, bm, L)
@@ -103,7 +103,7 @@ end
   mm = bm.order
   kn, ks = get_strengths(bm, L, R_ref)
   params = (beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), mm, kn, ks)
-  return integration_launcher!(IntegrationTracking.dkd_multipole!, params, tm, L)
+  return integration_launcher!(IntegrationTracking.dkd_multipole!, params, tm, 0, 0, L)
 end
 
 @inline function thick_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm1, L) 
@@ -119,7 +119,7 @@ end
     w = rot_quaternion(0,0,tilt)
     w_inv = inv_rot_quaternion(0,0,tilt)
     params = (tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, 0, 0, w, w_inv, k0, SA[mm], SA[kn], SA[ks])
-    return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
+    return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, 0, 0, L)
   end
 end
 
@@ -133,7 +133,7 @@ end
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
   params = (tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, 0, 0, w, w_inv, k0, mm, kn, ks)
-  return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
+  return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, 0, 0, L)
 end
 
 @inline function thick_bdipole(tm::MatrixKick, bunch, bm, L)
@@ -153,7 +153,7 @@ end
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
   params = (beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, mm, kn, ks)
-  return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, L)
+  return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, 0, 0, L)
 end
 
 @inline function thick_bdipole(tm::SplitIntegration, bunch, bm, L)
@@ -177,7 +177,7 @@ end
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
   params = (beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, SA[mm], SA[kn], SA[ks])
-  return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, L)
+  return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, 0, 0, L)
 end
 
 @inline thick_pure_bquadrupole(tm::DriftKick, bunch, bm, L) = 
@@ -196,7 +196,7 @@ end
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
   params = (beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, mm, kn, ks)
-  return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, L)
+  return integration_launcher!(IntegrationTracking.mkm_quadrupole!, params, tm, 0, 0, L)
 end
 
 @inline thick_bquadrupole(tm::DriftKick, bunch, bm, L) = thick_bdipole(tm, bunch, bm, L)
@@ -228,8 +228,10 @@ end
     Ks0 ≈ 0 || error("A skew dipole field cannot yet be used in a bend")
     w = rot_quaternion(0,0,tilt)
     w_inv = inv_rot_quaternion(0,0,tilt)
+    f1 = Kn0*tan(e1)
+    f2 = Kn0*tan(e2)
     params = (tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), e1, e2, g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])
-    return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
+    return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, f1, f2, L)
   end
 end
 
@@ -262,7 +264,7 @@ end
   E_ref = BeamTracking.R_to_E(bunch.species, R_ref)
   p0c = BeamTracking.R_to_pc(bunch.species, R_ref)
   params = (beta_0, gamsqr_0, tilde_m, E_ref, p0c, gyromagnetic_anomaly(bunch.species), omega, E0_over_Rref, t0, SA[], SA[], SA[])
-  return integration_launcher!(IntegrationTracking.cavity!, params, tm, L)
+  return integration_launcher!(IntegrationTracking.cavity!, params, tm, 0, 0, L)
 end
 
 @inline function thick_bmultipole_rf(tm::Union{SplitIntegration,DriftKick,SolenoidKick}, bunch, bm, rf, bl, L)
@@ -282,5 +284,5 @@ end
   E_ref = BeamTracking.R_to_E(bunch.species, R_ref)
   p0c = BeamTracking.R_to_pc(bunch.species, R_ref)
   params = (beta_0, gamsqr_0, tilde_m, E_ref, p0c, gyromagnetic_anomaly(bunch.species), omega, E0_over_Rref, t0, mm, kn, ks)
-  return integration_launcher!(IntegrationTracking.cavity!, params, tm, L)
+  return integration_launcher!(IntegrationTracking.cavity!, params, tm, 0, 0, L)
 end
