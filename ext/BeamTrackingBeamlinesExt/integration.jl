@@ -118,7 +118,7 @@ end
     tilt = atan2(ks, kn)
     w = rot_quaternion(0,0,tilt)
     w_inv = inv_rot_quaternion(0,0,tilt)
-    params = (tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, 0, 0, w, w_inv, k0, SA[mm], SA[kn], SA[ks])
+    params = (tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, w, w_inv, k0, SA[mm], SA[kn], SA[ks])
     return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
   end
 end
@@ -132,7 +132,7 @@ end
   tilt = atan2(ks[1], kn[1])
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
-  params = (tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, 0, 0, w, w_inv, k0, mm, kn, ks)
+  params = (tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, w, w_inv, k0, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
 end
 
@@ -228,10 +228,16 @@ end
     Ks0 ≈ 0 || error("A skew dipole field cannot yet be used in a bend")
     w = rot_quaternion(0,0,tilt)
     w_inv = inv_rot_quaternion(0,0,tilt)
-    params = (tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), e1, e2, g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])
+    params = (tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])
     return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
   end
 end
+
+@inline bend_entrance_fringe(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bmp, L) = 
+  bend_entrance_fringe(Exact(), bunch, bendparams, bmp, L)
+
+@inline bend_exit_fringe(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bmp, L) = 
+  bend_exit_fringe(Exact(), bunch, bendparams, bmp, L)
 
 
 # =========== PATCH ============= #

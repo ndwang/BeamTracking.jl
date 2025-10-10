@@ -880,6 +880,6 @@
     @test_throws ErrorException SolenoidKick(num_steps = -2)
     @test_throws ErrorException SplitIntegration(order = 5)
   end
-
+  
   include("BeamlinesExt/beamlines_aperture_test.jl")
 end

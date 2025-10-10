@@ -147,3 +147,6 @@ end
 @inline thick_bend_bmultipole(tm::Linear, bunch, bendparams, bmultipoleparams, L) = thick_bend_no_field(tm, bunch, bendparams, L)
 # Ignore RF (for now):
 @inline thick_pure_rf(tm::Linear, bunch, rfparams, beamlineparams, L) = drift(tm, bunch, L)
+# Fringe is already built in:
+@inline bend_entrance_fringe(tm::Linear, bunch, bendparams, bmp, L) = drift(tm, bunch, 0)
+@inline bend_exit_fringe(tm::Linear, bunch, bendparams, bmp, L)     = drift(tm, bunch, 0)
