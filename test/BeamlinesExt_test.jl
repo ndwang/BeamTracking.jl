@@ -880,12 +880,6 @@
     @test_throws ErrorException SolenoidKick(num_steps = -2)
     @test_throws ErrorException SplitIntegration(order = 5)
   end
-
-  @testset "Setters" begin
-    b0 = Bunch([0.01 0.02 0.03 0.04 0.05 0.06], R_ref=10.0, species=Species("proton"))
-    b0.R_ref = 20.0
-    @test b0.coords.v ≈ [0.01 0.01 0.03 0.02 0.05 0.06] # pz is not changed for fake ramping
-  end
-
+  
   include("BeamlinesExt/beamlines_aperture_test.jl")
 end

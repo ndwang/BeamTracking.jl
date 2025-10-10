@@ -3,7 +3,6 @@ function _track!(
   i,
   coords::Coords,
   bunch::Bunch,
-  t_ref::Ref,
   ele::Union{LineElement,BitsLineElement}, 
   tm;
   kwargs...
@@ -21,13 +20,15 @@ function _track!(
   if ele isa LineElement
     rp = deval(ele.RFParams)
     lp = deval(ele.BeamlineParams)
+    R_ref = lp.beamline.R_ref
   else
     rp = nothing
     lp = nothing
+    R_ref = nothing
   end
 
   # Function barrier
-  universal!(i, coords, tm, bunch, t_ref, L, ap, bp, bm, pp, dp, rp, lp; kwargs...)
+  universal!(i, coords, tm, bunch, L, R_ref, ap, bp, bm, pp, dp, rp, lp; kwargs...)
 end
 
 # Step 2: Push particles through -----------------------------------------
@@ -36,8 +37,8 @@ function universal!(
   coords,
   tm,
   bunch,
-  t_ref,
   L, 
+  R_ref,
   alignmentparams, 
   bendparams,
   bmultipoleparams,
@@ -48,23 +49,21 @@ function universal!(
   kwargs...
 ) 
   beta_gamma_ref = R_to_beta_gamma(bunch.species, bunch.R_ref)
-  # Current KernelChain length is 5 because we have up to
-  # 2 aperture, 2 alignment, 1 body kernels
-  # TODO: make this 6 when we include update_P0!
-  kc = KernelChain(Val{8}(), RefState(t_ref[], beta_gamma_ref))
+  # Current KernelChain length is 8 because we have up to
+  # 2 aperture, 2 alignment, 2 fringe, 1 body kernel, and 
+  # 1 kernel to update the particles' reference energy
+  kc = KernelChain(Val{8}(), RefState(bunch.t_ref, beta_gamma_ref))
 
   # Evolve time through whole element
-  t_ref[] += L/beta_gamma_to_v(beta_gamma_ref)
+  bunch.t_ref += L/beta_gamma_to_v(beta_gamma_ref)
 
   # Ramping
-  if isactive(beamlineparams)
-    if beamlineparams.beamline.R_ref isa TimeDependentParam
-      R_ref_initial = bunch.R_ref
-      R_ref_final = beamlineparams.beamline.R_ref(t_ref[])
-      if !(R_ref_initial ≈ R_ref_final)
-        kc = push(kc, KernelCall(ExactTracking.update_P0!, (R_ref_initial, R_ref_final)))
-        setfield!(bunch, :R_ref, R_ref_final)
-      end
+  if R_ref isa TimeDependentParam
+    R_ref_initial = bunch.R_ref
+    R_ref_final = R_ref(bunch.t_ref)
+    if !(R_ref_initial ≈ R_ref_final)
+      kc = push(kc, KernelCall(ExactTracking.update_P0!, (R_ref_initial, R_ref_final)))
+      setfield!(bunch, :R_ref, R_ref_final)
     end
   end
 

@@ -33,9 +33,10 @@ struct Coords{S,V,Q}
   end
 end
 
-mutable struct Bunch{B,C<:Coords}
+mutable struct Bunch{B,T,C<:Coords}
   species::Species # Species
   R_ref::B         # Defines normalization of phase space coordinates
+  t_ref::T         # Reference time
   const coords::C  # GPU compatible structure of particles
 end
 
@@ -44,33 +45,34 @@ Adapt.@adapt_structure Coords
 
 get_N_particle(bunch::Bunch) = size(bunch.coords.v, 1)
 
-function Bunch(N::Integer; R_ref=NaN, species=Species(), spin=false)
+function Bunch(N::Integer; R_ref=NaN, t_ref=0., species=Species(), spin=false)
   v = rand(N,6)
   q = spin ? rand(N,4) : nothing
   state = similar(v, UInt8, N)
   state .= STATE_ALIVE
-  return Bunch(species, R_ref, Coords(state, v, q))
+  return Bunch(species, R_ref, t_ref, Coords(state, v, q))
 end
 
-function Bunch(v::AbstractMatrix, q=nothing; R_ref=NaN, species=Species())
+function Bunch(v::AbstractMatrix, q=nothing; R_ref=NaN, t_ref=0., species=Species())
   size(v, 2) == 6 || error("The number of columns must be equal to 6")
   N_particle = size(v, 1)
   state = similar(v, UInt8, N_particle)
   state .= STATE_ALIVE
-  return Bunch(species, R_ref, Coords(state, v, q))
+  return Bunch(species, R_ref, t_ref, Coords(state, v, q))
 end
 
-function Bunch(v::AbstractVector, q=nothing; R_ref=NaN, species=Species())
+function Bunch(v::AbstractVector, q=nothing; R_ref=NaN, t_ref=0., species=Species())
   length(v) == 6 || error("Bunch accepts a N x 6 matrix of N particle coordinates,
                             or alternatively a single particle as a vector. Received 
                             a vector of length $(length(v))")
-  return Bunch(reshape(v, (1,6)), q; R_ref=R_ref, species=species)
+  return Bunch(reshape(v, (1,6)), q; R_ref=R_ref, t_ref=t_ref, species=species)
 end
 
-struct ParticleView{B,S,V,Q}
+struct ParticleView{B,T,S,V,Q}
   index::Int
   species::Species
-  R_ref::B     
+  R_ref::B  
+  t_ref::T   
   state::S
   v::V
   q::Q    
@@ -80,10 +82,12 @@ end
 function ParticleView(bunch::Bunch, i=1)
   v = bunch.coords.v
   q = bunch.coords.q
-  return ParticleView(i, bunch.species, bunch.R_ref, bunch.coords.state[i], view(v, :, i), isnothing(q) ? q : view(q, :, i))
+  return ParticleView(i, bunch.species, bunch.R_ref, bunch.t_ref, bunch.coords.state[i], view(v, :, i), isnothing(q) ? q : view(q, :, i))
 end
 
 # Update momenta for change to R_ref or change to species
+# Maybe we won't do this actually...
+#=
 function setproperty!(bunch::Bunch, key::Symbol, value)
   if key == :R_ref
     if value == bunch.R_ref
@@ -95,3 +99,4 @@ function setproperty!(bunch::Bunch, key::Symbol, value)
     setfield!(bunch, key, value)
   end
 end
+=#
