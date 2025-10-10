@@ -79,11 +79,11 @@
       mc2 = T(massof(Species("electron")))
       tilde_m = mc2/p0c
       beta_0 = 1/sqrt(1 + tilde_m^2)
-      params = (tilde_m, beta_0, a, 0, w, w_inv, Kn0, mm, kn, ks)
+      params = (tilde_m, beta_0, a, 0, 0, 0, w, w_inv, Kn0, mm, kn, ks)
       ker = IntegrationTracking.bkb_multipole!
       num_steps = 10
       ds_step = T(0.2)
-      return ker, params, ds_step, num_steps, L
+      return ker, params, ds_step, num_steps, 0, 0, L
     end
 
     function integrator_args(::Type{T}) where {T}
@@ -105,7 +105,7 @@
       ker = IntegrationTracking.dkd_multipole!
       num_steps = 1
       ds_step = T(2)
-      return ker, params, ds_step, num_steps, L
+      return ker, params, ds_step, num_steps, 0, 0, L
     end
 
     function cavity_args(::Type{T}) where {T}
