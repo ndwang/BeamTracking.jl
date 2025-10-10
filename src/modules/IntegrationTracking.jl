@@ -48,29 +48,34 @@ using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, STATE_ALIVE, ST
 # ===============  I N T E G R A T O R S  ===============
 #
 
-@makekernel fastgtpsa=true function order_two_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, L)
+@makekernel fastgtpsa=true function order_two_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, f1, f2, L)
+  ExactTracking.linear_bend_fringe!(i, coords, f1)
   for _ in 1:num_steps
     ker(i, coords, params..., ds_step)
   end
+  ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
 
 
-@makekernel fastgtpsa=true function order_four_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, L)
+@makekernel fastgtpsa=true function order_four_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, f1, f2, L)
   w0 = -1.7024143839193153215916254339390434324741363525390625*ds_step
   w1 =  1.3512071919596577718181151794851757586002349853515625*ds_step
+  ExactTracking.linear_bend_fringe!(i, coords, f1)
   for _ in 1:num_steps
     ker(i, coords, params..., w1)
     ker(i, coords, params..., w0)
     ker(i, coords, params..., w1)
   end
+  ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
 
 
-@makekernel fastgtpsa=true function order_six_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, L)
+@makekernel fastgtpsa=true function order_six_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, f1, f2, L)
   w0 =  1.315186320683911169737712043570355*ds_step
   w1 = -1.17767998417887100694641568096432*ds_step
   w2 =  0.235573213359358133684793182978535*ds_step
   w3 =  0.784513610477557263819497633866351*ds_step
+  ExactTracking.linear_bend_fringe!(i, coords, f1)
   for _ in 1:num_steps
     ker(i, coords, params..., w3)
     ker(i, coords, params..., w2)
@@ -80,10 +85,11 @@ end
     ker(i, coords, params..., w2)
     ker(i, coords, params..., w3)
   end
+  ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
 
 
-@makekernel fastgtpsa=true function order_eight_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, L)
+@makekernel fastgtpsa=true function order_eight_integrator!(i, coords::Coords, ker, params, ds_step, num_steps, f1, f2, L)
   w0 =  1.7084530707869978*ds_step
   w1 =  0.102799849391985*ds_step
   w2 = -1.96061023297549*ds_step
@@ -92,6 +98,7 @@ end
   w5 = -1.44485223686048*ds_step
   w6 =  0.253693336566229*ds_step
   w7 =  0.914844246229740*ds_step
+  ExactTracking.linear_bend_fringe!(i, coords, f1)
   for _ in 1:num_steps
     ker(i, coords, params..., w7)
     ker(i, coords, params..., w6)
@@ -109,6 +116,7 @@ end
     ker(i, coords, params..., w6)
     ker(i, coords, params..., w7)
   end
+  ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
 
 
@@ -304,25 +312,25 @@ Arguments
 - 'ks'       -- skew multipole strengths 
 - 'L'        -- length
 """
-@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, a, g, w, w_inv, k0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, a, e1, e2, g, w, w_inv, k0, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
-  BeamTracking.coord_rotation!(   i, coords, w, 0)
+  BeamTracking.coord_rotation!(     i, coords, w, 0)
 
   if !isnothing(coords.q)
-    rotate_spin!(                 i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    rotate_spin!(                   i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
   end
 
-    ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
-    ExactTracking.exact_bend!(    i, coords, g*L, g, k0, tilde_m, beta_0, L)
-    ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
+    ExactTracking.multipole_kick!(  i, coords, mm, knl, ksl, 1)
+    ExactTracking.exact_bend!(      i, coords, e1, e2, g*L, g, k0, tilde_m, beta_0, L)
+    ExactTracking.multipole_kick!(  i, coords, mm, knl, ksl, 1)
 
   if !isnothing(coords.q)
-    rotate_spin!(                 i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    rotate_spin!(                   i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
   end
 
-  BeamTracking.coord_rotation!(   i, coords, w_inv, 0)
+  BeamTracking.coord_rotation!(     i, coords, w_inv, 0)
 end 
 
 
