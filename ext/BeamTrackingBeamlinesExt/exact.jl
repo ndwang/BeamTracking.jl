@@ -41,6 +41,7 @@ end
 
 @inline function thick_bend_no_field(tm::Exact, bunch, bendparams, L)
   g = bendparams.g_ref
+  tilt = bendparams.tilt_ref
   e1 = bendparams.e1
   e2 = bendparams.e2
   w = rot_quaternion(0,0,-tilt)
