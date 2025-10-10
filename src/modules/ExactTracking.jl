@@ -251,15 +251,6 @@ provided, a linear hard-edge fringe map is applied at both ends.
   v = coords.v
   rel_p = 1 + v[i,PZI]
 
-  me1 = Kn0*tan(e1)/rel_p
-  me2 = Kn0*tan(e2)/rel_p
-  
-  alive = (coords.state[i] == STATE_ALIVE)
-  new_px = v[i,PXI] + v[i,XI]*me1
-  new_py = v[i,PYI] - v[i,YI]*me1
-  v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
-  v[i,PYI] = vifelse(alive, new_py, v[i,PYI])
-
   pt2 = rel_p*rel_p - v[i,PYI]*v[i,PYI]
   good_momenta = (pt2 > 0)
   alive_at_start = (coords.state[i] == STATE_ALIVE)
@@ -317,17 +308,28 @@ provided, a linear hard-edge fringe map is applied at both ends.
   v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
   v[i,YI]  = vifelse(alive, new_y, v[i,YI])
   v[i,ZI]  = vifelse(alive, new_z, v[i,ZI])
+end
 
-  new_px = v[i,PXI] + v[i,XI]*me2
-  new_py = v[i,PYI] - v[i,YI]*me2
+
+@makekernel fastgtpsa=true function linear_bend_fringe!(i, coords::Coords, e, Kn0)
+  v = coords.v
+
+  rel_p = 1 + v[i,PZI]
+  me = Kn0 * tan(e) / rel_p
+  alive = (coords.state[i] == STATE_ALIVE)
+  new_px = v[i,PXI] + v[i,XI]*me
+  new_py = v[i,PYI] - v[i,YI]*me
   v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
   v[i,PYI] = vifelse(alive, new_py, v[i,PYI])
 end
 
 
+
 @makekernel fastgtpsa=true function exact_bend_with_rotation!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
   BeamTracking.coord_rotation!(i, coords, w, 0)
+  ExactTracking.linear_bend_fringe!(i, coords, e1, Kn0)
   exact_bend!(i, coords, e1, e2, theta, g, Kn0, tilde_m, beta_0, L)
+  ExactTracking.linear_bend_fringe!(i, coords, e2, Kn0)
   BeamTracking.coord_rotation!(i, coords, w_inv, 0)
 end
 

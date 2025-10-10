@@ -308,21 +308,23 @@ Arguments
   knl = kn * L / 2
   ksl = ks * L / 2
 
-  BeamTracking.coord_rotation!(   i, coords, w, 0)
+  BeamTracking.coord_rotation!(     i, coords, w, 0)
+  ExactTracking.linear_bend_fringe!(i, coords, e1, k0)
 
   if !isnothing(coords.q)
-    rotate_spin!(                 i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    rotate_spin!(                   i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
   end
 
-    ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
-    ExactTracking.exact_bend!(    i, coords, e1, e2, g*L, g, k0, tilde_m, beta_0, L)
-    ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
+    ExactTracking.multipole_kick!(  i, coords, mm, knl, ksl, 1)
+    ExactTracking.exact_bend!(      i, coords, e1, e2, g*L, g, k0, tilde_m, beta_0, L)
+    ExactTracking.multipole_kick!(  i, coords, mm, knl, ksl, 1)
 
   if !isnothing(coords.q)
-    rotate_spin!(                 i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    rotate_spin!(                   i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
   end
 
-  BeamTracking.coord_rotation!(   i, coords, w_inv, 0)
+  ExactTracking.linear_bend_fringe!(i, coords, e2, k0)
+  BeamTracking.coord_rotation!(      i, coords, w_inv, 0)
 end 
 
 
