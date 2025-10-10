@@ -65,9 +65,11 @@ function read_map(bmad_map_file::AbstractString)
   # Load reference data from file in isolated module to avoid polluting global namespace
   mod = Module()
   Base.include(mod, bmad_map_file)
-  d_z = getfield(mod, :d_z)
+  getd_z() = getfield(mod, :d_z)
+  getv_z() = getfield(mod, :v_z)
+  d_z = invokelatest(getd_z)
+  v_z = invokelatest(getv_z)
   d_z == D10 || error("Please use a 10th order map for test_map")
-  v_z = getfield(mod, :v_z)
   return v_z
 end
 
@@ -75,10 +77,13 @@ function read_spin_orbit_map(bmad_map_file::AbstractString)
   # Load reference data from file in isolated module to avoid polluting global namespace
   mod = Module()
   Base.include(mod, bmad_map_file)
-  d_z = getfield(mod, :d_z)
+  getd_z() = getfield(mod, :d_z)
+  getv_z() = getfield(mod, :v_z)
+  getq_z() = getfield(mod, :q_z)
+  d_z = invokelatest(getd_z)
+  v_z = invokelatest(getv_z)
+  q_z = invokelatest(getq_z)
   d_z == D10 || error("Please use a 10th order map for test_map")
-  v_z = getfield(mod, :v_z)
-  q_z = getfield(mod, :q_z)
   return (v_z, q_z)
 end
 
