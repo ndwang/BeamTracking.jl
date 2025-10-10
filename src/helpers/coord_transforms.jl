@@ -47,7 +47,7 @@ end
 
 #---------------------------------------------------------------------------------------------------
 """
-    function coord_translation!(i, coords::Coords, dr, z0) -> z1
+    function track_translation!(i, coords::Coords, dr, z0) -> z1
 
 Transform phase-space particle coordinates when the coordinate system is translated by the vector `dr`.
 
@@ -61,7 +61,7 @@ Transform phase-space particle coordinates when the coordinate system is transla
 - `z1`        The particle longitudinal distance from the center of rotation after rotation. 
 
 """
-@inline function coord_translation!(i, coords::Coords, dr, z0)
+@inline function track_translation!(i, coords::Coords, dr, z0)
   @FastGTPSA begin @inbounds begin 
     v = coords.v
     alive = (coords.state[i] == STATE_ALIVE)

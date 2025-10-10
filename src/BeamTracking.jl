@@ -18,7 +18,8 @@ using SIMD: SIMD
 import GTPSA: sincu, sinhcu, normTPS
 import Base: setproperty!
 
-export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, quat_mul, atan2, Time, TimeDependentParam
+export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, atan2, Time, TimeDependentParam
+export quat_mul, quat_rotate
 export LinearTracking, Linear
 export ExactTracking, Exact
 export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick

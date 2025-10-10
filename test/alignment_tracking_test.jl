@@ -41,11 +41,12 @@ m2 = [
   # bend tests
 
   bunch = Bunch(copy(vb1))
- # BeamTracking.launch!(bunch.coords, KernelCall(BeamTracking.track_alignment_bend_entering!,
- #                                           (0., 0., 0., 0.00, -0.00, 0.00, pi/2, 0.0, +1, 2.0)))
- # println(bunch.coords.v)
- # @test bunch.coords.v ≈ vs_enter
+  BeamTracking.launch!(bunch.coords, KernelCall(BeamTracking.track_alignment_bend_entering!,
+                                            (0., 0., 0., 0.00, -0.00, 0.00, pi/2, 0.0, +1, 2.0)))
+  println(bunch.coords.v)
+  @test bunch.coords.v ≈ vs_enter
 
+  #test_matrix(...)
 
   # Straight tests
 
