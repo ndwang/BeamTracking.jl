@@ -83,7 +83,7 @@
       ker = IntegrationTracking.bkb_multipole!
       num_steps = 10
       ds_step = T(0.2)
-      return ker, params, ds_step, num_steps, L
+      return ker, params, ds_step, num_steps, 0, 0, L
     end
 
     function integrator_args(::Type{T}) where {T}
@@ -105,7 +105,7 @@
       ker = IntegrationTracking.dkd_multipole!
       num_steps = 1
       ds_step = T(2)
-      return ker, params, ds_step, num_steps, L
+      return ker, params, ds_step, num_steps, 0, 0, L
     end
 
     function cavity_args(::Type{T}) where {T}
