@@ -34,18 +34,18 @@ end
 # Step 2: Push particles through -----------------------------------------
 function universal!(
   i, 
-  coords::Coords,
+  coords,
   tm,
-  bunch::Bunch,
+  bunch,
   L, 
   R_ref,
-  alignmentparams::Union{Nothing,AlignmentParams,Beamlines.BitsAlignmentParams}, 
-  bendparams::Union{Nothing,BendParams,Beamlines.BitsBendParams},
-  bmultipoleparams::Union{Nothing,BMultipoleParams,Beamlines.BitsBMultipoleParams},
-  patchparams::Union{Nothing,PatchParams,Beamlines.BitsPatchParams},
-  apertureparams::Union{Nothing,ApertureParams,Beamlines.BitsApertureParams},
-  rfparams::Union{Nothing,RFParams},
-  beamlineparams::Union{Nothing,BeamlineParams};
+  alignmentparams,
+  bendparams,
+  bmultipoleparams,
+  patchparams,
+  apertureparams,
+  rfparams,
+  beamlineparams;
   kwargs...
 ) 
   beta_gamma_ref = R_to_beta_gamma(bunch.species, bunch.R_ref)
