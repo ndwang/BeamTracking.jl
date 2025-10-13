@@ -1,11 +1,24 @@
 using BeamTracking, Test
 
-vb1 = [0.1, 0.02, 0.3+1e-15, 0.04, 0.5, 1.0]
-vb1 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+vb1 = [0.1, 0.02, 0.3, 0.04, 0.5, 1.0]
+#vb1 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
+vb_enter = [0.468708701219246 -0.4107542862969568 -0.020974284442189777 -0.012491528016560245 0.3122804736708073 1.0]
+vb_exit = [0.2844630476007121 0.4561941199192202 0.6505229270974507 0.12545318931731098 0.6649315742931098 1.0]
 
-t1 = [0.1  0.02  0.3  0.04   0.5  0.3
-      0.5  0.06  0.6  0.07  -0.4 -0.1]
+mb1 = [0.7795026833308324 0.19782649363730898 0.6677967519481864 0.16947714578196643 0.0 0.0
+       0.0 0.7420536588862164 0.0 0.6312806710917351 0.0 -0.22547967012470824
+      -0.6480433147492329 -0.16446400945553863 0.761757701205682 0.19332307412568508 0.0 0.0
+       0.0 -0.6505231550546304 0.0 0.7593396395753476 0.0 -0.014931058480573176
+       0.16608603526829568 0.04215023078413794 0.16194844012435772 0.04110016905000967 1.0 0.0
+       0.0 0.0 0.0 0.0 0.0 1.0]
+
+mb2 = [0.7910911969373638 -0.11822479832460202 -0.6571488189550684 0.09820775011906083 0.0 0.0
+       0.0 0.7418420300649371 0.0 -0.6286784493570435 0.0 0.23331054357477307
+       0.6470958680569295 -0.09670538465588693 0.7635746268969941 -0.11411257844881306 0.0 0.0
+       0.0 0.6384452766450651 0.0 0.7685754330096183 0.0 0.04098087973291845
+      -0.21108847511918374 0.031546163699239335 0.12202778820795342 -0.01823646971010954 1.0 0.0
+       0.0 0.0 0.0 0.0 0.0 1.0]
 
 
 vs1 = [0.1  0.02  0.3  0.04   0.5  0.3
@@ -18,7 +31,7 @@ vs_exit = [0.4642308021396079 -0.007202272574320878 0.7750188504234871 0.0275877
           0.8241548285801633 0.039944172668196574 1.0565996679665617 0.06281213996499757 0.21752162316101464 -0.1]
 
 
-m1 = [
+ms1 = [
   0.9997499770794925 0.5866010204862417 0.030196943370503864 0.01771798769973302 0.0 0.0
   0.0 0.9993441318056852 0.0 0.029994000439983615 0.0 0.020289557983054828; 
  -0.03000150030254883 -0.017603311925051535 0.9995940132331024 0.5865095090548349 0.0 0.0
@@ -26,7 +39,7 @@ m1 = [
  -0.020002667093402426 -0.011736519328275472 -0.010002333746735214 -0.005868846529228098 1.0 0.0
   0.0 0.0 0.0 0.0 0.0 1.0]
 
-m2 = [
+ms2 = [
   0.9997499770794925 -0.5996250016312417 -0.030001500302548834 0.01799414861744492 0.0 0.0
   0.0 0.9993441318056852 0.0 -0.030189394650510383 0.0 -0.019997666768331163
   0.030196943370503868 -0.01811137047553758 0.9995940132331024 -0.599531458421649 0.0 0.0
@@ -35,18 +48,22 @@ m2 = [
   0.0 0.0 0.0 0.0 0.0 1.0]
 
 # track_alignment_straight! args: (x_off, y_off, z_off, x_rot, y_rot, tilt, ele_orient, L)
-# track_alignment_bend! args: (x_off, y_off, z_off, x_rot, y_rot, tilt, g_ref, tilt_ref, ele_orient, L)
+# track_alignment_bend! args: (x_off, y_off, z_off,   x_rot, y_rot, tilt,   g_ref, tilt_ref, ele_orient, L)
 
 @testset "AlignmentKernel" begin
   # bend tests
 
+  r, q = BeamTracking.coord_alignment_bend_entering(0.1, 0.2, 0.3, -0.1, 0.2, 0.3, 0.15, 0.4, +1, 3.0)
   bunch = Bunch(copy(vb1))
-  BeamTracking.launch!(bunch.coords, KernelCall(BeamTracking.track_alignment_bend_entering!,
-                                            (0., 0., 0., 0.00, -0.00, 0.00, pi/2, 0.0, +1, 2.0)))
-  println(bunch.coords.v)
-  @test bunch.coords.v ≈ vs_enter
+  BeamTracking.launch!(bunch.coords, KernelCall(BeamTracking.track_coord_transform!, (r, q)))
+  @test bunch.coords.v ≈ vb_enter
+  test_matrix(mb1, KernelCall(BeamTracking.track_coord_transform!, (r, q)))
 
-  #test_matrix(...)
+  r, q = BeamTracking.coord_alignment_bend_exiting(0.1, 0.2, 0.3, -0.1, 0.2, 0.3, 0.15, 0.4, +1, 3.0)
+  bunch = Bunch(copy(vb1))
+  BeamTracking.launch!(bunch.coords, KernelCall(BeamTracking.track_coord_transform!, (r, q)))
+  @test bunch.coords.v ≈ vb_exit
+  test_matrix(mb2, KernelCall(BeamTracking.track_coord_transform!, (r, q)))
 
   # Straight tests
 
@@ -60,9 +77,9 @@ m2 = [
                                                       (0.4, 0.5, 0.6, 0.01, -0.02, 0.03, +1, 3.0)))
   @test bunch.coords.v ≈ vs_exit
 
-  test_matrix(m1, KernelCall(BeamTracking.track_alignment_straight_entering!, 
+  test_matrix(ms1, KernelCall(BeamTracking.track_alignment_straight_entering!, 
                                                       (0.4, 0.5, 0.6, 0.01, -0.02, 0.03, +1, 2.0)))
-  test_matrix(m2, KernelCall(BeamTracking.track_alignment_straight_exiting!, 
+  test_matrix(ms2, KernelCall(BeamTracking.track_alignment_straight_exiting!, 
                                                       (0.4, 0.5, 0.6, 0.01, -0.02, 0.03, +1, 3.0)))
 end
 

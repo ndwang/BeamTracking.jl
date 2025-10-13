@@ -1,9 +1,26 @@
-#=
+"""
+    Base.:(+)(t1::Tuple, t2::Tuple)
+Pairwise adds two Tuples. This assumes that the tuples are of equal length.
+"""
+function Base.:(+)(t1::Tuple, t2::Tuple)
+  if length(t1) != length(t2); error("Tuples to add have unequal lengths."); end
+  return ntuple(i -> t1[i]+t2[i], length(t1))
+end
 
-Utility functions and "fake" APC. These will be moved to 
-AcceleratorSimUtils.jl in the end.
+#---------------------------------------------------------------------------------------------------
 
-=#
+function Base.:(-)(t1::Tuple)
+  return ntuple(i -> -t1[i], length(t1))
+end
+
+function Base.:(-)(t1::Tuple, t2::Tuple)
+  if length(t1) != length(t2); error("Tuples to subtract have unequal lengths."); end
+  return ntuple(i -> t1[i]-t2[i], length(t1))
+end
+
+#---------------------------------------------------------------------------------------------------
+# Utility functions and "fake" APC. These will be moved to 
+# AcceleratorSimUtils.jl in the end.
 
 
 
@@ -168,6 +185,33 @@ end
 
 
 #---------------------------------------------------------------------------------------------------
+# one_cos(x)
+# Temp from AcceleratorSimUtils
+
+"""
+    one_cos(x)
+
+Function to calculate `1 - cos(x)` to machine precision.
+This is usful if angle can be near zero where the direct evaluation of `1 - cos(x)` is inaccurate.
+
+Also see `one_cos_norm(x)`.
+""" one_cos
+
+one_cos(x) = 2.0 * sin(0.5*x)^2
+
+#---------------------------------------------------------------------------------------------------
+# one_cos_norm(x)
+
+"""
+    one_cos_norm(x)
+
+Function to calculate `(1 - cos(x)) / x^2` to machine precision.
+This is usful if angle can be near zero where the direct evaluation of `(1 - cos(x))x^2` is inaccurate.
+""" one_cos_norm
+
+one_cos_norm(x) = 0.5 * sincu(0.5*x)^2
+
+#---------------------------------------------------------------------------------------------------
 """
 This function computes exp(-i/2 v⋅σ) as a quaternion, where σ is the 
 vector of Pauli matrices. If compute is false, it returns the identity quaternion.
@@ -189,7 +233,11 @@ end
 
 #---------------------------------------------------------------------------------------------------
 
-function quat_mul(q1, q2)
+@inline quat_inv(q) = (q[1], -q[2], -q[3], -q[4])
+
+#---------------------------------------------------------------------------------------------------
+
+@inline function quat_mul(q1, q2)
   return (
     q1[1]*q2[1] - q1[2]*q2[2] - q1[3]*q2[3] - q1[4]*q2[4],
     q1[1]*q2[2] + q1[2]*q2[1] + q1[3]*q2[4] - q1[4]*q2[3],
@@ -225,7 +273,81 @@ Rotates vector `r` using quaternion `q`.
           w31*r[1] + w32*r[2] + w33*r[3])
 end
 
+#---------------------------------------------------------------------------------------------------
+# rot_quat(axis, angle)
 
+"""
+    rot_quat(axis, angle) -> q
+
+Calculates rotation quaternion from axis and angle.
+It is assumed that the axis is properly normalized.
+
+## Arguments
+- `axis`      Three vector axis.
+- `angle`     Rotation angle.
+
+# Returns
+- `q`    quaternion 4-vector.
+"""
+function rot_quat(axis, angle)
+  s = sin(0.5*angle)
+  return (cos(0.5*angle), s*axis[1], s*axis[2], s*axis[3])
+end
+
+#---------------------------------------------------------------------------------------------------
+# rot_mat(axis, angle)
+
+"""
+  rot_mat(axis, angle) -> rmat
+
+Calculates rotation matrix given a rotation `axis` and a rotation `angle`.
+It is assumed that the axis is properly normalized.
+
+## Arguments
+- `axis`      Three vector axis.
+- `angle`     Rotation angle.
+
+# Returns
+- `rmat`    3x3 rotation matrix.
+"""
+function rot_mat(axis, angle)
+  c = cos(angle)
+  s = sin(angle)
+  oc = one_cos(angle)
+
+  return [
+      c + axis[1]^2*oc                 axis[1]*axis[2]*oc - axis[3]*s   axis[1]*axis[3]*oc + axis[2]*s
+      axis[1]*axis[2]*oc + axis[3]*s   c + axis[2]^2*oc                 axis[2]*axis[3]*oc - axis[1]*s
+      axis[1]*axis[3]*oc - axis[2]*s   axis[2]*axis[3] + axis[1]*s      c + axis[3]^2*oc
+         ]
+end
+
+#---------------------------------------------------------------------------------------------------
+# rot_mat(q)
+
+"""
+    rot_mat(q) -> rmat
+
+Calculates rotation matrix from a quaternion `q`.
+It is assumed that `q` is properly normalized.
+
+## Arguments
+- `q`         Quaternion 4-vector
+
+# Returns
+- `rmat`    3x3 rotation matrix.
+"""
+function rot_mat(q)
+  qq = q * q'
+
+  return [
+    qq[1,1]+qq[2,2]-qq[3,3]-qq[4,4]   2.0*(qq[2,3]-qq[1,4])             2.0*(qq[2,4]+qq[1,3])
+    2.0*(qq[2,3]+qq[1,4])             qq[1,1]-qq[2,2]+qq[3,3]-qq[4,4]   2.0*(qq[3,4]-qq[1,2])
+    2.0*(qq[2,4]-qq[1,3])             2.0*(qq[3,4]+qq[1,2])             qq[1,1]-qq[2,2]-qq[3,3]+qq[4,4]
+         ]
+end
+
+#---------------------------------------------------------------------------------------------------
 # Rotation matrix
 
 """

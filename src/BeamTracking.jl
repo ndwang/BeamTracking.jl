@@ -18,13 +18,12 @@ using SIMD: SIMD
 import GTPSA: sincu, sinhcu, normTPS
 import Base: setproperty!
 
-export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, atan2, Time, TimeDependentParam
-export quat_mul, quat_rotate
-export LinearTracking, Linear
-export ExactTracking, Exact
+export Bunch, State, ParticleView, Time, TimeDependentParam
+export LinearTracking, Linear, ExactTracking, Exact
 export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
 export track!
-export rot_quaternion, inv_rot_quaternion
+export sincu, sinhcu, sincuc, expq, atan2, one_cos, one_cos_norm
+export rot_quaternion, inv_rot_quaternion, quat_mul, quat_rotate
 export Species
 
 include("utils.jl")
@@ -32,7 +31,7 @@ include("types.jl")
 include("time.jl")
 include("kernel.jl")
 
-include("helpers/alignment_drift.jl")
+include("helpers/track_transforms.jl")
 include("helpers/coord_transforms.jl")
 include("kernels/alignment_kernel.jl")
 include("kernels/aperture_kernel.jl")

@@ -46,6 +46,7 @@ function test_matrix(
   end
 
   # 1) Correctness
+  # println(GTPSA.jacobian(coords.v)[1:6,1:6])
   @test isapprox(GTPSA.jacobian(coords.v)[1:6,1:6], scalar.(M_expected); kwargs...)
   # 2) Type stability
   if type_stable

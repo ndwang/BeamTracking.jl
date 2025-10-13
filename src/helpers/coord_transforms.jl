@@ -1,150 +1,152 @@
 #---------------------------------------------------------------------------------------------------
-# coord_transform_concatenation(dr1, q1, dr2, q2) -> dr, q
+# coord_concatenation(r1, q1, r2, q2) -> dr, q
 
 """
-    coord_transform_concatenation(dr1, q1, dr2, q2) -> dr, q
+    coord_concatenation(r1, q1, r2, q2) -> dr, q
 
-Returns the composite transform for the coordinate transform (`dr1`, `q1`) followed by (`dr2`, `q2`).
+Returns the composite transform for the coordinate transform (`r1`, `q1`) followed by (`r2`, `q2`).
 
 ## Output
-- `dr`    Composite coordinate origin shift.
+- `r`     Composite coordinate origin shift.
 - `q`     Composite Quaternion rotation.
 """
-function coord_transform_concatenation(dr1, q1, dr2, q2)
-  return quat_rot!(dr1, q2) + dr2, quat_mul(q1, q2)
+function coord_concatenation(r1, q1, r2, q2)
+  return quat_rotate(r2, q1) + r1, quat_mul(q1, q2)
 end
 
 #---------------------------------------------------------------------------------------------------
-# coord_bend_transform
+# coord_bend_arc_transform
 
 """
-    function coord_bend_transform(ds, g_ref, tilt_ref) -> dr, q
+    function coord_bend_arc_transform(ds, g_ref, tilt_ref) -> r, q
 
-Return the transform to the particle phase-space coordinates when the coordinate system is 
-transformed along a bend arc a distance `ds`.
+Return the transform to the coordinate system that is rotated about the bend axis by an
+angle `ds*g_ref`.
 
 ## Arguments
-- `ds`:       Distance along the bend arc the coordinate system is transformed.
+- `ds`        Distance along the bend arc the coordinate system is transformed.
 - `g_ref`     Reference `g = 1/radius`.
 - `tilt_ref`  Reference tilt.
 
 ## Output
+- `r`     Coordinate origin shift.
+- `q`     Quaternion rotation.
+"""
+@inline function coord_bend_arc_transform(ds, g_ref, tilt_ref)
+  @FastGTPSA begin @inbounds begin 
+    ang = ds * g_ref
+    axis = (sin(tilt_ref), -cos(tilt_ref), 0.0)
+    q = rot_quat(axis, ang)
+
+    trq = rot_quat((0.0, 0.0, 1.0), tilt_ref)
+    r = (-ds * ang * one_cos_norm(ang), 0.0, ds * sincu(ang))
+    r = quat_rotate(r, trq)
+
+    return r, q
+  end end
+end
+
+#---------------------------------------------------------------------------------------------------
+
+"""
+    coord_alignment_bend_entering(x_off, y_off, z_off, x_rot, y_rot, tilt, 
+                                              g_ref, tilt_ref, ele_orient, L) -> dr, q
+
+Returns `dr` origin shift and `q` quaternion rotation for the coordinate transformation
+from the nominal bend entrance face (in branch coordinates) to the actual entrance face
+(in body coordinates) taking into account the element alignment parameters.
+
+## Arguments
+- `x_off`, `y_off`, `z_off`   Element offset.
+- `x_rot`, `y_rot`, 'tilt`    Element orientation.
+- `g_ref`                     Reference g = 1/bend radius.
+- `tilt_ref`                  Branch coords tilt.
+- `ele_orient`                Element longitudinal orientation: +1 => normal, -1 => reversed.
+- `L`                         Element length.
+
+## Returns
 - `dr`    Coordinate origin shift.
 - `q`     Quaternion rotation.
 """
-@inline function coord_bend_transform(ds, g_ref, tilt_ref)
-  @FastGTPSA begin @inbounds begin 
-    ang = ds * g_ref
-    sinc_ang = sincu(0.5*ang)
-    axis = [sin(tilt_ref), cos(tilt_ref), 0.0]
 
-    q = rot_q(axis, ds * g_ref)
-    dr = [0.5 * ds * ang * sinc_ang, 0.0, -ds * sincu(ang)]
+@inline function coord_alignment_bend_entering(x_off, y_off, z_off, 
+                                        x_rot, y_rot, tilt, g_ref, tilt_ref, ele_orient, L)
 
-    return dr, q
-  end end
+  # Start: Transform to coords at center of bend arc.
+  r, q = coord_bend_arc_transform(0.5*L, g_ref, tilt_ref)
+  ## println("***A: $r  :: $q")
+
+  # Translate to coords with origin at element chord midpoint.
+  ang2 = 0.5 * L * g_ref
+  f = -0.25 * L^2 * g_ref * one_cos_norm(ang2)
+  r += quat_rotate((f*cos(tilt_ref), f*sin(tilt_ref), 0.0), q)
+  ## println("***B: $r  :: $q")
+
+  # Misalignment transform
+  r += quat_rotate((x_off, y_off, z_off), q) 
+ 
+  dq = rot_quaternion(x_rot, y_rot, tilt)
+  q = quat_mul(q, dq)
+  ## println("***W: $r  :: $q")
+
+  # Rotating by -tilt_ref
+  dq = rot_quaternion(0.0, 0.0, tilt_ref)
+  q = quat_mul(q, dq)
+  ## println("***X: $r  :: $q")
+
+  # Translate from chord center to arc center.
+  dr = (0.25 * L^2 * g_ref * one_cos_norm(ang2), 0.0, 0.0)
+  r += quat_rotate(dr, q)
+  ## println("***Y: $r  :: $q")
+
+  # Transform from arc center back to entrance face.
+  dr, dq = coord_bend_arc_transform(-0.5*L, g_ref, 0.0)
+  r, q = coord_concatenation(r, q, dr, dq)
+  ## println("***Z: $r  :: $q")
+  return r, q
 end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    function track_translation!(i, coords::Coords, dr, z0) -> z1
-
-Transform phase-space particle coordinates when the coordinate system is translated by the vector `dr`.
-
-## Arguments
-- `ds`:       Distance along the bend arc the coordinate system is transformed.
-- `g_ref`     Reference `g = 1/radius`.
-- `tilt_ref`  Reference tilt.
-- `z0`       The particle longitudinal distance from the center of rotation. 
-
-## Output
-- `z1`        The particle longitudinal distance from the center of rotation after rotation. 
-
-"""
-@inline function track_translation!(i, coords::Coords, dr, z0)
-  @FastGTPSA begin @inbounds begin 
-    v = coords.v
-    alive = (coords.state[i] == STATE_ALIVE)
-
-    x = v[i,XI] - dr[1]
-    y = v[i,YI] - dr[2]
-    z = z0    - dr[3]
-
-    v[i,XI] = vifelse(alive, x, v[i,XI])
-    v[i,YI] = vifelse(alive, y, v[i,YI])
-    return z
-  end end
-end
-
+ 
 #---------------------------------------------------------------------------------------------------
 
-"""
-    coord_rotation!(i, coords::Coords, q_inv, z_0) -> z_1
+@inline function coord_alignment_bend_exiting(x_off, y_off, z_off, 
+                                        x_rot, y_rot, tilt, g_ref, tilt_ref, ele_orient, L)
 
-Particle coordinate rotation. This rotates both `(x, y)` and `(px, py, pz)` phase space coordinates.
+  # Idea: Transform from non-misaligned (branch) coords to body coords and then
+  # return the inverse.
 
-## Arguments
-- `q_inv`   The particle quaternion rotation. This is the inverse of the rotation of the coordinate system.
-- `z_0`     The longitudinal particle distance from the center of rotation. 
+  # Start: Transform to coords at center of bend arc.
+  r, q = coord_bend_arc_transform(-0.5*L, g_ref, tilt_ref)
+  ## println("***A: $r  :: $q")
 
-## Output
-- `z1`        The particle longitudinal distance from the center of rotation after rotation. 
+  # Translate to coords with origin at element chord midpoint.
+  ang2 = 0.5 * L * g_ref
+  f = -0.25 * L^2 * g_ref * one_cos_norm(ang2)
+  r += quat_rotate((f*cos(tilt_ref), f*sin(tilt_ref), 0.0), q)
+  ## println("***B: $r  :: $q")
 
-Returned is the new longitudinal offset from the center of rotation.
-"""
+  # Misalignment transform
+  r += quat_rotate((x_off, y_off, z_off), q) 
+ 
+  dq = rot_quaternion(x_rot, y_rot, tilt)
+  q = quat_mul(q, dq)
+  ## println("***W: $r  :: $q")
 
-@inline function coord_rotation!(i, coords::Coords, q_inv, z_0) 
-  @FastGTPSA begin @inbounds begin
-    v = coords.v
-    rel_p = 1 + v[i,PZI]
-    ps_02 = rel_p*rel_p - v[i,PXI]*v[i,PXI] - v[i,PYI]*v[i,PYI]
-    good_momenta = (ps_02 > 0)
-    alive_at_start = (coords.state[i] == STATE_ALIVE)
-    coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
-    alive = (coords.state[i] == STATE_ALIVE)
-    ps_02_1 = one(ps_02)
-    ps_0 = sqrt(vifelse(good_momenta, ps_02, ps_02_1))
+  # Rotating by -tilt_ref
+  dq = rot_quaternion(0.0, 0.0, tilt_ref)
+  q = quat_mul(q, dq)
+  ## println("***X: $r  :: $q")
 
-    w11 = 1 - 2*(q_inv[QY]*q_inv[QY] + q_inv[QZ]*q_inv[QZ])
-    w12 =     2*(q_inv[QX]*q_inv[QY] - q_inv[QZ]*q_inv[Q0])
-    w13 =     2*(q_inv[QX]*q_inv[QZ] + q_inv[QY]*q_inv[Q0])
+  # Translate from chord center to arc center.
+  dr = (0.25 * L^2 * g_ref * one_cos_norm(ang2), 0.0, 0.0)
+  r += quat_rotate(dr, q)
+  ## println("***Y: $r  :: $q")
 
-    w21 =     2*(q_inv[QX]*q_inv[QY] + q_inv[QZ]*q_inv[Q0])
-    w22 = 1 - 2*(q_inv[QX]*q_inv[QX] + q_inv[QZ]*q_inv[QZ])
-    w23 =     2*(q_inv[QY]*q_inv[QZ] - q_inv[QX]*q_inv[Q0])
+  # Transform from arc center back to entrance face.
+  dr, dq = coord_bend_arc_transform(0.5*L, g_ref, 0.0)
+  r, q = coord_concatenation(r, q, dr, dq)
+  ## println("***Z: $r  :: $q")
 
-    w31 =     2*(q_inv[QX]*q_inv[QZ] - q_inv[QY]*q_inv[Q0])
-    w32 =     2*(q_inv[QY]*q_inv[QZ] + q_inv[QX]*q_inv[Q0])
-    w33 = 1 - 2*(q_inv[QX]*q_inv[QX] + q_inv[QY]*q_inv[QY])
-
-    x_0 = v[i,XI]
-    y_0 = v[i,YI]
-    new_x = w11*x_0 + w12*y_0 + w13*z_0
-    new_y = w21*x_0 + w22*y_0 + w23*z_0
-    new_z = w31*x_0 + w32*y_0 + w33*z_0
-
-    v[i,XI] = vifelse(alive, new_x, x_0)
-    v[i,YI] = vifelse(alive, new_y, y_0)
-    zero_z = zero(new_z)
-    z_out = vifelse(alive, new_z, zero_z)
-
-    px_0 = v[i,PXI]
-    py_0 = v[i,PYI]
-    new_px = w11*px_0 + w12*py_0 + w13*ps_0
-    new_py = w21*px_0 + w22*py_0 + w23*ps_0
-    v[i,PXI] = vifelse(alive, new_px, px_0)
-    v[i,PYI] = vifelse(alive, new_py, py_0)
-  
-    q1 = coords.q
-    if !isnothing(q1)
-      q = quat_mul(q_inv, q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ])
-      q0 = vifelse(alive, q[Q0], q1[i,Q0])
-      qx = vifelse(alive, q[QX], q1[i,QX])
-      qy = vifelse(alive, q[QY], q1[i,QY])
-      qz = vifelse(alive, q[QZ], q1[i,QZ])
-      q1[i,Q0], q1[i,QX], q1[i,QY], q1[i,QZ] = q0, qx, qy, qz
-    end
-  
-    return z_out
-  end end
+  # Return inverse transform
+  q = quat_inv(q)
+  return -quat_rotate(r, q), q
 end
