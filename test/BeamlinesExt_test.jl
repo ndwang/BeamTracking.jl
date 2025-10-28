@@ -87,7 +87,7 @@
   @testset "Exact" begin
     p0c = 10e6
     # E to R_ref
-    R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + BeamTracking.massof(Species("electron"))^2))
+    R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + massof(Species("electron"))^2))
     
     # Patch:
     ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=Exact())
@@ -345,7 +345,7 @@
 =#
     p0c = 10e6
     # E to R_ref
-    R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + BeamTracking.massof(Species("electron"))^2))
+    R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + massof(Species("electron"))^2))
 #=
     # Thin straight pure dipole:
     ele = LineElement(L=0.0, Kn0L=0.1, tracking_method=SplitIntegration())
@@ -927,4 +927,5 @@
   end
 
   #include("BeamlinesExt/beamlines_aperture_test.jl")
+  
 end

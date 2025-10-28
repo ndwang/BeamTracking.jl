@@ -1,9 +1,9 @@
 module BeamTrackingBeamlinesExt
-using Beamlines, BeamTracking, GTPSA, StaticArrays, KernelAbstractions
+using Beamlines, BeamTracking, GTPSA, StaticArrays, KernelAbstractions, AtomicAndPhysicalConstants
 using Beamlines: isactive, deval, unsafe_getparams, o2i, BitsBeamline, BitsLineElement, isnullspecies
 using BeamTracking: get_N_particle, R_to_beta_gamma, R_to_gamma, R_to_pc, R_to_v, beta_gamma_to_v, runkernels!,
                     @makekernel, Coords, KernelCall, KernelChain, push, TimeDependentParam, RefState, launch!
-import BeamTracking: track!, C_LIGHT, chargeof, massof
+import BeamTracking: track!
 
 
 include("utils.jl")
@@ -11,11 +11,10 @@ include("utils.jl")
 function track!(
   bunch::Bunch, 
   ele::LineElement; 
-  t_ref::Ref=Ref{eltype(bunch.coords.v)}(0),
   kwargs...
 )
   coords = bunch.coords
-  @noinline _track!(nothing, coords, bunch, t_ref, ele, ele.tracking_method; kwargs...)
+  @noinline _track!(nothing, coords, bunch, ele, ele.tracking_method; kwargs...)
   return bunch
 end
 
@@ -34,7 +33,6 @@ end
 function track!(
   bunch::Bunch, 
   bl::Beamline; 
-  t_ref::Ref=Ref{eltype(bunch.coords.v)}(0),
   outer_particle_loop::Bool=false,
   kwargs...
 )
@@ -46,7 +44,7 @@ function track!(
 
   if !outer_particle_loop
     for ele in bl.line
-      track!(bunch, ele; t_ref=t_ref, kwargs...)
+      track!(bunch, ele; kwargs...)
     end
   else
     kc = (KernelCall(outer_track!, (bunch, bl)),)
@@ -60,7 +58,6 @@ end
 function track!(
   bunch::Bunch, 
   bbl::BitsBeamline{TM}; 
-  t_ref::Ref=Ref{eltype(bunch.coords.v)}(0),
   outer_particle_loop::Bool=false
 ) where {TM}
 
@@ -80,7 +77,7 @@ function track!(
           i = start_i
           while true
             ele = BitsLineElement(bbl, i)
-            _track!(nothing, bunch.coords, bunch, t_ref, ele, TM)
+            _track!(nothing, bunch.coords, bunch, ele, TM)
             i += 1
             if i > length(bbl.rep) || bbl.rep[i] != 0
               break
@@ -91,7 +88,7 @@ function track!(
     else
       for i in 1:length(bbl.params)
         ele = BitsLineElement(bbl, i)
-        _track!(nothing, bunch.coords, bunch, t_ref, ele, TM)
+        _track!(nothing, bunch.coords, bunch, ele, TM)
       end
     end
   else

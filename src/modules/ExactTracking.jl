@@ -14,16 +14,15 @@ const TRACKING_METHOD = Exact
 
 # Update the reference energy of the canonical coordinates
 # BUG: z and pz are not updated correctly
-#=
-@makekernel fastgtpsa=true function update_P0!(i, coords, R_ref_initial, R_ref_final)
-  @inbounds begin
-    @FastGTPSA! v[i,PXI] = v[i,PXI] * R_ref_initial / R_ref_final
-    @FastGTPSA! v[i,PYI] = v[i,PYI] * R_ref_initial / R_ref_final
-    @FastGTPSA! v[i,PZI] = v[i,PZI] * R_ref_initial / R_ref_final
-  end
-  return v
+
+@makekernel fastgtpsa=true function update_P0!(i, coords::Coords, R_ref_initial, R_ref_final)
+  v = coords.v 
+
+  v[i,PXI] = v[i,PXI] * R_ref_initial / R_ref_final
+  v[i,PYI] = v[i,PYI] * R_ref_initial / R_ref_final
+  #v[i,PZI] = (R_ref_initial * (1 + v[i,PZI]) - R_ref_final) / R_ref_final
 end
-=#
+
 
 #
 # ===============  E X A C T   D R I F T  ===============
@@ -231,12 +230,9 @@ end # function exact_sbend!()
 """
     exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
 
-Tracks a particle through a sector bend via exact tracking. If edge angles are 
-provided, a linear hard-edge fringe map is applied at both ends.
+Tracks a particle through a sector bend via exact tracking.
 
 #Arguments
-- 'e1'       -- entrance face angle
-- 'e2'       -- exit face angle
 - 'theta'    -- 'g' * 'L'
 - 'g'        -- curvature
 - 'Kn0'      -- normalized dipole field
@@ -246,19 +242,10 @@ provided, a linear hard-edge fringe map is applied at both ends.
 - 'beta_0'   -- p0c/E0
 - 'L'        -- length
 """
-@makekernel fastgtpsa=true function exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, tilde_m, beta_0, L)
+@makekernel fastgtpsa=true function exact_bend!(i, coords::Coords, theta, g, Kn0, tilde_m, beta_0, L)
   v = coords.v
+
   rel_p = 1 + v[i,PZI]
-
-  me1 = Kn0*tan(e1)/rel_p
-  me2 = Kn0*tan(e2)/rel_p
-  
-  alive = (coords.state[i] == STATE_ALIVE)
-  new_px = v[i,PXI] + v[i,XI]*me1
-  new_py = v[i,PYI] - v[i,YI]*me1
-  v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
-  v[i,PYI] = vifelse(alive, new_py, v[i,PYI])
-
   pt2 = rel_p*rel_p - v[i,PYI]*v[i,PYI]
   good_momenta = (pt2 > 0)
   alive_at_start = (coords.state[i] == STATE_ALIVE)
@@ -316,24 +303,34 @@ provided, a linear hard-edge fringe map is applied at both ends.
   v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
   v[i,YI]  = vifelse(alive, new_y, v[i,YI])
   v[i,ZI]  = vifelse(alive, new_z, v[i,ZI])
-
-  new_px = v[i,PXI] + v[i,XI]*me2
-  new_py = v[i,PYI] - v[i,YI]*me2
-  v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
-  v[i,PYI] = vifelse(alive, new_py, v[i,PYI])
 end
 
 
-@makekernel fastgtpsa=true function exact_bend_with_rotation!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
+@makekernel fastgtpsa=true function linear_bend_fringe!(i, coords::Coords, e, Kn0, w, w_inv)
   BeamTracking.coord_rotation!(i, coords, w, 0)
-  exact_bend!(i, coords, e1, e2, theta, g, Kn0, tilde_m, beta_0, L)
+  v = coords.v
+
+  rel_p = 1 + v[i,PZI]
+  me = Kn0 * tan(e) / rel_p
+  alive = (coords.state[i] == STATE_ALIVE)
+  new_px = v[i,PXI] + v[i,XI]*me
+  new_py = v[i,PYI] - v[i,YI]*me
+  v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
+  v[i,PYI] = vifelse(alive, new_py, v[i,PYI])
+  BeamTracking.coord_rotation!(i, coords, w_inv, 0)
+end
+
+
+@makekernel fastgtpsa=true function exact_bend_with_rotation!(i, coords::Coords, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
+  BeamTracking.coord_rotation!(i, coords, w, 0)
+  exact_bend!(i, coords, theta, g, Kn0, tilde_m, beta_0, L)
   BeamTracking.coord_rotation!(i, coords, w_inv, 0)
 end
 
 
 # This is separate because the spin can be transported exactly here
-@makekernel fastgtpsa=true function exact_curved_drift!(i, coords::Coords, e1, e2, theta, g, w, w_inv, a, tilde_m, beta_0, L) 
-  exact_bend_with_rotation!(i, coords, 0, 0, theta, g, 0, w, w_inv, tilde_m, beta_0, L)
+@makekernel fastgtpsa=true function exact_curved_drift!(i, coords::Coords, theta, g, w, w_inv, a, tilde_m, beta_0, L) 
+  exact_bend_with_rotation!(i, coords, theta, g, 0, w, w_inv, tilde_m, beta_0, L)
   if !isnothing(coords.q)
     BeamTracking.coord_rotation!(i, coords, w, 0)
     IntegrationTracking.rotate_spin!(i, coords, a, g, tilde_m, SA[0], SA[0], SA[0], L)

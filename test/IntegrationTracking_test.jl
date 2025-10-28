@@ -21,7 +21,7 @@
       sn = SA[Ks1]
       a = T(0.00115965218046)
       p0c = T(10e6)
-      mc2 = T(BeamTracking.massof(Species("electron")))
+      mc2 = T(massof(Species("electron")))
       tilde_m = mc2/p0c
       gamsqr_0 = 1 + 1/tilde_m^2
       beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -39,7 +39,7 @@
       ks = SA[k1*sin(-2*tilt)]
       a = T(0.00115965218046)
       p0c = T(10e6)
-      mc2 = T(BeamTracking.massof(Species("electron")))
+      mc2 = T(massof(Species("electron")))
       tilde_m = mc2/p0c
       gamsqr_0 = 1 + 1/tilde_m^2
       beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -57,7 +57,7 @@
       ks = SA[Ks2, Ks4]
       a = T(0.00115965218046)
       p0c = T(10e6)
-      mc2 = T(BeamTracking.massof(Species("electron")))
+      mc2 = T(massof(Species("electron")))
       tilde_m = mc2/p0c
       gamsqr_0 = 1 + 1/tilde_m^2
       beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -76,10 +76,10 @@
       w = w_inv = SA[1.0 0.0 0.0 0.0]
       a = T(0.00115965218046)
       p0c = T(10e6)
-      mc2 = T(BeamTracking.massof(Species("electron")))
+      mc2 = T(massof(Species("electron")))
       tilde_m = mc2/p0c
       beta_0 = 1/sqrt(1 + tilde_m^2)
-      params = (tilde_m, beta_0, a, 0, 0, 0, w, w_inv, Kn0, mm, kn, ks)
+      params = (tilde_m, beta_0, a, 0, w, w_inv, Kn0, mm, kn, ks)
       ker = IntegrationTracking.bkb_multipole!
       num_steps = 10
       ds_step = T(0.2)
@@ -97,7 +97,7 @@
       ks = SA[Ks2, Ks4]
       a = T(0.00115965218046)
       p0c = T(10e6)
-      mc2 = T(BeamTracking.massof(Species("electron")))
+      mc2 = T(massof(Species("electron")))
       tilde_m = mc2/p0c
       gamsqr_0 = 1 + 1/tilde_m^2
       beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -110,7 +110,7 @@
 
     function cavity_args(::Type{T}) where {T}
       p0c = T(10e6)
-      mc2 = T(BeamTracking.massof(Species("electron")))
+      mc2 = T(massof(Species("electron")))
       E_ref = sqrt(mc2^2 + p0c^2)
       tilde_m = mc2/p0c
       gamsqr_0 = 1 + 1/tilde_m^2

@@ -83,8 +83,8 @@ bv_m4  = [               3.00, 2.40, 1.80, 1.20 ] .* fact2_5  # T/m^{n-1}
 # -- species
 #e_minus = Species("electron")
 #p_plus =  Species("proton")
-#mec2 = BeamTracking.massof(e_minus) # 0.51099895069 MeV
-#mpc2 = BeamTracking.massof(p_plus)  # 938.27208943 MeV
+#mec2 = massof(e_minus) # 0.51099895069 MeV
+#mpc2 = massof(p_plus)  # 938.27208943 MeV
 mec2 = 0.51099895069e6 # eV
 mpc2 = 938.27208943e6  # eV
 
@@ -762,7 +762,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
 
     ###### Exact Sector Bend ##########
     p0c = 10E6
-    tilde_m = BeamTracking.massof(Species("electron"))/p0c
+    tilde_m = massof(Species("electron"))/p0c
     beta_0 = 1/sqrt(1 + tilde_m^2)
     I = SA[1 0 0; 0 1 0; 0 0 1]
 
@@ -777,7 +777,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     L = 0.5
     theta = g * L 
     k0 = 1.001
-    test_matrix(exact_bend_1, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_1, KernelCall(ExactTracking.exact_bend_with_rotation!, (theta, g, k0, I, I, tilde_m, beta_0, L)))
 
     exact_bend_2 = 
       [ 0.1139493927324543E+01  0.6225083696592777E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 -0.1231653667943533E-15   
@@ -790,7 +790,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     k0 = 0
     L = 0.5
     theta = g * L
-    test_matrix(exact_bend_2, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_2, KernelCall(ExactTracking.exact_bend_with_rotation!, (theta, g, k0, I, I, tilde_m, beta_0, L)))
 
     exact_bend_3 = 
       [ 0.1000000000000000E+01 0.5598925109558526E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.1330944687907870E+00  
@@ -803,7 +803,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     g = 0
     L = 0.5
     theta = g * L
-    test_matrix(exact_bend_3, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_3, KernelCall(ExactTracking.exact_bend_with_rotation!, (theta, g, k0, I, I, tilde_m, beta_0, L)))
 
     exact_bend_4 = 
       [ 0.1127528195871212E+01  0.6609770864392946E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 -0.1472939489803990E+00   
@@ -816,7 +816,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     g = 0.4
     L = 0.5
     theta = g * L
-    test_matrix(exact_bend_4, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_4, KernelCall(ExactTracking.exact_bend_with_rotation!, (theta, g, k0, I, I, tilde_m, beta_0, L)))
 
     exact_bend_5 = 
       [ 0.1283686050523820E+01 0.7804509524043607E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00  0.1379043012645095E+00  
@@ -829,7 +829,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     g = -0.8
     L = 0.5
     theta = g * L
-    test_matrix(exact_bend_5, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_5, KernelCall(ExactTracking.exact_bend_with_rotation!, (theta, g, k0, I, I, tilde_m, beta_0, L)))
 
     exact_bend_6 = 
       [ 0.9005939074669641E+00 0.4858928367401870E+00 0.0000000000000000E+00 0.0000000000000000E+00 0.0000000000000000E+00 -0.1117303574601966E+00  
@@ -842,7 +842,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     g = -1
     L = 0.5
     theta = g * L
-    test_matrix(exact_bend_6, KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, theta, g, k0, I, I, tilde_m, beta_0, L)))
+    test_matrix(exact_bend_6, KernelCall(ExactTracking.exact_bend_with_rotation!, (theta, g, k0, I, I, tilde_m, beta_0, L)))
   end
 
 
@@ -870,12 +870,16 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
 
     # Test inv_rot_quaternion function
     @test inv_rot_quaternion(dx_rot, dy_rot, dz_rot) ≈ Winv
+
+    b0 = Bunch([0.01 0.02 0.03 0.04 0.05 0.06], R_ref=10.0)
+    ExactTracking.update_P0!(1, b0.coords, 10.0, 20.0)
+    @test b0.coords.v ≈ [0.01 0.01 0.03 0.02 0.05 0.06] # pz is not changed for fake ramping
   end
 
   @testset "Kernels" begin
     function patch_args(::Type{T}) where {T}
         p0c = T(10e6)
-        mc2 = T(BeamTracking.massof(Species("electron")))
+        mc2 = T(massof(Species("electron")))
         tilde_m = mc2/p0c
         gamsqr_0 = 1 + 1/tilde_m^2
         beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -893,7 +897,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
 
     function patch_norot_args(::Type{T}) where {T}
         p0c = T(10e6)
-        mc2 = T(BeamTracking.massof(Species("electron")))
+        mc2 = T(massof(Species("electron")))
         tilde_m = mc2/p0c
         gamsqr_0 = 1 + 1/tilde_m^2
         beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -908,7 +912,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
     function drift_args(::Type{T}) where {T}
         L = T(1)
         p0c = T(10e6)
-        mc2 = T(BeamTracking.massof(Species("electron")))
+        mc2 = T(massof(Species("electron")))
         tilde_m = mc2/p0c
         gamsqr_0 = 1 + 1/tilde_m^2
         beta_0 = 1/sqrt(1 + tilde_m^2)
@@ -919,7 +923,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
         L = T(1)
         ks = T(2)
         p0c = T(10e6)
-        mc2 = T(BeamTracking.massof(Species("electron")))
+        mc2 = T(massof(Species("electron")))
         tilde_m = mc2/p0c
         gamsqr_0 = 1 + 1/tilde_m^2
         beta_0 = 1/sqrt(1 + tilde_m^2)
