@@ -128,7 +128,7 @@ end
     w_inv = inv_rot_quaternion(0,0,tilt)
     q = chargeof(bunch.species)
     mc2 = massof(bunch.species)
-    params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, 0, 0, w, w_inv, k0, SA[mm], SA[kn], SA[ks])
+    params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, w, w_inv, k0, SA[mm], SA[kn], SA[ks])
     return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
   end
 end
@@ -144,7 +144,7 @@ end
   w_inv = inv_rot_quaternion(0,0,tilt)
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, 0, 0, w, w_inv, k0, mm, kn, ks)
+  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, w, w_inv, k0, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
 end
 
@@ -238,8 +238,6 @@ end
     tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
     g = bendparams.g_ref
     tilt = bendparams.tilt_ref
-    e1 = bendparams.e1
-    e2 = bendparams.e2
     theta = g * L
     mm = bm1.order
     Kn0, Ks0 = get_strengths(bm1, L, R_ref)
@@ -248,7 +246,7 @@ end
     w_inv = inv_rot_quaternion(0,0,tilt)
     q = chargeof(bunch.species)
     mc2 = massof(bunch.species)
-    params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), e1, e2, g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])mp
+    params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])
     return integration_launcher!(IntegrationTracking.bkb_multipole!, params, tm, L)
   end
 end
@@ -304,6 +302,6 @@ end
   p0c = BeamTracking.R_to_pc(bunch.species, R_ref)
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, E_ref, p0c, gyromagnetic_anomaly(bunch.species), omega, E0_over_Rref, t0, mm, kn, ks)amp
+  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, E_ref, p0c, gyromagnetic_anomaly(bunch.species), omega, E0_over_Rref, t0, mm, kn, ks)
   return integration_launcher!(IntegrationTracking.cavity!, params, tm, L)
 end

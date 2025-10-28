@@ -24,7 +24,7 @@ export ExactTracking, Exact
 export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
 export track!
 export rot_quaternion, inv_rot_quaternion
-export Species
+export Species, E_CHARGE, EPS_0, H_BAR
 
 include("utils.jl")
 include("types.jl")

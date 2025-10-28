@@ -1,6 +1,6 @@
 @testset "Beamlines" begin
   include("lattices/esr.jl")
-#=
+
   @testset "Linear" begin
     b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
     foreach(t->t.tracking_method=Linear(), ring.line)
@@ -329,9 +329,9 @@
     @test_throws ErrorException track!(b0, Beamline([ele_patch_sol],  R_ref=R_ref))
     @test_throws ErrorException track!(b0, Beamline([ele_bend_quad],  R_ref=R_ref))
   end
-  =#
+  
   @testset "SplitIntegration" begin
-    #=b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
+    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
     foreach(t->t.tracking_method=SplitIntegration(), ring.line)
     track!(b0, ring)
     M_ESR = [0.8763088913632153E+00  0.2842332738570844E+00 -0.9233408564026070E-06 -0.1104742929395010E-06  0.1231581327803036E-08 -0.8939291467979220E-07 
@@ -342,11 +342,11 @@
              0.6685543985517410E-08 -0.3425164613573595E-08  0.2907237074330440E-14  0.1826161170763475E-15  0.4150093714505364E-01  0.9677530013155135E+00]
 
     @test GTPSA.jacobian(b0.coords.v) ≈ M_ESR
-=#
+
     p0c = 10e6
     # E to R_ref
     R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + massof(Species("electron"))^2))
-#=
+
     # Thin straight pure dipole:
     ele = LineElement(L=0.0, Kn0L=0.1, tracking_method=SplitIntegration())
     v = collect(transpose(@vars(D10)))
@@ -842,7 +842,7 @@
     q_expected = [0.8408669037648832 -0.03581645006820144 0.0065436536214155076 0.5400159374080092]
     @test b0.coords.v ≈ v_expected
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
-=#
+
     # Bend with deterministic radiation:
     ele = LineElement(L=2.0, g=0.1, tracking_method=BendKick(order=6, radiation_damping_on=true))
     v = zeros(6)
@@ -887,7 +887,7 @@
     track!(b0, bl)
     v_expected = [0.022813869607319508 0.02259460588210925 0.04729868720097375 0.038077653342022774 0.04953599990242161 0.05999085207779174]
     @test b0.coords.v ≈ v_expected
-#=
+
     # Particle lost in dipole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
@@ -923,9 +923,9 @@
     @test_throws ErrorException BendKick(order = 2, num_steps = -2)
     @test_throws ErrorException DriftKick(ds_step = -0.1)
     @test_throws ErrorException SolenoidKick(num_steps = -2)
-    @test_throws ErrorException SplitIntegration(order = 5)=#
+    @test_throws ErrorException SplitIntegration(order = 5)
   end
 
-  #include("BeamlinesExt/beamlines_aperture_test.jl")
+  include("BeamlinesExt/beamlines_aperture_test.jl")
   
 end

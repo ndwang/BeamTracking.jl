@@ -173,9 +173,9 @@ L: element length
   if radiation_damping
     deterministic_radiation!(   i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
   end
-  if radiation_fluctuations
-    stochastic_radiation!(      i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
-  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(      i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
 
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
@@ -185,9 +185,9 @@ L: element length
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
 
-  if radiation_fluctuations
-    stochastic_radiation!(      i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
-  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(      i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
   if radiation_damping
     deterministic_radiation!(   i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
   end
@@ -337,17 +337,17 @@ Arguments
   if radiation_damping
     deterministic_radiation!(   i, coords, q, mc2, E0, g, mm, kn, ks, L / 2)
   end
-  if radiation_fluctuations
-    stochastic_radiation!(      i, coords, q, mc2, E0, g, mm, kn, ks, L / 2)
-  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(      i, coords, q, mc2, E0, g, mm, kn, ks, L / 2)
+  #end
 
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
   ExactTracking.exact_bend!(    i, coords, g*L, g, k0, tilde_m, beta_0, L)
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
 
-  if radiation_fluctuations
-    stochastic_radiation!(      i, coords, q, mc2, E0, g, mm, kn, ks, L / 2)
-  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(      i, coords, q, mc2, E0, g, mm, kn, ks, L / 2)
+  #end
   if radiation_damping
     deterministic_radiation!(   i, coords, q, mc2, E0, g, mm, kn, ks, L / 2)
   end
@@ -395,9 +395,9 @@ L:  element length
   if radiation_damping
     deterministic_radiation!(     i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
   end
-  if radiation_fluctuations
-    stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
-  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
 
   if isnothing(coords.q)
     ExactTracking.multipole_kick!(i, coords, mm, knl * 2, ksl * 2, -1)
@@ -407,9 +407,9 @@ L:  element length
     ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, -1)
   end
 
-  if radiation_fluctuations
-    stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
-  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
   if radiation_damping
     deterministic_radiation!(     i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
   end
@@ -453,9 +453,9 @@ L:  element length
   if radiation_damping
     deterministic_radiation!(     i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
   end
-  if radiation_fluctuations
-    stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
-  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
 
   if isnothing(coords.q)
     ExactTracking.multipole_kick!(i, coords, mm, knl * 2, ksl * 2, -1)
@@ -465,9 +465,9 @@ L:  element length
     ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, -1)
   end
 
-  if radiation_fluctuations
-    stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
-  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
   if radiation_damping
     deterministic_radiation!(     i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
   end
@@ -606,9 +606,9 @@ end
     if radiation_damping
       deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
     end
-    if radiation_fluctuations
-      stochastic_radiation!(      i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
-    end
+    #if radiation_fluctuations
+    #  stochastic_radiation!(      i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
+    #end
     ExactTracking.multipole_kick!(i, coords, mm, kn * L / 2, ks * L / 2, -1)
   end
 
@@ -622,9 +622,9 @@ end
 
   if multipoles
     ExactTracking.multipole_kick!(i, coords, mm, kn * L / 2, ks * L / 2, -1)
-    if radiation_fluctuations
-      stochastic_radiation!(      i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
-    end
+    #if radiation_fluctuations
+    #  stochastic_radiation!(      i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
+    #end
     if radiation_damping
       deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
     end
@@ -862,7 +862,7 @@ end
 
   b_perp_2 = b_perp_x*b_perp_x + b_perp_y*b_perp_y + b_perp_z*b_perp_z
 
-  coeff = 8.9875517862e9 * 1.602176634e-19 # 1/(4pi*epsilon0) * e
+  coeff = E_CHARGE/(4*pi*EPS_0) # 8.9875517862e9 * 1.602176634e-19
 
   K = -pl * coeff * 2/3 * (q*q)/(mc2*mc2*mc2*mc2) * (E0*E0*E0) * b_perp_2 * L
 
@@ -872,7 +872,7 @@ end
   prime_to_canonical!(i, coords, g, ax, ay)
 end
 
-
+#=
 @makekernel fastgtpsa=true function stochastic_radiation!(i, coords::Coords, q, mc2, E0, g, mm, kn, ks, L)
   v = coords.v
 
@@ -918,7 +918,7 @@ end
 
   dt_ds = h * rel_p / pl
 
-  coeff = 55/(24*sqrt(3))*8.9875517862e9*1.054571817e-34*C_LIGHT
+  coeff = 55/(24*sqrt(3))*1/(4*pi*EPS_0)*H_BAR*C_LIGHT
 
   mc27 = mc2*mc2*mc2*mc2*mc2*mc2*mc2
   E05 = E0*E0*E0*E0*E0
@@ -943,6 +943,6 @@ end
   v[i,PYI] = vifelse(alive, new_py, v[i,PYI])
   v[i,PZI] = vifelse(alive, new_pz, v[i,PZI])
 end
-
+=#
 
 end
