@@ -18,13 +18,15 @@ end
 @inline function thick_bend_pure_bdipole(tm::Exact, bunch, bendparams, bm1, L)
   g = bendparams.g_ref
   tilt = bendparams.tilt_ref
+  e1 = bendparams.e1
+  e2 = bendparams.e2
   w = rot_quaternion(0,0,-tilt)
   w_inv = inv_rot_quaternion(0,0,-tilt)
   theta = g * L
   Kn0, Ks0 = get_strengths(bm1, L, bunch.R_ref)
   #Ks0 ≈ 0 || error("A skew dipole field cannot be used in an exact bend")
   tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, bunch.R_ref)
-  return KernelCall(ExactTracking.exact_bend_with_rotation!, (theta, g, Kn0, w, w_inv, tilde_m, beta_0, L))
+  return KernelCall(ExactTracking.exact_bend_with_rotation!, (e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L))
 end
 
 @inline function thick_pure_bdipole(tm::Exact, bunch, bm1, L)
@@ -34,19 +36,22 @@ end
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
   tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, bunch.R_ref)
-  return KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, Kn, w, w_inv, tilde_m, beta_0, L))
+  return KernelCall(ExactTracking.exact_bend_with_rotation!, (0, 0, 0, 0, Kn, w, w_inv, tilde_m, beta_0, L))
 end
 
 @inline function thick_bend_no_field(tm::Exact, bunch, bendparams, L)
   g = bendparams.g_ref
   tilt = bendparams.tilt_ref
+  e1 = bendparams.e1
+  e2 = bendparams.e2
   w = rot_quaternion(0,0,-tilt)
   w_inv = inv_rot_quaternion(0,0,-tilt)
   theta = g * L
   tilde_m, _, beta_0 = ExactTracking.drift_params(bunch.species, bunch.R_ref)
-  return KernelCall(ExactTracking.exact_curved_drift!, (theta, g, w, w_inv, gyromagnetic_anomaly(bunch.species), tilde_m, beta_0, L))
+  return KernelCall(ExactTracking.exact_curved_drift!, (e1, e2, theta, g, w, w_inv, gyromagnetic_anomaly(bunch.species), tilde_m, beta_0, L))
 end
 
+#=
 @inline function bend_entrance_fringe(tm::Exact, bunch, bendparams, bmp, L)
   e1 = bendparams.e1
   tilt = bendparams.tilt_ref
@@ -70,3 +75,4 @@ end
   Kn0 = ifelse(mm[1] == 1, kn[1], 0)
   return KernelCall(ExactTracking.linear_bend_fringe!, (e2, Kn0, w, w_inv))
 end
+=#

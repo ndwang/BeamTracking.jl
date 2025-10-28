@@ -1,5 +1,5 @@
 # =========== HELPER FUNCTIONS ============= #
-@inline function integration_launcher!(ker, params, tm, L)
+@inline function integration_launcher!(ker, params, tm, f1, f2, L)
   order = tm.order
   ds_step = tm.ds_step
   num_steps = tm.num_steps
@@ -10,13 +10,13 @@
     ds_step = L / num_steps
   end
   if order == 2
-    return KernelCall(IntegrationTracking.order_two_integrator!, (ker, params, ds_step, num_steps, L))
+    return KernelCall(IntegrationTracking.order_two_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
   elseif order == 4
-    return KernelCall(IntegrationTracking.order_four_integrator!, (ker, params, ds_step, num_steps, L))
+    return KernelCall(IntegrationTracking.order_four_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
   elseif order == 6
-    return KernelCall(IntegrationTracking.order_six_integrator!, (ker, params, ds_step, num_steps, L))
+    return KernelCall(IntegrationTracking.order_six_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
   elseif order == 8
-    return KernelCall(IntegrationTracking.order_eight_integrator!, (ker, params, ds_step, num_steps, L))
+    return KernelCall(IntegrationTracking.order_eight_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
   end
 end
 
@@ -251,12 +251,13 @@ end
   end
 end
 
+#=
 @inline bend_entrance_fringe(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bmp, L) = 
   bend_entrance_fringe(Exact(), bunch, bendparams, bmp, L)
 
 @inline bend_exit_fringe(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bmp, L) = 
   bend_exit_fringe(Exact(), bunch, bendparams, bmp, L)
-
+=#
 
 # =========== PATCH ============= #
 @inline pure_patch(tm::SplitIntegration, bunch, patchparams, L)  = 
