@@ -324,7 +324,7 @@ end
 @makekernel fastgtpsa=true function exact_bend_with_rotation!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
   BeamTracking.coord_rotation!(i, coords, w, 0)
   ExactTracking.linear_bend_fringe!(i, coords, Kn0*tan(e1))
-  exact_bend!(i, coords, e1, e2, theta, g, Kn0, tilde_m, beta_0, L)
+  exact_bend!(i, coords, theta, g, Kn0, tilde_m, beta_0, L)
   ExactTracking.linear_bend_fringe!(i, coords, Kn0*tan(e2))
   BeamTracking.coord_rotation!(i, coords, w_inv, 0)
 end
