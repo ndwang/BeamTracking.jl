@@ -10,8 +10,10 @@ macro def_integrator_struct(name)
       order::Int
       num_steps::Int 
       ds_step::Float64
+      radiation_damping_on::Bool
+      radiation_fluctuations_on::Bool
   
-      function $(esc(name))(; order::Int=4, num_steps::Int=-1, ds_step::Float64=-1.0)
+      function $(esc(name))(; order::Int=4, num_steps::Int=-1, ds_step::Float64=-1.0, radiation_damping_on::Bool=false, radiation_fluctuations_on::Bool=false)
         _order = order
         _num_steps = num_steps
         _ds_step = ds_step
@@ -28,7 +30,7 @@ macro def_integrator_struct(name)
         elseif _ds_step > 0
           _num_steps = -1
         end
-        return new(_order, _num_steps, _ds_step)
+        return new(_order, _num_steps, _ds_step, radiation_damping_on, radiation_fluctuations_on)
       end
     end
   end
@@ -156,7 +158,7 @@ kn: vector of normal multipole strengths scaled by Bρ0
 ks: vector of skew multipole strengths scaled by Bρ0
 L: element length
 """
-@makekernel fastgtpsa=true function mkm_quadrupole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, a, w, w_inv, k1, mm, kn, ks, L)
+@makekernel fastgtpsa=true function mkm_quadrupole!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, beta_0, gamsqr_0, tilde_m, a, w, w_inv, k1, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
@@ -168,19 +170,35 @@ L: element length
   alive_at_start = (coords.state[i] == STATE_ALIVE)
   coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
 
+  E0 = mc2/tilde_m/beta_0 # could probably exclude beta_0 because ultrarelativistic radiation
+
   #println(kn)
 
   if !isnothing(coords.q)
     rotate_spin!(               i, coords, a, 0, tilde_m, mm, kn, ks, L / 2)
   end
 
+  if radiation_damping
+    deterministic_radiation!(   i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(      i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
+
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
-  BeamTracking.coord_rotation!(i, coords, w, 0)
+  BeamTracking.coord_rotation!( i, coords, w, 0)
   quadrupole_matrix!(           i, coords, k1, L)
-  BeamTracking.coord_rotation!(i, coords, w_inv, 0)
+  BeamTracking.coord_rotation!( i, coords, w_inv, 0)
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
+
+  #if radiation_fluctuations
+  #  stochastic_radiation!(      i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
+  if radiation_damping
+    deterministic_radiation!(   i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  end
 
   if !isnothing(coords.q)
     rotate_spin!(               i, coords, a, 0, tilde_m, mm, kn, ks, L / 2)
@@ -312,25 +330,41 @@ Arguments
 - 'ks'       -- skew multipole strengths 
 - 'L'        -- length
 """
-@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, tilde_m, beta_0, a, e1, e2, g, w, w_inv, k0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, tilde_m, beta_0, a, g, w, w_inv, k0, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
-  BeamTracking.coord_rotation!(     i, coords, w, 0)
+  E0 = mc2/tilde_m/beta_0 # could probably exclude beta_0 because ultrarelativistic radiation
+
+  BeamTracking.coord_rotation!( i, coords, w, 0)
 
   if !isnothing(coords.q)
-    rotate_spin!(                   i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    rotate_spin!(               i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
   end
 
-    ExactTracking.multipole_kick!(  i, coords, mm, knl, ksl, 1)
-    ExactTracking.exact_bend!(      i, coords, e1, e2, g*L, g, k0, tilde_m, beta_0, L)
-    ExactTracking.multipole_kick!(  i, coords, mm, knl, ksl, 1)
+  if radiation_damping
+    deterministic_radiation!(   i, coords, q, mc2, E0, g, mm, kn, ks, L / 2)
+  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(      i, coords, q, mc2, E0, g, mm, kn, ks, L / 2)
+  #end
+
+  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
+  ExactTracking.exact_bend!(    i, coords, g*L, g, k0, tilde_m, beta_0, L)
+  ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 1)
+
+  #if radiation_fluctuations
+  #  stochastic_radiation!(      i, coords, q, mc2, E0, g, mm, kn, ks, L / 2)
+  #end
+  if radiation_damping
+    deterministic_radiation!(   i, coords, q, mc2, E0, g, mm, kn, ks, L / 2)
+  end
 
   if !isnothing(coords.q)
-    rotate_spin!(                   i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
+    rotate_spin!(               i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
   end
 
-  BeamTracking.coord_rotation!(     i, coords, w_inv, 0)
+  BeamTracking.coord_rotation!( i, coords, w_inv, 0)
 end 
 
 
@@ -358,11 +392,20 @@ kn: vector of normal multipole strengths scaled by Bρ0
 sn: vector of skew multipole strengths scaled by Bρ0
 L:  element length
 """
-@makekernel fastgtpsa=true function sks_multipole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, a, Ksol, mm, kn, ks, L)
+@makekernel fastgtpsa=true function sks_multipole!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, beta_0, gamsqr_0, tilde_m, a, Ksol, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
+  E0 = mc2/tilde_m/beta_0 # could probably exclude beta_0 because ultrarelativistic radiation
+
   ExactTracking.exact_solenoid!(  i, coords, Ksol, beta_0, gamsqr_0, tilde_m, L / 2)
+
+  if radiation_damping
+    deterministic_radiation!(     i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
 
   if isnothing(coords.q)
     ExactTracking.multipole_kick!(i, coords, mm, knl * 2, ksl * 2, -1)
@@ -370,6 +413,13 @@ L:  element length
     ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, -1)
     rotate_spin!(                 i, coords, a, 0, tilde_m, mm, kn, ks, L)
     ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, -1)
+  end
+
+  #if radiation_fluctuations
+  #  stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
+  if radiation_damping
+    deterministic_radiation!(     i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
   end
 
   ExactTracking.exact_solenoid!(  i, coords, Ksol, beta_0, gamsqr_0, tilde_m, L / 2)
@@ -400,11 +450,20 @@ kn: vector of normal multipole strengths scaled by Bρ0
 ks: vector of skew multipole strengths scaled by Bρ0
 L:  element length
 """
-@makekernel fastgtpsa=true function dkd_multipole!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, a, mm, kn, ks, L)
+@makekernel fastgtpsa=true function dkd_multipole!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, beta_0, gamsqr_0, tilde_m, a, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
+  E0 = mc2/tilde_m/beta_0 # could probably exclude beta_0 because ultrarelativistic radiation
+
   ExactTracking.exact_drift!(     i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
+
+  if radiation_damping
+    deterministic_radiation!(     i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  end
+  #if radiation_fluctuations
+  #  stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
 
   if isnothing(coords.q)
     ExactTracking.multipole_kick!(i, coords, mm, knl * 2, ksl * 2, -1)
@@ -412,6 +471,13 @@ L:  element length
     ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, -1)
     rotate_spin!(                 i, coords, a, 0, tilde_m, mm, kn, ks, L)
     ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, -1)
+  end
+
+  #if radiation_fluctuations
+  #  stochastic_radiation!(        i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
+  #end
+  if radiation_damping
+    deterministic_radiation!(     i, coords, q, mc2, E0, 0, mm, kn, ks, L / 2)
   end
 
   ExactTracking.exact_drift!(     i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
@@ -480,11 +546,15 @@ function omega_field(i, coords::Coords, a, g, beta, gamma, ax, ay, e_vec, b_vec,
     coeff2 = coeff * (1 + a)
     coeff3 = -coeff * beta / C_LIGHT * gamma * (a + 1/(1+gamma))/rel_p
 
-    dot = b_vec[1]*px/rel_p + b_vec[2]*py/rel_p + b_vec[3]*pl/rel_p
+    betax = px / rel_p
+    betay = py / rel_p
+    betaz = pl / rel_p
 
-    b_para_x = dot * px / rel_p
-    b_para_y = dot * py / rel_p
-    b_para_z = dot * pl / rel_p
+    dot = b_vec[1]*betax + b_vec[2]*betay + b_vec[3]*betaz
+
+    b_para_x = dot * betax
+    b_para_y = dot * betay
+    b_para_z = dot * betaz
 
     b_perp_x = (b_vec[1] - b_para_x) * coeff1
     b_perp_y = (b_vec[2] - b_para_y) * coeff1
@@ -530,36 +600,48 @@ end
 #
 # ===============  R F  ===============
 #
-@makekernel fastgtpsa=true function cavity!(i, coords::Coords, beta_0, gamsqr_0, tilde_m, E_ref, p0c, a, omega, E0_over_Rref, t0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function cavity!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, beta_0, gamsqr_0, tilde_m, E_ref, p0c, a, omega, E0_over_Rref, t0, mm, kn, ks, L)
   multipoles = (length(mm) > 0)
   sol = (multipoles && mm[1] == 0)
   if sol
-    ExactTracking.exact_solenoid!(  i, coords, kn[1], beta_0, gamsqr_0, tilde_m, L / 2)
+    ExactTracking.exact_solenoid!(i, coords, kn[1], beta_0, gamsqr_0, tilde_m, L / 2)
   else
-    ExactTracking.exact_drift!(     i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
+    ExactTracking.exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
   end
   #t0 = t0 + (L/2)/(beta_0*C_LIGHT)
 
   if multipoles
-    ExactTracking.multipole_kick!(  i, coords, mm, kn * L / 2, ks * L / 2, -1)
+    if radiation_damping
+      deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
+    end
+    #if radiation_fluctuations
+    #  stochastic_radiation!(      i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
+    #end
+    ExactTracking.multipole_kick!(i, coords, mm, kn * L / 2, ks * L / 2, -1)
   end
 
   if isnothing(coords.q)
-    cavity_kick!(                   i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L)
+    cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L)
   else
-    cavity_kick!(                   i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L / 2)
-    rotate_spin_cavity!(            i, coords, a, tilde_m, omega, E0_over_Rref, t0, mm, kn, ks, L)
-    cavity_kick!(                   i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L / 2)
+    cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L / 2)
+    rotate_spin_cavity!(          i, coords, a, tilde_m, omega, E0_over_Rref, t0, mm, kn, ks, L)
+    cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, E0_over_Rref, t0, L / 2)
   end
 
   if multipoles
-    ExactTracking.multipole_kick!(  i, coords, mm, kn * L / 2, ks * L / 2, -1)
+    ExactTracking.multipole_kick!(i, coords, mm, kn * L / 2, ks * L / 2, -1)
+    #if radiation_fluctuations
+    #  stochastic_radiation!(      i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
+    #end
+    if radiation_damping
+      deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, L / 2)
+    end
   end
 
   if sol
-    ExactTracking.exact_solenoid!(  i, coords, kn[1], beta_0, gamsqr_0, tilde_m, L / 2)
+    ExactTracking.exact_solenoid!(i, coords, kn[1], beta_0, gamsqr_0, tilde_m, L / 2)
   else
-    ExactTracking.exact_drift!(     i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
+    ExactTracking.exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
   end
 end
 
@@ -602,7 +684,6 @@ end
   alive = (coords.state[i] == STATE_ALIVE)
 
   bmad_to_mad!(i, coords, beta_0, tilde_m, E_ref, p0c)
-
   #r2 = v[i,XI]*v[i,XI] + v[i,YI]*v[i,YI]
   #b01 = 2.404825557695773 # first zero of J0
   #d = C_LIGHT*b01/omega
@@ -694,5 +775,182 @@ This function rotates particle i's quaternion in a cavity.
   q3 = quat_mul(q1, q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ])
   q2[i,Q0], q2[i,QX], q2[i,QY], q2[i,QZ] = q3
 end
+
+
+#
+# ===============  R A D I A T I O N  ===============
+#
+@makekernel fastgtpsa=true function canonical_to_prime!(i, coords::Coords, g, ax, ay)
+  v = coords.v
+
+  rel_p = 1 + v[i,PZI]
+  px = v[i,PXI] - ax
+  py = v[i,PYI] - ay
+
+  pl2 = rel_p*rel_p - px*px - py*py
+  pl2_0 = zero(pl2)
+  good_momenta = (pl2 > pl2_0)
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
+  alive = (coords.state[i] == STATE_ALIVE)
+  pl2_1 = one(pl2)
+  pl = sqrt(vifelse(good_momenta, pl2, pl2_1)) 
+
+  h = (1 + g*v[i,XI])/pl
+
+  new_px = h*px 
+  new_py = h*py
+
+  v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
+  v[i,PYI] = vifelse(alive, new_py, v[i,PYI])
+end
+
+
+@makekernel fastgtpsa=true function prime_to_canonical!(i, coords::Coords, g, ax, ay)
+  v = coords.v
+
+  h = 1 + g*v[i,XI]
+  rel_p = 1 + v[i,PZI]
+
+  pl2 = h*h + v[i,PXI]*v[i,PXI] + v[i,PYI]*v[i,PYI]
+  pl2_0 = zero(pl2)
+  good_momenta = (pl2 > pl2_0)
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
+  alive = (coords.state[i] == STATE_ALIVE)
+  pl2_1 = one(pl2)
+  pl = sqrt(vifelse(good_momenta, pl2, pl2_1)) 
+
+  new_px = rel_p*v[i,PXI]/pl + ax
+  new_py = rel_p*v[i,PYI]/pl + ay
+
+  v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
+  v[i,PYI] = vifelse(alive, new_py, v[i,PYI])
+end
+
+
+@makekernel fastgtpsa=true function deterministic_radiation!(i, coords::Coords, q, mc2, E0, g, mm, kn, ks, L)
+  v = coords.v
+
+  if mm[1] == 0
+    ax = -v[i,YI] * kn[1] / 2
+    ay =  v[i,XI] * kn[1] / 2
+  else
+    ax = zero(v[i,XI])
+    ay = ax
+  end
+
+  canonical_to_prime!(i, coords, g, ax, ay)
+
+  h = 1 + g*v[i,XI]
+  rel_p = 1 + v[i,PZI]
+
+  pl2 = h*h + v[i,PXI]*v[i,PXI] + v[i,PYI]*v[i,PYI]
+  pl2_0 = zero(pl2)
+  good_momenta = (pl2 > pl2_0)
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
+  alive = (coords.state[i] == STATE_ALIVE)
+  pl2_1 = one(pl2)
+  pl = sqrt(vifelse(good_momenta, pl2, pl2_1)) 
+
+  bx, by = ExactTracking.normalized_field(mm, kn, ks, v[i,XI], v[i,YI], -1)
+  bz_0 = zero(kn[1])
+  bz = mm[1] == 0 ? kn[1] : bz_0
+
+  betax = v[i,PXI] / pl
+  betay = v[i,PYI] / pl
+  betaz = h / pl
+
+  dot = bx*betax + by*betay + bz*betaz
+
+  b_perp_x = bx - dot*betax
+  b_perp_y = by - dot*betay
+  b_perp_z = bz - dot*betaz
+
+  b_perp_2 = b_perp_x*b_perp_x + b_perp_y*b_perp_y + b_perp_z*b_perp_z
+
+  coeff = E_CHARGE/(4*pi*EPS_0) # 8.9875517862e9 * 1.602176634e-19
+
+  K = -pl * coeff * 2/3 * (q*q)/(mc2*mc2*mc2*mc2) * (E0*E0*E0) * b_perp_2 * L
+
+  new_pz = (v[i,PZI] + rel_p*K)/(1 - rel_p*K)
+  v[i,PZI] = vifelse(alive, new_pz, v[i,PZI])
+
+  prime_to_canonical!(i, coords, g, ax, ay)
+end
+
+#=
+@makekernel fastgtpsa=true function stochastic_radiation!(i, coords::Coords, q, mc2, E0, g, mm, kn, ks, L)
+  v = coords.v
+
+  if mm[1] == 0
+    ax = -v[i,YI] * kn[1] / 2
+    ay =  v[i,XI] * kn[1] / 2
+  else
+    ax = zero(v[i,XI])
+    ay = ax
+  end
+
+  h = 1 + g*v[i,XI]
+  rel_p = 1 + v[i,PZI]
+  gamma = rel_p * E0 / mc2
+  px = v[i,PXI] - ax
+  py = v[i,PYI] - ay
+
+  pl2 = rel_p*rel_p - px*px - py*py
+  pl2_0 = zero(pl2)
+  good_momenta = (pl2 > pl2_0)
+  alive_at_start = (coords.state[i] == STATE_ALIVE)
+  coords.state[i] = vifelse(!good_momenta & alive_at_start, STATE_LOST, coords.state[i])
+  alive = (coords.state[i] == STATE_ALIVE)
+  pl2_1 = one(pl2)
+  pl = sqrt(vifelse(good_momenta, pl2, pl2_1)) 
+
+  bx, by = ExactTracking.normalized_field(mm, kn, ks, v[i,XI], v[i,YI], -1)
+  bz_0 = zero(kn[1])
+  bz = mm[1] == 0 ? kn[1] : bz_0
+
+  betax = v[i,PXI] / pl
+  betay = v[i,PYI] / pl
+  betaz = h / pl
+
+  dot = bx*betax + by*betay + bz*betaz
+
+  b_perp_x = bx - dot*betax
+  b_perp_y = by - dot*betay
+  b_perp_z = bz - dot*betaz
+
+  b_perp_2 = b_perp_x*b_perp_x + b_perp_y*b_perp_y + b_perp_z*b_perp_z
+  b_perp = sqrt(b_perp_2)
+
+  dt_ds = h * rel_p / pl
+
+  coeff = 55/(24*sqrt(3))*1/(4*pi*EPS_0)*H_BAR*C_LIGHT
+
+  mc27 = mc2*mc2*mc2*mc2*mc2*mc2*mc2
+  E05 = E0*E0*E0*E0*E0
+  rel_p4 = rel_p*rel_p*rel_p*rel_p
+  b_perp_3 = b_perp_2*b_perp
+  q2 = q*q
+
+  sigma2 = dt_ds * coeff * q2/mc27 * E05 * rel_p4 * b_perp_3 * abs(L)
+
+  dpz   = randn() * sqrt(sigma2)
+  theta = randn() / gamma
+  s, c  = sincos(theta)
+
+  b_perp_hat_x = b_perp_x / b_perp
+  b_perp_hat_y = b_perp_y / b_perp
+
+  new_px = v[i,PXI] + dpz * (c*betax + s*b_perp_hat_x)
+  new_py = v[i,PYI] + dpz * (c*betay + s*b_perp_hat_y)
+  new_pz = v[i,PZI] + dpz
+
+  v[i,PXI] = vifelse(alive, new_px, v[i,PXI])
+  v[i,PYI] = vifelse(alive, new_py, v[i,PYI])
+  v[i,PZI] = vifelse(alive, new_pz, v[i,PZI])
+end
+=#
 
 end
