@@ -233,16 +233,16 @@ end
 
 #---------------------------------------------------------------------------------------------------
 
-@inline quat_inv(q) = (q[1], -q[2], -q[3], -q[4])
+@inline quat_inv(q) = (q[Q0], -q[QX], -q[QY], -q[QZ])
 
 #---------------------------------------------------------------------------------------------------
 
 @inline function quat_mul(q1, q2)
   return (
-    q1[1]*q2[1] - q1[2]*q2[2] - q1[3]*q2[3] - q1[4]*q2[4],
-    q1[1]*q2[2] + q1[2]*q2[1] + q1[3]*q2[4] - q1[4]*q2[3],
-    q1[1]*q2[3] - q1[2]*q2[4] + q1[3]*q2[1] + q1[4]*q2[2],
-    q1[1]*q2[4] + q1[2]*q2[3] - q1[3]*q2[2] + q1[4]*q2[1]
+    q1[Q0]*q2[Q0] - q1[QX]*q2[QX] - q1[QY]*q2[QY] - q1[QZ]*q2[QZ],
+    q1[Q0]*q2[QX] + q1[QX]*q2[Q0] + q1[QY]*q2[QZ] - q1[QZ]*q2[QY],
+    q1[Q0]*q2[QY] - q1[QX]*q2[QZ] + q1[QY]*q2[Q0] + q1[QZ]*q2[QX],
+    q1[Q0]*q2[QZ] + q1[QX]*q2[QY] - q1[QY]*q2[QX] + q1[QZ]*q2[Q0]
   )
 end
 
@@ -294,58 +294,65 @@ function rot_quat(axis, angle)
   return (cos(0.5*angle), s*axis[1], s*axis[2], s*axis[3])
 end
 
-#---------------------------------------------------------------------------------------------------
-# rot_mat(axis, angle)
+##---------------------------------------------------------------------------------------------------
+## rot_mat(axis, angle)
+#
+####
+#### Commented out for now until it is used and tested.
+####
+#
+#"""
+#  rot_mat(axis, angle) -> rmat
+#
+#Calculates rotation matrix given a rotation `axis` and a rotation `angle`.
+#It is assumed that the axis is properly normalized.
+#
+### Arguments
+#- `axis`      Three vector axis.
+#- `angle`     Rotation angle.
+#
+## Returns
+#- `rmat`    3x3 rotation matrix.
+#"""
+#function rot_mat(axis, angle)
+#  s, c = sincos(angle)
+#  oc = one_cos(angle)
+#
+#  return [
+#      c + axis[1]^2*oc                 axis[1]*axis[2]*oc - axis[3]*s   axis[1]*axis[3]*oc + axis[2]*s
+#      axis[1]*axis[2]*oc + axis[3]*s   c + axis[2]^2*oc                 axis[2]*axis[3]*oc - axis[1]*s
+#      axis[1]*axis[3]*oc - axis[2]*s   axis[2]*axis[3] + axis[1]*s      c + axis[3]^2*oc
+#         ]
+#end
 
-"""
-  rot_mat(axis, angle) -> rmat
-
-Calculates rotation matrix given a rotation `axis` and a rotation `angle`.
-It is assumed that the axis is properly normalized.
-
-## Arguments
-- `axis`      Three vector axis.
-- `angle`     Rotation angle.
-
-# Returns
-- `rmat`    3x3 rotation matrix.
-"""
-function rot_mat(axis, angle)
-  c = cos(angle)
-  s = sin(angle)
-  oc = one_cos(angle)
-
-  return [
-      c + axis[1]^2*oc                 axis[1]*axis[2]*oc - axis[3]*s   axis[1]*axis[3]*oc + axis[2]*s
-      axis[1]*axis[2]*oc + axis[3]*s   c + axis[2]^2*oc                 axis[2]*axis[3]*oc - axis[1]*s
-      axis[1]*axis[3]*oc - axis[2]*s   axis[2]*axis[3] + axis[1]*s      c + axis[3]^2*oc
-         ]
-end
-
-#---------------------------------------------------------------------------------------------------
-# rot_mat(q)
-
-"""
-    rot_mat(q) -> rmat
-
-Calculates rotation matrix from a quaternion `q`.
-It is assumed that `q` is properly normalized.
-
-## Arguments
-- `q`         Quaternion 4-vector
-
-# Returns
-- `rmat`    3x3 rotation matrix.
-"""
-function rot_mat(q)
-  qq = q * q'
-
-  return [
-    qq[1,1]+qq[2,2]-qq[3,3]-qq[4,4]   2.0*(qq[2,3]-qq[1,4])             2.0*(qq[2,4]+qq[1,3])
-    2.0*(qq[2,3]+qq[1,4])             qq[1,1]-qq[2,2]+qq[3,3]-qq[4,4]   2.0*(qq[3,4]-qq[1,2])
-    2.0*(qq[2,4]-qq[1,3])             2.0*(qq[3,4]+qq[1,2])             qq[1,1]-qq[2,2]-qq[3,3]+qq[4,4]
-         ]
-end
+##---------------------------------------------------------------------------------------------------
+## rot_mat(q)
+#
+####
+#### Commented out for now until it is used and tested.
+####
+#
+#"""
+#    rot_mat(q) -> rmat
+#
+#Calculates rotation matrix from a quaternion `q`.
+#It is assumed that `q` is properly normalized.
+#
+### Arguments
+#- `q`         Quaternion 4-vector
+#
+## Returns
+#- `rmat`    3x3 rotation matrix.
+#"""
+#function rot_mat(q)
+#  qq = q * q'
+#
+#  return [
+#    qq[1,1]+qq[2,2]-qq[3,3]-qq[4,4]   2.0*(qq[2,3]-qq[1,4])             2.0*(qq[2,4]+qq[1,3])
+#    2.0*(qq[2,3]+qq[1,4])             qq[1,1]-qq[2,2]+qq[3,3]-qq[4,4]   2.0*(qq[3,4]-qq[1,2])
+#    2.0*(qq[2,4]-qq[1,3])             2.0*(qq[3,4]+qq[1,2])             qq[1,1]-qq[2,2]-qq[3,3]+qq[4,4]
+#         ]
+#end
 
 #---------------------------------------------------------------------------------------------------
 # Rotation matrix

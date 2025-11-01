@@ -5,6 +5,7 @@
     coord_concatenation(r1, q1, r2, q2) -> dr, q
 
 Returns the composite transform for the coordinate transform (`r1`, `q1`) followed by (`r2`, `q2`).
+Note: This is the transform for coordinates which is the reverse of particle propagation.
 
 ## Output
 - `r`     Composite coordinate origin shift.
@@ -33,9 +34,10 @@ angle `ds*g_ref`.
 - `q`     Quaternion rotation.
 """
 @inline function coord_bend_arc_transform(ds, g_ref, tilt_ref)
-  @FastGTPSA begin @inbounds begin 
+  @FastGTPSA begin
     ang = ds * g_ref
-    axis = (sin(tilt_ref), -cos(tilt_ref), 0.0)
+    s, c = sincos(tilt_ref)
+    axis = (s, -c, 0.0)
     q = rot_quat(axis, ang)
 
     trq = rot_quat((0.0, 0.0, 1.0), tilt_ref)
@@ -43,7 +45,7 @@ angle `ds*g_ref`.
     r = quat_rotate(r, trq)
 
     return r, q
-  end end
+  end
 end
 
 #---------------------------------------------------------------------------------------------------
@@ -78,7 +80,8 @@ from the nominal bend entrance face (in branch coordinates) to the actual entran
 
   # Translate to coords with origin at element chord midpoint.
   ang2 = 0.5 * L * g_ref
-  f = -0.25 * L^2 * g_ref * one_cos_norm(ang2)
+  one_c = one_cos_norm(ang2)
+  f = -0.25 * L^2 * g_ref * one_c
   r += quat_rotate((f*cos(tilt_ref), f*sin(tilt_ref), 0.0), q)
   ## println("***B: $r  :: $q")
 
@@ -95,7 +98,7 @@ from the nominal bend entrance face (in branch coordinates) to the actual entran
   ## println("***X: $r  :: $q")
 
   # Translate from chord center to arc center.
-  dr = (0.25 * L^2 * g_ref * one_cos_norm(ang2), 0.0, 0.0)
+  dr = (0.25 * L^2 * g_ref * one_c, 0.0, 0.0)
   r += quat_rotate(dr, q)
   ## println("***Y: $r  :: $q")
 
