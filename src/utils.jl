@@ -213,13 +213,13 @@ one_cos_norm(x) = 0.5 * sincu(0.5*x)^2
 
 #---------------------------------------------------------------------------------------------------
 """
-This function computes exp(-i/2 v⋅σ) as a quaternion, where σ is the 
-vector of Pauli matrices. If compute is false, it returns the identity quaternion.
+    quat_mul(q1, q20, q2x, q2y, q2z) -> q3 = q1*q2
+
+Quaternion multiplication`q1 * q2` where `q2 = [q20, q2x, q2y, q2z]`.
+This form of `quat_mul` is used when the quaternions are particle (spin) coordinates and is needed
+with SIMD-parallelized tracking.
 """
 function quat_mul(q1, q20, q2x, q2y, q2z)
-  """
-  Returns q1 * q2.
-  """
   a1, b1, c1, d1 = q1[Q0], q1[QX], q1[QY], q1[QZ]
   a2, b2, c2, d2 = q20, q2x, q2y, q2z
   @FastGTPSA begin
@@ -233,19 +233,19 @@ end
 
 #---------------------------------------------------------------------------------------------------
 
-@inline quat_inv(q) = (q[Q0], -q[QX], -q[QY], -q[QZ])
+"""
+    quat_mul(q1, q2) -> q3 = q1*q2
+
+Quaternion multiplication`q1 * q2`.
+
+Also see `quat_mul(q1, q20, q2x, q2y, q2z)` which iss the form of `quat_mul` that is used when 
+the quaternions are particle (spin) coordinates and is needed with SIMD-parallelized tracking.
+"""
+@inline quat_mul(q1, q2) = quat_mul(q1, q2[Q0], q2[QX], q2[QY], q2[QZ])
 
 #---------------------------------------------------------------------------------------------------
 
-@inline function quat_mul(q1, q2)
-  return (
-    q1[Q0]*q2[Q0] - q1[QX]*q2[QX] - q1[QY]*q2[QY] - q1[QZ]*q2[QZ],
-    q1[Q0]*q2[QX] + q1[QX]*q2[Q0] + q1[QY]*q2[QZ] - q1[QZ]*q2[QY],
-    q1[Q0]*q2[QY] - q1[QX]*q2[QZ] + q1[QY]*q2[Q0] + q1[QZ]*q2[QX],
-    q1[Q0]*q2[QZ] + q1[QX]*q2[QY] - q1[QY]*q2[QX] + q1[QZ]*q2[Q0]
-  )
-end
-
+@inline quat_inv(q) = (q[Q0], -q[QX], -q[QY], -q[QZ])
 
 #---------------------------------------------------------------------------------------------------
 

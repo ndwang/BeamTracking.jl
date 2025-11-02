@@ -111,45 +111,33 @@ end
  
 #---------------------------------------------------------------------------------------------------
 
+"""
+    coord_alignment_bend_exiting(x_off, y_off, z_off, x_rot, y_rot, tilt, 
+                                              g_ref, tilt_ref, ele_orient, L) -> dr, q
+
+Returns `dr` origin shift and `q` quaternion rotation for the coordinate transformation
+from the the actual exit face (in body coordinates) to the nominal bend exit 
+face (in branch coordinates) taking into account the element alignment parameters.
+
+## Arguments
+- `x_off`, `y_off`, `z_off`   Element offset.
+- `x_rot`, `y_rot`, 'tilt`    Element orientation.
+- `g_ref`                     Reference g = 1/bend radius.
+- `tilt_ref`                  Branch coords tilt.
+- `ele_orient`                Element longitudinal orientation: +1 => normal, -1 => reversed.
+- `L`                         Element length.
+
+## Returns
+- `dr`    Coordinate origin shift.
+- `q`     Quaternion rotation.
+"""
+
 @inline function coord_alignment_bend_exiting(x_off, y_off, z_off, 
-                                        x_rot, y_rot, tilt, g_ref, tilt_ref, ele_orient, L)
+                               x_rot, y_rot, tilt, g_ref, tilt_ref, ele_orient, L)
 
-  # Idea: Transform from non-misaligned (branch) coords to body coords and then
-  # return the inverse.
+  dr, q = coord_alignment_bend_entering(x_off, y_off, z_off, x_rot, y_rot, tilt, 
+                                                      g_ref, tilt_ref, ele_orient, -L) 
 
-  # Start: Transform to coords at center of bend arc.
-  r, q = coord_bend_arc_transform(-0.5*L, g_ref, tilt_ref)
-  ## println("***A: $r  :: $q")
-
-  # Translate to coords with origin at element chord midpoint.
-  ang2 = 0.5 * L * g_ref
-  f = -0.25 * L^2 * g_ref * one_cos_norm(ang2)
-  r += quat_rotate((f*cos(tilt_ref), f*sin(tilt_ref), 0.0), q)
-  ## println("***B: $r  :: $q")
-
-  # Misalignment transform
-  r += quat_rotate((x_off, y_off, z_off), q) 
- 
-  dq = rot_quaternion(x_rot, y_rot, tilt)
-  q = quat_mul(q, dq)
-  ## println("***W: $r  :: $q")
-
-  # Rotating by -tilt_ref
-  dq = rot_quaternion(0.0, 0.0, tilt_ref)
-  q = quat_mul(q, dq)
-  ## println("***X: $r  :: $q")
-
-  # Translate from chord center to arc center.
-  dr = (0.25 * L^2 * g_ref * one_cos_norm(ang2), 0.0, 0.0)
-  r += quat_rotate(dr, q)
-  ## println("***Y: $r  :: $q")
-
-  # Transform from arc center back to entrance face.
-  dr, dq = coord_bend_arc_transform(0.5*L, g_ref, 0.0)
-  r, q = coord_concatenation(r, q, dr, dq)
-  ## println("***Z: $r  :: $q")
-
-  # Return inverse transform
-  q = quat_inv(q)
-  return -quat_rotate(r, q), q
+  q_inv = quat_inv(q)
+  return -quat_rotate(dr, q_inv), q_inv
 end
