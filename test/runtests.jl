@@ -1,16 +1,16 @@
 using Test,
-  BeamTracking,
-  Beamlines,
-  JET,
-  BenchmarkTools,
-  GTPSA,
-  StaticArrays,
-  ReferenceFrameRotations,
-  OrdinaryDiffEq,
-  SIMD
+      BeamTracking,
+      Beamlines,
+      JET,
+      BenchmarkTools,
+      GTPSA,
+      StaticArrays,
+      ReferenceFrameRotations,
+      OrdinaryDiffEq,
+      SIMD
 
 using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST,
-  STATE_LOST_NEG_X, STATE_LOST_POS_X, STATE_LOST_NEG_Y, STATE_LOST_POS_Y, STATE_LOST_PZ, STATE_LOST_Z
+      STATE_LOST_NEG_X, STATE_LOST_POS_X, STATE_LOST_NEG_Y, STATE_LOST_POS_Y, STATE_LOST_PZ, STATE_LOST_Z
 using Beamlines: isactive
 
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
@@ -23,7 +23,7 @@ function test_matrix(
   M_expected,    # Expected matrix
   kernel_call;
   type_stable=VERSION >= v"1.11",
-  no_scalar_allocs=!(any(t -> eltype(t) <: TPS, kernel_call.args)), # only for non-parametric 
+  no_scalar_allocs=!(any(t->eltype(t) <: TPS, kernel_call.args)), # only for non-parametric 
   rtol=nothing,
   atol=nothing
 )
@@ -39,23 +39,25 @@ function test_matrix(
   # Set up tolerance kwargs
   kwargs = ()
   if !isnothing(atol)
-    kwargs = pairs((; kwargs..., atol=atol))
+    kwargs = pairs((;kwargs..., atol=atol))
   end
   if !isnothing(rtol)
-    kwargs = pairs((; kwargs..., rtol=rtol))
+    kwargs = pairs((;kwargs..., rtol=rtol))
   end
 
   # 1) Correctness
-  @test isapprox(GTPSA.jacobian(coords.v)[1:6, 1:6], scalar.(M_expected); kwargs...)
+  @test isapprox(GTPSA.jacobian(coords.v)[1:6,1:6], scalar.(M_expected); kwargs...)
   # 2) Type stability
   if type_stable
     @test_opt kernel_call.kernel(1, coords, kernel_call.args...)
   end
   # 3) No scalar allocations
   if no_scalar_allocs
-    v = [0.1 0.2 0.3 0.4 0.5 0.6]
-    @test @ballocated(BeamTracking.launch!(coords, $kernel_call; use_KA=false),
-      setup = (coords = Coords(copy($state), copy($v), nothing))) == 0
+    v = repeat([0.1 0.2 0.3 0.4 0.5 0.6], 2)
+    q = repeat([1.0 0.0 0.0 0.0], 2)
+    state = [STATE_ALIVE STATE_ALIVE]
+    @test @ballocated(BeamTracking.launch!(coords, $kernel_call; use_KA=false), 
+    setup=(coords = Coords(copy($state), copy($v), copy($q)))) == 0
   end
 end
 
@@ -83,8 +85,8 @@ end
 function test_map(
   bmad_map_file::AbstractString,
   kernel_call;
-  type_stable=VERSION >= v"1.11",
-  no_scalar_allocs=!(any(t -> eltype(t) <: TPS, kernel_call.args)), # only for non-parametric 
+  type_stable=VERSION >= v"1.11", 
+  no_scalar_allocs=!(any(t->eltype(t) <: TPS, kernel_call.args)), # only for non-parametric 
   tol=1e-8
 )
   v_expected = read_map(bmad_map_file)
@@ -107,9 +109,11 @@ function test_map(
   end
   # 3) No scalar allocations
   if no_scalar_allocs
-    v = [0.1 0.2 0.3 0.4 0.5 6e16]
-    @test @ballocated(BeamTracking.launch!(coords, $kernel_call; use_KA=false),
-      setup = (coords = Coords(copy($state), copy($v), nothing))) == 0
+    v = repeat([0.1 0.2 0.3 0.4 0.5 0.6], 2)
+    q = repeat([1.0 0.0 0.0 0.0], 2)
+    state = [STATE_ALIVE STATE_ALIVE]
+    @test @ballocated(BeamTracking.launch!(coords, $kernel_call; use_KA=false), 
+    setup=(coords = Coords(copy($state), copy($v), copy($q)))) == 0
   end
 
 
@@ -123,7 +127,7 @@ function test_map(
     else
       error("`R_ref`, `E` or `p0c`, as well as `species` must both be provided as keyword arguments")
     end
-
+    
     if !haskey(kwargs, :ele)
       error("ele must be provided as a keyword argument")
     else

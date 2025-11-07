@@ -14,7 +14,7 @@ using GTPSA,
 
 using KernelAbstractions
 using SIMD: SIMD
-
+      
 import GTPSA: sincu, sinhcu, normTPS
 import Base: setproperty!
 

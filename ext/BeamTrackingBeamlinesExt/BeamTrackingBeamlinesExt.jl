@@ -67,7 +67,7 @@ function track!(
   if length(bbl.params) == 0
     return bunch
   end
- 
+  
   check_R_ref!(nothing, bunch)
 
   if !outer_particle_loop
