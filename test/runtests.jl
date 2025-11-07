@@ -23,9 +23,9 @@ const D10 = Descriptor(6, 10) # 6 variables 10th order
 function test_matrix(
   M_expected,    # Expected matrix
   kernel_call;
-  type_stable=VERSION >= v"1.11",
+  type_stable=VERSION >= v"1.11", 
   no_scalar_allocs=!(any(t->eltype(t) <: TPS, kernel_call.args)), # only for non-parametric 
-  rtol=nothing,
+  rtol=nothing, 
   atol=nothing
 )
   # Initialize bunch without spin
@@ -150,45 +150,45 @@ function coeffs_approx_equal(v_expected, v_calculated, ϵ)
   n = GTPSA.numcoefs(v_expected[1])
   all_ok = true
   for i in 1:length(v_expected)
-    for j in 0:n-1
-      c1, c2 = v_expected[i][j], v_calculated[i][j]
-      if abs(c1 - c2) > max(ϵ, ϵ * (abs(c1) + abs(c2)))
-        println("Coefficients not equal: v_expected[$i][$j] = $c1, v_calculated[$i][$j] = $c2")
-        println("Difference: $(abs(c1 - c2))")
-        println("Tolerance:  $(max(ϵ, ϵ * (abs(c1) + abs(c2))))")
-        all_ok = false
-        break
+      for j in 0:n-1
+          c1, c2 = v_expected[i][j], v_calculated[i][j]
+          if abs(c1 - c2) > max(ϵ, ϵ * (abs(c1) + abs(c2)))
+              println("Coefficients not equal: v_expected[$i][$j] = $c1, v_calculated[$i][$j] = $c2")
+              println("Difference: $(abs(c1 - c2))")
+              println("Tolerance:  $(max(ϵ, ϵ * (abs(c1) + abs(c2))))")
+              all_ok = false
+              break
+          end
       end
-    end
-    if !all_ok
-      break
-    end
+      if !all_ok
+          break
+      end
   end
   return all_ok
 end
 
 
 function quaternion_coeffs_approx_equal(q_expected, q_calculated, ϵ)
-  sgn = ifelse(q_expected.q0[[0, 0, 0, 0, 0, 0]] * q_calculated.q0[[0, 0, 0, 0, 0, 0]] >= 0, 1, -1)
+  sgn = ifelse(q_expected.q0[[0,0,0,0,0,0]] * q_calculated.q0[[0,0,0,0,0,0]] >= 0, 1, -1)
   components = (:q0, :q1, :q2, :q3)
   n = GTPSA.numcoefs(q_expected.q0)
   all_ok = true
-  for cname in components
-    v_expected = getfield(q_expected, cname)
-    v_calculated = sgn * getfield(q_calculated, cname)
-    for j in 0:n-1
-      c1, c2 = v_expected[j], v_calculated[j]
-      if abs(c1 - c2) > max(ϵ, ϵ * (abs(c1) + abs(c2)))
-        println("Coefficients not equal: expected $cname[$j] = $c1, got $cname[$j] = $c2")
-        println("Difference: $(abs(c1 - c2))")
-        println("Tolerance:  $(max(ϵ, ϵ * (abs(c1) + abs(c2))))")
-        all_ok = false
-        break
+    for cname in components
+      v_expected = getfield(q_expected, cname)
+      v_calculated = sgn * getfield(q_calculated, cname)
+      for j in 0:n-1
+          c1, c2 = v_expected[j], v_calculated[j]
+          if abs(c1 - c2) > max(ϵ, ϵ * (abs(c1) + abs(c2)))
+              println("Coefficients not equal: expected $cname[$j] = $c1, got $cname[$j] = $c2")
+              println("Difference: $(abs(c1 - c2))")
+              println("Tolerance:  $(max(ϵ, ϵ * (abs(c1) + abs(c2))))")
+              all_ok = false
+              break
+          end
       end
-    end
-    if !all_ok
-      break
-    end
+      if !all_ok
+          break
+      end
   end
   return all_ok
 end
