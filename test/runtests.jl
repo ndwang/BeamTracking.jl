@@ -1,4 +1,5 @@
 using Test,
+      AtomicAndPhysicalConstants,
       BeamTracking,
       Beamlines,
       JET,
@@ -9,7 +10,7 @@ using Test,
       OrdinaryDiffEq,
       SIMD
 
-using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST,
+using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST, C_LIGHT,
       STATE_LOST_NEG_X, STATE_LOST_POS_X, STATE_LOST_NEG_Y, STATE_LOST_POS_Y, STATE_LOST_PZ, STATE_LOST_Z
 using Beamlines: isactive
 
@@ -65,9 +66,11 @@ function read_map(bmad_map_file::AbstractString)
   # Load reference data from file in isolated module to avoid polluting global namespace
   mod = Module()
   Base.include(mod, bmad_map_file)
-  d_z = getfield(mod, :d_z)
+  getd_z() = getfield(mod, :d_z)
+  getv_z() = getfield(mod, :v_z)
+  d_z = invokelatest(getd_z)
+  v_z = invokelatest(getv_z)
   d_z == D10 || error("Please use a 10th order map for test_map")
-  v_z = getfield(mod, :v_z)
   return v_z
 end
 
@@ -75,10 +78,13 @@ function read_spin_orbit_map(bmad_map_file::AbstractString)
   # Load reference data from file in isolated module to avoid polluting global namespace
   mod = Module()
   Base.include(mod, bmad_map_file)
-  d_z = getfield(mod, :d_z)
+  getd_z() = getfield(mod, :d_z)
+  getv_z() = getfield(mod, :v_z)
+  getq_z() = getfield(mod, :q_z)
+  d_z = invokelatest(getd_z)
+  v_z = invokelatest(getv_z)
+  q_z = invokelatest(getq_z)
   d_z == D10 || error("Please use a 10th order map for test_map")
-  v_z = getfield(mod, :v_z)
-  q_z = getfield(mod, :q_z)
   return (v_z, q_z)
 end
 
@@ -123,7 +129,7 @@ function test_map(
     elseif haskey(kwargs, :E) && haskey(kwargs, :species)
       R_ref = BeamTracking.E_to_R(kwargs[:species], kwargs[:E])
     elseif haskey(kwargs, :p0c) && haskey(kwargs, :species)
-      R_ref = BeamTracking.E_to_R(kwargs[:species], sqrt(kwargs[:p0c]^2 + BeamTracking.BeamTracking.massof(kwargs[:species])^2))
+      R_ref = BeamTracking.E_to_R(kwargs[:species], sqrt(kwargs[:p0c]^2 + massof(kwargs[:species])^2))
     else
       error("`R_ref`, `E` or `p0c`, as well as `species` must both be provided as keyword arguments")
     end

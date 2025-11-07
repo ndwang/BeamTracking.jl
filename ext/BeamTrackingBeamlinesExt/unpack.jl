@@ -3,13 +3,15 @@ function _track!(
   i,
   coords::Coords,
   bunch::Bunch,
-  t_ref::Ref,
   ele::Union{LineElement,BitsLineElement}, 
   tm;
   kwargs...
 )
   # Unpack the line element (type unstable)
-  L = ele.L # Automatically calls deval (element-level get)
+  L = float(ele.L) # Automatically calls deval (element-level get)
+  # float call is required because L is allowed to be any type
+  # in order to keep binaries smaller for tracking routines, 
+  # we don't want to compile separate routines for Int64
   ap = deval(ele.AlignmentParams)
   bp = deval(ele.BendParams)
   bm = deval(ele.BMultipoleParams)
@@ -18,13 +20,15 @@ function _track!(
   if ele isa LineElement
     rp = deval(ele.RFParams)
     lp = deval(ele.BeamlineParams)
+    R_ref = lp.beamline.R_ref
   else
     rp = nothing
     lp = nothing
+    R_ref = nothing
   end
 
   # Function barrier
-  universal!(i, coords, tm, bunch, t_ref, L, ap, bp, bm, pp, dp, rp, lp; kwargs...)
+  universal!(i, coords, tm, bunch, L, R_ref, ap, bp, bm, pp, dp, rp, lp; kwargs...)
 end
 
 # Step 2: Push particles through -----------------------------------------
@@ -33,25 +37,35 @@ function universal!(
   coords,
   tm,
   bunch,
-  t_ref,
   L, 
-  alignmentparams, 
+  R_ref,
+  alignmentparams,
   bendparams,
   bmultipoleparams,
   patchparams,
   apertureparams,
-  rfparams, 
+  rfparams,
   beamlineparams;
   kwargs...
 ) 
   beta_gamma_ref = R_to_beta_gamma(bunch.species, bunch.R_ref)
-  # Current KernelChain length is 5 because we have up to
-  # 2 aperture, 2 alignment, 1 body kernels
-  # TODO: make this 6 when we include update_P0!
-  kc = KernelChain(Val{5}(), RefState(t_ref[], beta_gamma_ref))
+  # Current KernelChain length is 6 because we have up to
+  # 2 aperture, 2 alignment, 1 body kernel, and 
+  # 1 kernel to update the particles' reference energy
+  kc = KernelChain(Val{6}(), RefState(bunch.t_ref, beta_gamma_ref))
 
   # Evolve time through whole element
-  t_ref[] += L/beta_gamma_to_v(beta_gamma_ref)
+  bunch.t_ref += L/beta_gamma_to_v(beta_gamma_ref)
+
+  # Ramping
+  if R_ref isa TimeDependentParam
+    R_ref_initial = bunch.R_ref
+    R_ref_final = R_ref(bunch.t_ref)
+    if !(R_ref_initial ≈ R_ref_final)
+      kc = push(kc, KernelCall(ExactTracking.update_P0!, (R_ref_initial, R_ref_final)))
+      setfield!(bunch, :R_ref, R_ref_final)
+    end
+  end
 
   # Entrance aperture and alignment
   if isactive(alignmentparams)
@@ -69,8 +83,6 @@ function universal!(
   elseif isactive(apertureparams)
     kc = push(kc, @inline(aperture(tm, bunch, apertureparams, true)))
   end
-
-  # Element fringe and body
 
   if isactive(patchparams)    
     if isactive(alignmentparams)
@@ -205,8 +217,8 @@ function universal!(
     kc = push(kc, @inline(aperture(tm, bunch, apertureparams, false)))
   end
 
-  #
-  runkernels!(i, coords, kc; kwargs...)
+  # noinline necessary here for small binaries and faster execution
+  @noinline runkernels!(i, coords, kc; kwargs...)
   return nothing
 end
 
@@ -238,7 +250,10 @@ end
 @inline thick_pure_bmultipole(tm, bunch, bmk, L)                                      = error("Undefined for tracking method $tm")
 @inline thick_bmultipole(tm, bunch, bmultipoleparams, L)                              = error("Undefined for tracking method $tm")
 @inline thick_bmultipole_rf(tm, bunch, bmultipoleparams, rfparams, beamlineparams, L) = error("Undefined for tracking method $tm")
-
+#=
+@inline bend_entrance_fringe(tm, bunch, bendparams, bmultipoleparams, L) = error("Undefined for tracking method $tm")
+@inline bend_exit_fringe(tm, bunch, bendparams, bmultipoleparams, L)     = error("Undefined for tracking method $tm")
+=#
 
 # === Elements with curving coordinate system "bend" === #
 # "Bend" means ONLY a coordinate system curvature through the element.
