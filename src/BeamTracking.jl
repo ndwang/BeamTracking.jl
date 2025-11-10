@@ -24,7 +24,7 @@ export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick,
 export track!
 export sincu, sinhcu, sincuc, expq, atan2, one_cos, one_cos_norm
 export rot_quaternion, inv_rot_quaternion, quat_mul, quat_rotate
-export Species
+export Species, E_CHARGE, EPS_0, H_BAR
 
 include("utils.jl")
 include("types.jl")

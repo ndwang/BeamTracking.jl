@@ -236,8 +236,6 @@ Tracks a particle through a sector bend via exact tracking. If edge angles are
 provided, a linear hard-edge fringe map is applied at both ends.
 
 #Arguments
-- 'e1'       -- entrance face angle
-- 'e2'       -- exit face angle
 - 'theta'    -- 'g' * 'L'
 - 'g'        -- curvature
 - 'Kn0'      -- normalized dipole field
@@ -247,7 +245,7 @@ provided, a linear hard-edge fringe map is applied at both ends.
 - 'beta_0'   -- p0c/E0
 - 'L'        -- length
 """
-@makekernel fastgtpsa=true function exact_bend!(i, coords::Coords, e1, e2, theta, g, Kn0, tilde_m, beta_0, L)
+@makekernel fastgtpsa=true function exact_bend!(i, coords::Coords, theta, g, Kn0, tilde_m, beta_0, L)
   v = coords.v
   rel_p = 1 + v[i,PZI]
 
@@ -326,7 +324,7 @@ end
 @makekernel fastgtpsa=true function exact_bend_with_rotation!(i, coords::Coords, e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L)
   BeamTracking.track_rotation!(i, coords, w, 0)
   ExactTracking.linear_bend_fringe!(i, coords, Kn0*tan(e1))
-  exact_bend!(i, coords, e1, e2, theta, g, Kn0, tilde_m, beta_0, L)
+  exact_bend!(i, coords, theta, g, Kn0, tilde_m, beta_0, L)
   ExactTracking.linear_bend_fringe!(i, coords, Kn0*tan(e2))
   BeamTracking.track_rotation!(i, coords, w_inv, 0)
 end
