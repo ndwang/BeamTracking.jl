@@ -12,7 +12,7 @@ Note: This is the transform for coordinates which is the reverse of particle pro
 - `q`     Composite Quaternion rotation.
 """
 function coord_concatenation(r1, q1, r2, q2)
-  return quat_rotate(r2, q1) + r1, quat_mul(q1, q2)
+  return quat_rotate(r2, q1) .+ r1, quat_mul(q1, q2)
 end
 
 #---------------------------------------------------------------------------------------------------
@@ -82,11 +82,11 @@ from the nominal bend entrance face (in branch coordinates) to the actual entran
   ang2 = 0.5 * L * g_ref
   one_c = one_cos_norm(ang2)
   f = -0.25 * L^2 * g_ref * one_c
-  r += quat_rotate((f*cos(tilt_ref), f*sin(tilt_ref), 0.0), q)
+  r = r .+ quat_rotate((f*cos(tilt_ref), f*sin(tilt_ref), 0.0), q)
   ## println("***B: $r  :: $q")
 
   # Misalignment transform
-  r += quat_rotate((x_off, y_off, z_off), q) 
+  r = r .+ quat_rotate((x_off, y_off, z_off), q) 
  
   dq = rot_quaternion(x_rot, y_rot, tilt)
   q = quat_mul(q, dq)
@@ -99,7 +99,7 @@ from the nominal bend entrance face (in branch coordinates) to the actual entran
 
   # Translate from chord center to arc center.
   dr = (0.25 * L^2 * g_ref * one_c, 0.0, 0.0)
-  r += quat_rotate(dr, q)
+  r = r .+ quat_rotate(dr, q)
   ## println("***Y: $r  :: $q")
 
   # Transform from arc center back to entrance face.
@@ -139,5 +139,5 @@ face (in branch coordinates) taking into account the element alignment parameter
                                                       g_ref, tilt_ref, ele_orient, -L) 
 
   q_inv = quat_inv(q)
-  return -quat_rotate(dr, q_inv), q_inv
+  return .-quat_rotate(dr, q_inv), q_inv
 end

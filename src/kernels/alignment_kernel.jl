@@ -5,7 +5,7 @@
 
   track_translation!(i, coords, (x_off, y_off, 0.0), 0.0)
   dz_new = track_rotation!(i, coords, q, -L2 - z_off)
-  track_drift!(i, coords, -dz_new - L2)
+  track_isochronous_drift!(i, coords, -dz_new - L2)
 end
 
 #
@@ -24,7 +24,7 @@ end
   v[i,XI] = vifelse(alive, v[i,XI] + x_off, v[i,XI])
   v[i,YI] = vifelse(alive, v[i,YI] + y_off, v[i,YI])
 
-  track_drift!(i, coords, L2 - z_off - dz_new)
+  track_isochronous_drift!(i, coords, L2 - z_off - dz_new)
 end
 
 #---------------------------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ inverse of this transformation.
   track_translation!(i, coords, (r[1], r[2], 0.0), 0.0)
   dz_new = track_rotation!(i, coords, quat_inv(q), -r[3])
   ##println("***AA: $(coords.v[1,:]) :: $dz_new")
-  track_drift!(i, coords, -dz_new)
+  track_isochronous_drift!(i, coords, -dz_new)
   ##println("***BB: $(coords.v[1,:])")
 end
 

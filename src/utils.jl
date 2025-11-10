@@ -1,23 +1,3 @@
-"""
-    Base.:(+)(t1::Tuple, t2::Tuple)
-Pairwise adds two Tuples. This assumes that the tuples are of equal length.
-"""
-function Base.:(+)(t1::Tuple, t2::Tuple)
-  if length(t1) != length(t2); error("Tuples to add have unequal lengths."); end
-  return ntuple(i -> t1[i]+t2[i], length(t1))
-end
-
-#---------------------------------------------------------------------------------------------------
-
-function Base.:(-)(t1::Tuple)
-  return ntuple(i -> -t1[i], length(t1))
-end
-
-function Base.:(-)(t1::Tuple, t2::Tuple)
-  if length(t1) != length(t2); error("Tuples to subtract have unequal lengths."); end
-  return ntuple(i -> t1[i]-t2[i], length(t1))
-end
-
 #---------------------------------------------------------------------------------------------------
 # Utility functions and "fake" APC. These will be moved to 
 # AcceleratorSimUtils.jl in the end.
@@ -185,19 +165,23 @@ end
 
 
 #---------------------------------------------------------------------------------------------------
-# one_cos(x)
-# Temp from AcceleratorSimUtils
-
-"""
-    one_cos(x)
-
-Function to calculate `1 - cos(x)` to machine precision.
-This is usful if angle can be near zero where the direct evaluation of `1 - cos(x)` is inaccurate.
-
-Also see `one_cos_norm(x)`.
-""" one_cos
-
-one_cos(x) = 2.0 * sin(0.5*x)^2
+## one_cos(x)
+## Temp from AcceleratorSimUtils
+#
+####
+#### Commented out for now until it is used and tested.
+####
+#
+#"""
+#    one_cos(x)
+#
+#Function to calculate `1 - cos(x)` to machine precision.
+#This is usful if angle can be near zero where the direct evaluation of `1 - cos(x)` is inaccurate.
+#
+#Also see `one_cos_norm(x)`.
+#""" one_cos
+#
+#one_cos(x) = 2.0 * sin(0.5*x)^2
 
 #---------------------------------------------------------------------------------------------------
 # one_cos_norm(x)

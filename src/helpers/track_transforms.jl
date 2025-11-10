@@ -1,14 +1,14 @@
 """
-    track_drift!(i, coords, L)
+    track_isochronous_drift!(i, coords, L)
 
-Drift used in the alignment algorithm. 
+Isochronous drifting used in the alignment algorithm. 
 The difference between this and the standard drift is that the reference time does not change
 as the particle drifts from beginning to end.
 
 ## Arguments
 - `L`:       element length, in meters
 """
-@inline function track_drift!(i, coords::Coords, L)
+@inline function track_isochronous_drift!(i, coords::Coords, L)
   @FastGTPSA begin @inbounds begin 
     v = coords.v
 
