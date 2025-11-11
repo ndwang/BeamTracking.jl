@@ -14,11 +14,11 @@
 
   if isactive(bendparams) && (bendparams.g_ref != 0 || bendparams.tilt_ref != 0)
     if entering
-      dr, q = coord_alignment_bend_entering(x_off, y_off, z_off, 
+      dr, q = BeamTracking.coord_alignment_bend_entering(x_off, y_off, z_off, 
                 x_rot, y_rot, tilt, bendparams.g_ref, bendparams.tilt_ref, ele_orient, L)
       return KernelCall(BeamTracking.track_coord_transform!, (dr, q))
     else
-      dr, q = coord_alignment_bend_exiting(x_off, y_off, z_off, 
+      dr, q = BeamTracking.coord_alignment_bend_exiting(x_off, y_off, z_off, 
                 x_rot, y_rot, tilt, bendparams.g_ref, bendparams.tilt_ref, ele_orient, L)
       return KernelCall(BeamTracking.track_coord_transform!, (dr, q))
     end
