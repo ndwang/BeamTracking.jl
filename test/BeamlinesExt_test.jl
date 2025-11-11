@@ -1,4 +1,10 @@
 @testset "Beamlines" begin
+
+  include("BeamlinesExt/beamlines_aperture_test.jl")
+  include("BeamlinesExt/beamlines_alignment_test.jl")
+
+  #------------------------------------------------------------------------------------------------
+
   include("lattices/esr.jl")
 
   @testset "Linear" begin
@@ -924,8 +930,5 @@
     @test_throws ErrorException DriftKick(ds_step = -0.1)
     @test_throws ErrorException SolenoidKick(num_steps = -2)
     @test_throws ErrorException SplitIntegration(order = 5)
-  end
-
-  include("BeamlinesExt/beamlines_aperture_test.jl")
-  
+  end  
 end
