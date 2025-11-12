@@ -14,16 +14,16 @@ using Beamlines
   d3_ellip =  Drift(L=1, x1_limit = 1, x2_limit = 2, y1_limit = 3, y2_limit = 5, tracking_method = Linear())
   d4_ellip =  Drift(L=1, x1_limit = 1, x2_limit = Inf, y1_limit = 3, y2_limit = 5, tracking_method = Linear())
 end
-b_error = Beamline([d_error], R_ref = 1.0, species_ref=Species("electron"))
+b_error = Beamline([d_error], pc_ref = 1e6, species_ref=Species("electron"))
 
-b1r = Beamline([d1_rect], R_ref = 1.0, species_ref=Species("electron"))
-b2r = Beamline([d2_rect], R_ref = 1.0, species_ref=Species("electron"))
-b3r = Beamline([d3_rect], R_ref = 1.0, species_ref=Species("electron"))
-b4r = Beamline([d4_rect], R_ref = 1.0, species_ref=Species("electron"))
+b1r = Beamline([d1_rect], pc_ref = 1e6, species_ref=Species("electron"))
+b2r = Beamline([d2_rect], pc_ref = 1e6, species_ref=Species("electron"))
+b3r = Beamline([d3_rect], pc_ref = 1e6, species_ref=Species("electron"))
+b4r = Beamline([d4_rect], pc_ref = 1e6, species_ref=Species("electron"))
 
-b1e = Beamline([d1_ellip], R_ref = 1.0, species_ref=Species("electron"))
-b2e = Beamline([d2_ellip], R_ref = 1.0, species_ref=Species("electron"))
-b3e = Beamline([d3_ellip], R_ref = 1.0, species_ref=Species("electron"))
-b4e = Beamline([d4_ellip], R_ref = 1.0, species_ref=Species("electron"))
+b1e = Beamline([d1_ellip], pc_ref = 1e6, species_ref=Species("electron"))
+b2e = Beamline([d2_ellip], pc_ref = 1e6, species_ref=Species("electron"))
+b3e = Beamline([d3_ellip], pc_ref = 1e6, species_ref=Species("electron"))
+b4e = Beamline([d4_ellip], pc_ref = 1e6, species_ref=Species("electron"))
 
 ;
