@@ -908,9 +908,9 @@ end
   bz_0 = zero(kn[1])
   bz = mm[1] == 0 ? kn[1] : bz_0
 
-  betax = v[i,PXI] / pl
-  betay = v[i,PYI] / pl
-  betaz = h / pl
+  betax = px / rel_p
+  betay = py / rel_p
+  betaz = pl / rel_p
 
   dot = bx*betax + by*betay + bz*betaz
 
@@ -926,6 +926,8 @@ end
   coeff = 55/(24*sqrt(3))/(4*pi*EPS_0)*H_BAR*C_LIGHT
 
   mc27 = mc2*mc2*mc2*mc2*mc2*mc2*mc2
+  E0G = E0 * 1e-9
+  E0G5 = E0G*E0G*E0G*E0G*E0G
   E05 = E0*E0*E0*E0*E0
   rel_p4 = rel_p*rel_p*rel_p*rel_p
   b_perp_3 = b_perp_2*b_perp
@@ -934,7 +936,7 @@ end
   sigma2 = dt_ds * coeff * q2/mc27 * E05 * rel_p4 * b_perp_3 * L
 
   dpz   = randn() * sqrt(sigma2)
-  theta = randn() / gamma
+  theta = 0 #randn() / gamma
   s, c  = sincos(theta)
 
   b_perp_hat_x = vifelse(b_perp > 0, b_perp_x / b_perp, 0)
