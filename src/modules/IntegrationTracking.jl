@@ -187,9 +187,9 @@ L: element length
 
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
-  BeamTracking.coord_rotation!( i, coords, w, 0)
+  BeamTracking.track_rotation!( i, coords, w, 0)
   quadrupole_matrix!(           i, coords, k1, L)
-  BeamTracking.coord_rotation!( i, coords, w_inv, 0)
+  BeamTracking.track_rotation!( i, coords, w_inv, 0)
   quadrupole_kick!(             i, coords, beta_0, gamsqr_0, tilde_m, L / 2)
   ExactTracking.multipole_kick!(i, coords, mm, knl, ksl, 2)
 
@@ -336,7 +336,7 @@ Arguments
 
   E0 = mc2/tilde_m/beta_0 # could probably exclude beta_0 because ultrarelativistic radiation
 
-  BeamTracking.coord_rotation!( i, coords, w, 0)
+  BeamTracking.track_rotation!( i, coords, w, 0)
 
   if !isnothing(coords.q)
     rotate_spin!(               i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
@@ -364,7 +364,7 @@ Arguments
     rotate_spin!(               i, coords, a, g, tilde_m, mm, kn, ks, L / 2)
   end
 
-  BeamTracking.coord_rotation!( i, coords, w_inv, 0)
+  BeamTracking.track_rotation!( i, coords, w_inv, 0)
 end 
 
 
