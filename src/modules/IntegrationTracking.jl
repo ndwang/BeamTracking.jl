@@ -947,8 +947,8 @@ end
 
   sigma2 = dt_ds * coeff * q2/mc27 * E05 * rel_p4 * b_perp_3 * L
 
-  dpz   = randn() * sqrt(sigma2)
-  theta = randn() * sqrt(13/55) / gamma
+  dpz   = gaussian_random(sqrt(sigma2))
+  theta = gaussian_random(sqrt(13/55)/gamma)
   s, c  = sincos(theta)
 
   b_perp_hat_x = vifelse(b_perp > 0, b_perp_x / b_perp, 0)
