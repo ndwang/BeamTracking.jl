@@ -52,14 +52,17 @@ using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, STATE_ALIVE, ST
 
 @makekernel fastgtpsa=true function order_two_integrator!(i, coords::Coords, ker, params, photon_params, fluctuate, ds_step, num_steps, f1, f2, L)
   ExactTracking.linear_bend_fringe!(i, coords, f1)
-  for _ in 1:num_steps
-    if fluctuate
-      stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
-    end
+  if fluctuate
+    stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
+  end
+  for step in 1:num_steps
     ker(i, coords, params..., ds_step)
-    if fluctuate
-      stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
+    if fluctuate && (step < num_steps)
+      stochastic_radiation!(i, coords, photon_params..., ds_step)
     end
+  end
+  if fluctuate
+    stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
@@ -69,16 +72,19 @@ end
   w0 = -1.7024143839193153215916254339390434324741363525390625*ds_step
   w1 =  1.3512071919596577718181151794851757586002349853515625*ds_step
   ExactTracking.linear_bend_fringe!(i, coords, f1)
-  for _ in 1:num_steps
-    if fluctuate
-      stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
-    end
+  if fluctuate
+    stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
+  end
+  for step in 1:num_steps
     ker(i, coords, params..., w1)
     ker(i, coords, params..., w0)
     ker(i, coords, params..., w1)
-    if fluctuate
-      stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
+    if fluctuate && (step < num_steps)
+      stochastic_radiation!(i, coords, photon_params..., ds_step)
     end
+  end
+  if fluctuate
+    stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
@@ -90,10 +96,10 @@ end
   w2 =  0.235573213359358133684793182978535*ds_step
   w3 =  0.784513610477557263819497633866351*ds_step
   ExactTracking.linear_bend_fringe!(i, coords, f1)
-  for _ in 1:num_steps
-    if fluctuate
-      stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
-    end
+  if fluctuate
+    stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
+  end
+  for step in 1:num_steps
     ker(i, coords, params..., w3)
     ker(i, coords, params..., w2)
     ker(i, coords, params..., w1)
@@ -101,9 +107,12 @@ end
     ker(i, coords, params..., w1)
     ker(i, coords, params..., w2)
     ker(i, coords, params..., w3)
-    if fluctuate
-      stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
+    if fluctuate && (step < num_steps)
+      stochastic_radiation!(i, coords, photon_params..., ds_step)
     end
+  end
+  if fluctuate
+    stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
@@ -119,10 +128,10 @@ end
   w6 =  0.253693336566229*ds_step
   w7 =  0.914844246229740*ds_step
   ExactTracking.linear_bend_fringe!(i, coords, f1)
-  for _ in 1:num_steps
-    if fluctuate
-      stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
-    end
+  if fluctuate
+    stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
+  end
+  for step in 1:num_steps
     ker(i, coords, params..., w7)
     ker(i, coords, params..., w6)
     ker(i, coords, params..., w5)
@@ -138,9 +147,12 @@ end
     ker(i, coords, params..., w5)
     ker(i, coords, params..., w6)
     ker(i, coords, params..., w7)
-     if fluctuate
-      stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
+    if fluctuate && (step < num_steps)
+      stochastic_radiation!(i, coords, photon_params..., ds_step)
     end
+  end
+  if fluctuate
+    stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
@@ -936,7 +948,7 @@ end
   sigma2 = dt_ds * coeff * q2/mc27 * E05 * rel_p4 * b_perp_3 * L
 
   dpz   = randn() * sqrt(sigma2)
-  theta = 0 #randn() / gamma
+  theta = randn() / gamma
   s, c  = sincos(theta)
 
   b_perp_hat_x = vifelse(b_perp > 0, b_perp_x / b_perp, 0)
