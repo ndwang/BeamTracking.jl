@@ -10,7 +10,8 @@ using GTPSA,
       Adapt,
       Accessors,
       SpecialFunctions,
-      AtomicAndPhysicalConstants
+      AtomicAndPhysicalConstants,
+      Random
 
 using KernelAbstractions
 using SIMD: SIMD
