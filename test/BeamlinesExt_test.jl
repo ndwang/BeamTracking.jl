@@ -927,5 +927,6 @@
   end
 
   include("BeamlinesExt/beamlines_aperture_test.jl")
+  include("BeamlinesExt/beamlines_stochastic_test.jl")
   
 end
