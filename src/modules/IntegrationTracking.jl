@@ -891,7 +891,7 @@ end
   v = coords.v
 
   w = rot_quaternion(0, 0, tilt_ref)
-  BeamTracking.coord_rotation!(i, coords, w, 0)
+  BeamTracking.track_rotation!(i, coords, w, 0)
 
   if mm[1] == 0
     ax = -v[i,YI] * kn[1] / 2
@@ -963,7 +963,7 @@ end
   v[i,PZI] = vifelse(alive, new_pz, v[i,PZI])
 
   w_inv = inv_rot_quaternion(0, 0, tilt_ref)
-  BeamTracking.coord_rotation!(i, coords, w_inv, 0)
+  BeamTracking.track_rotation!(i, coords, w_inv, 0)
 end
 
 
