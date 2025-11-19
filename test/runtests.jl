@@ -46,6 +46,7 @@ function test_matrix(
   end
 
   # 1) Correctness
+  # println(GTPSA.jacobian(coords.v)[1:6,1:6])
   @test isapprox(GTPSA.jacobian(coords.v)[1:6,1:6], scalar.(M_expected); kwargs...)
   # 2) Type stability
   if type_stable
@@ -192,9 +193,10 @@ function quaternion_coeffs_approx_equal(q_expected, q_calculated, ϵ)
   return all_ok
 end
 
+include("BeamlinesExt_test.jl")
+include("alignment_tracking_test.jl")
 include("aperture_tracking_test.jl")
 include("LinearTracking_test.jl")
 include("ExactTracking_test.jl")
 include("IntegrationTracking_test.jl")
-include("BeamlinesExt_test.jl")
 include("time_test.jl")
