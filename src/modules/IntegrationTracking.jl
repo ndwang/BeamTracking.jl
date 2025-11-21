@@ -50,53 +50,53 @@ using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, Q0, QX, QY, QZ, STATE_ALIVE, ST
 # ===============  I N T E G R A T O R S  ===============
 #
 
-@makekernel fastgtpsa=true function order_two_integrator!(i, coords::Coords, ker, params, photon_params, fluctuate, ds_step, num_steps, f1, f2, L)
+@makekernel fastgtpsa=true function order_two_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, f1, f2, L)
   ExactTracking.linear_bend_fringe!(i, coords, f1)
-  if fluctuate
+  if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   for step in 1:num_steps
     ker(i, coords, params..., ds_step)
-    if fluctuate && (step < num_steps)
+    if !isnothing(photon_params) && (step < num_steps)
       stochastic_radiation!(i, coords, photon_params..., ds_step)
     end
   end
-  if fluctuate
+  if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
 
 
-@makekernel fastgtpsa=true function order_four_integrator!(i, coords::Coords, ker, params, photon_params, fluctuate, ds_step, num_steps, f1, f2, L)
+@makekernel fastgtpsa=true function order_four_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, f1, f2, L)
   w0 = -1.7024143839193153215916254339390434324741363525390625*ds_step
   w1 =  1.3512071919596577718181151794851757586002349853515625*ds_step
   ExactTracking.linear_bend_fringe!(i, coords, f1)
-  if fluctuate
+  if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   for step in 1:num_steps
     ker(i, coords, params..., w1)
     ker(i, coords, params..., w0)
     ker(i, coords, params..., w1)
-    if fluctuate && (step < num_steps)
+    if !isnothing(photon_params) && (step < num_steps)
       stochastic_radiation!(i, coords, photon_params..., ds_step)
     end
   end
-  if fluctuate
+  if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
 
 
-@makekernel fastgtpsa=true function order_six_integrator!(i, coords::Coords, ker, params, photon_params, fluctuate, ds_step, num_steps, f1, f2, L)
+@makekernel fastgtpsa=true function order_six_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, f1, f2, L)
   w0 =  1.315186320683911169737712043570355*ds_step
   w1 = -1.17767998417887100694641568096432*ds_step
   w2 =  0.235573213359358133684793182978535*ds_step
   w3 =  0.784513610477557263819497633866351*ds_step
   ExactTracking.linear_bend_fringe!(i, coords, f1)
-  if fluctuate
+  if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   for step in 1:num_steps
@@ -107,18 +107,18 @@ end
     ker(i, coords, params..., w1)
     ker(i, coords, params..., w2)
     ker(i, coords, params..., w3)
-    if fluctuate && (step < num_steps)
+    if !isnothing(photon_params) && (step < num_steps)
       stochastic_radiation!(i, coords, photon_params..., ds_step)
     end
   end
-  if fluctuate
+  if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   ExactTracking.linear_bend_fringe!(i, coords, f2)
 end
 
 
-@makekernel fastgtpsa=true function order_eight_integrator!(i, coords::Coords, ker, params, photon_params, fluctuate, ds_step, num_steps, f1, f2, L)
+@makekernel fastgtpsa=true function order_eight_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, f1, f2, L)
   w0 =  1.7084530707869978*ds_step
   w1 =  0.102799849391985*ds_step
   w2 = -1.96061023297549*ds_step
@@ -128,7 +128,7 @@ end
   w6 =  0.253693336566229*ds_step
   w7 =  0.914844246229740*ds_step
   ExactTracking.linear_bend_fringe!(i, coords, f1)
-  if fluctuate
+  if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   for step in 1:num_steps
@@ -147,11 +147,11 @@ end
     ker(i, coords, params..., w5)
     ker(i, coords, params..., w6)
     ker(i, coords, params..., w7)
-    if fluctuate && (step < num_steps)
+    if !isnothing(photon_params) && (step < num_steps)
       stochastic_radiation!(i, coords, photon_params..., ds_step)
     end
   end
-  if fluctuate
+  if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
   ExactTracking.linear_bend_fringe!(i, coords, f2)
@@ -194,7 +194,7 @@ kn: vector of normal multipole strengths scaled by Bρ0
 ks: vector of skew multipole strengths scaled by Bρ0
 L: element length
 """
-@makekernel fastgtpsa=true function mkm_quadrupole!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, beta_0, gamsqr_0, tilde_m, a, w, w_inv, k1, mm, kn, ks, L)
+@makekernel fastgtpsa=true function mkm_quadrupole!(i, coords::Coords, q, mc2, radiation_damping, beta_0, gamsqr_0, tilde_m, a, w, w_inv, k1, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
@@ -360,7 +360,7 @@ Arguments
 - 'ks'       -- skew multipole strengths 
 - 'L'        -- length
 """
-@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, tilde_m, beta_0, a, g, w, w_inv, k0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function bkb_multipole!(i, coords::Coords, q, mc2, radiation_damping, tilde_m, beta_0, a, g, w, w_inv, k0, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
@@ -416,7 +416,7 @@ kn: vector of normal multipole strengths scaled by Bρ0
 sn: vector of skew multipole strengths scaled by Bρ0
 L:  element length
 """
-@makekernel fastgtpsa=true function sks_multipole!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, beta_0, gamsqr_0, tilde_m, a, Ksol, mm, kn, ks, L)
+@makekernel fastgtpsa=true function sks_multipole!(i, coords::Coords, q, mc2, radiation_damping, beta_0, gamsqr_0, tilde_m, a, Ksol, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
@@ -468,7 +468,7 @@ kn: vector of normal multipole strengths scaled by Bρ0
 ks: vector of skew multipole strengths scaled by Bρ0
 L:  element length
 """
-@makekernel fastgtpsa=true function dkd_multipole!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, beta_0, gamsqr_0, tilde_m, a, mm, kn, ks, L)
+@makekernel fastgtpsa=true function dkd_multipole!(i, coords::Coords, q, mc2, radiation_damping, beta_0, gamsqr_0, tilde_m, a, mm, kn, ks, L)
   knl = kn * L / 2
   ksl = ks * L / 2
 
@@ -612,7 +612,7 @@ end
 #
 # ===============  R F  ===============
 #
-@makekernel fastgtpsa=true function cavity!(i, coords::Coords, q, mc2, radiation_damping, radiation_fluctuations, beta_0, gamsqr_0, tilde_m, E_ref, p0c, a, omega, E0_over_Rref, t0, mm, kn, ks, L)
+@makekernel fastgtpsa=true function cavity!(i, coords::Coords, q, mc2, radiation_damping, beta_0, gamsqr_0, tilde_m, E_ref, p0c, a, omega, E0_over_Rref, t0, mm, kn, ks, L)
   multipoles = (length(mm) > 0)
   sol = (multipoles && mm[1] == 0)
   if sol
