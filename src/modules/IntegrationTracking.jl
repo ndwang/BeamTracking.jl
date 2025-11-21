@@ -938,8 +938,6 @@ end
   coeff = 55/(24*sqrt(3))/(4*pi*EPS_0)*H_BAR*C_LIGHT
 
   mc27 = mc2*mc2*mc2*mc2*mc2*mc2*mc2
-  E0G = E0 * 1e-9
-  E0G5 = E0G*E0G*E0G*E0G*E0G
   E05 = E0*E0*E0*E0*E0
   rel_p4 = rel_p*rel_p*rel_p*rel_p
   b_perp_3 = b_perp_2*b_perp
