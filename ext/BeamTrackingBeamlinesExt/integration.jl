@@ -1,5 +1,5 @@
 # =========== HELPER FUNCTIONS ============= #
-@inline function integration_launcher(ker, params, tm, f1, f2, L)
+@inline function integration_launcher(ker, params, photon_params, tm, f1, f2, L)
   order = tm.order
   ds_step = tm.ds_step
   num_steps = tm.num_steps
@@ -10,13 +10,13 @@
     ds_step = L / num_steps
   end
   if order == 2
-    return KernelCall(IntegrationTracking.order_two_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
+    return KernelCall(IntegrationTracking.order_two_integrator!, (ker, params, photon_params, ds_step, num_steps, f1, f2, L))
   elseif order == 4
-    return KernelCall(IntegrationTracking.order_four_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
+    return KernelCall(IntegrationTracking.order_four_integrator!, (ker, params, photon_params, ds_step, num_steps, f1, f2, L))
   elseif order == 6
-    return KernelCall(IntegrationTracking.order_six_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
+    return KernelCall(IntegrationTracking.order_six_integrator!, (ker, params, photon_params, ds_step, num_steps, f1, f2, L))
   elseif order == 8
-    return KernelCall(IntegrationTracking.order_eight_integrator!, (ker, params, ds_step, num_steps, f1, f2, L))
+    return KernelCall(IntegrationTracking.order_eight_integrator!, (ker, params, photon_params, ds_step, num_steps, f1, f2, L))
   end
 end
 
@@ -75,8 +75,10 @@ end
     ks = SA[Ksol_skew]
     q = chargeof(bunch.species)
     mc2 = massof(bunch.species)
-    params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), Ksol, mm, kn, ks)
-    return integration_launcher(IntegrationTracking.sks_multipole!, params, tm, 0, 0, L)
+    E0 = mc2/tilde_m/beta_0
+    params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), Ksol, mm, kn, ks)
+    photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
+    return integration_launcher(IntegrationTracking.sks_multipole!, params, photon_params, tm, 0, 0, L)
   end
 end
 
@@ -88,8 +90,10 @@ end
   Ksol = kn[1]
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), Ksol, mm, kn, ks)
-  return integration_launcher(IntegrationTracking.sks_multipole!, params, tm, 0, 0, L)
+  E0 = mc2/tilde_m/beta_0
+  params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), Ksol, mm, kn, ks)
+  photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
+  return integration_launcher(IntegrationTracking.sks_multipole!, params, photon_params, tm, 0, 0, L)
 end
 
 @inline function thick_pure_bdipole(tm::DriftKick, bunch, bm, L)
@@ -99,8 +103,10 @@ end
   kn, ks = get_strengths(bm, L, R_ref)
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), SA[mm], SA[kn], SA[ks])
-  return integration_launcher(IntegrationTracking.dkd_multipole!, params, tm, 0, 0, L)
+  E0 = mc2/tilde_m/beta_0
+  params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), SA[mm], SA[kn], SA[ks])
+  photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, SA[mm], SA[kn], SA[ks]), nothing)
+  return integration_launcher(IntegrationTracking.dkd_multipole!, params, photon_params, tm, 0, 0, L)
 end
 
 @inline function thick_bdipole(tm::DriftKick, bunch, bm, L)
@@ -110,12 +116,14 @@ end
   kn, ks = get_strengths(bm, L, R_ref)
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), mm, kn, ks)
-  return integration_launcher(IntegrationTracking.dkd_multipole!, params, tm, 0, 0, L)
+  E0 = mc2/tilde_m/beta_0
+  params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), mm, kn, ks)
+  photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
+  return integration_launcher(IntegrationTracking.dkd_multipole!, params, photon_params, tm, 0, 0, L)
 end
 
 @inline function thick_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm1, L) 
-  if isnothing(bunch.coords.q)
+  if isnothing(bunch.coords.q) && !(tm.radiation_damping_on || tm.radiation_fluctuations_on)
     return thick_pure_bdipole(Exact(), bunch, bm1, L)
   else
     R_ref = bunch.R_ref
@@ -128,8 +136,10 @@ end
     w_inv = inv_rot_quaternion(0,0,tilt)
     q = chargeof(bunch.species)
     mc2 = massof(bunch.species)
-    params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, w, w_inv, k0, SA[mm], SA[kn], SA[ks])
-    return integration_launcher(IntegrationTracking.bkb_multipole!, params, tm, 0, 0, L)
+    E0 = mc2/tilde_m/beta_0
+    params = (q, mc2, tm.radiation_damping_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, w, w_inv, k0, SA[mm], SA[kn], SA[ks])
+    photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, SA[mm], SA[kn], SA[ks]), nothing)
+    return integration_launcher(IntegrationTracking.bkb_multipole!, params, photon_params, tm, 0, 0, L)
   end
 end
 
@@ -144,8 +154,10 @@ end
   w_inv = inv_rot_quaternion(0,0,tilt)
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, w, w_inv, k0, mm, kn, ks)
-  return integration_launcher(IntegrationTracking.bkb_multipole!, params, tm, 0, 0, L)
+  E0 = mc2/tilde_m/beta_0
+  params = (q, mc2, tm.radiation_damping_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, w, w_inv, k0, mm, kn, ks)
+  photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
+  return integration_launcher(IntegrationTracking.bkb_multipole!, params, photon_params, tm, 0, 0, L)
 end
 
 @inline function thick_bdipole(tm::MatrixKick, bunch, bm, L)
@@ -166,8 +178,10 @@ end
   w_inv = inv_rot_quaternion(0,0,tilt)
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, mm, kn, ks)
-  return integration_launcher(IntegrationTracking.mkm_quadrupole!, params, tm, 0, 0, L)
+  E0 = mc2/tilde_m/beta_0
+  params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, mm, kn, ks)
+  photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
+  return integration_launcher(IntegrationTracking.mkm_quadrupole!, params, photon_params, tm, 0, 0, L)
 end
 
 @inline function thick_bdipole(tm::SplitIntegration, bunch, bm, L)
@@ -192,8 +206,10 @@ end
   w_inv = inv_rot_quaternion(0,0,tilt)
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, SA[mm], SA[kn], SA[ks])
-  return integration_launcher(IntegrationTracking.mkm_quadrupole!, params, tm, 0, 0, L)
+  E0 = mc2/tilde_m/beta_0
+  params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, SA[mm], SA[kn], SA[ks])
+  photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, SA[mm], SA[kn], SA[ks]), nothing)
+  return integration_launcher(IntegrationTracking.mkm_quadrupole!, params, photon_params, tm, 0, 0, L)
 end
 
 @inline thick_pure_bquadrupole(tm::DriftKick, bunch, bm, L) = 
@@ -213,8 +229,10 @@ end
   w_inv = inv_rot_quaternion(0,0,tilt)
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, mm, kn, ks)
-  return integration_launcher(IntegrationTracking.mkm_quadrupole!, params, tm, 0, 0, L)
+  E0 = mc2/tilde_m/beta_0
+  params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, mm, kn, ks)
+  photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
+  return integration_launcher(IntegrationTracking.mkm_quadrupole!, params, photon_params, tm, 0, 0, L)
 end
 
 @inline thick_bquadrupole(tm::DriftKick, bunch, bm, L) = thick_bdipole(tm, bunch, bm, L)
@@ -250,18 +268,13 @@ end
     f2 = Kn0*tan(e2)
     q = chargeof(bunch.species)
     mc2 = massof(bunch.species)
-    params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])
-    return integration_launcher(IntegrationTracking.bkb_multipole!, params, tm, f1, f2, L)
+    E0 = mc2/tilde_m/beta_0
+    params = (q, mc2, tm.radiation_damping_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])
+    photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, g, tilt, SA[mm], SA[Kn0], SA[Ks0]), nothing)
+    return integration_launcher(IntegrationTracking.bkb_multipole!, params, photon_params, tm, f1, f2, L)
   end
 end
 
-#=
-@inline bend_entrance_fringe(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bmp, L) = 
-  bend_entrance_fringe(Exact(), bunch, bendparams, bmp, L)
-
-@inline bend_exit_fringe(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bmp, L) = 
-  bend_exit_fringe(Exact(), bunch, bendparams, bmp, L)
-=#
 
 # =========== PATCH ============= #
 @inline pure_patch(tm::SplitIntegration, bunch, patchparams, L)  = 
@@ -285,8 +298,10 @@ end
   p0c = BeamTracking.R_to_pc(bunch.species, R_ref)
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, E_ref, p0c, gyromagnetic_anomaly(bunch.species), omega, E0_over_Rref, t0, SA[], SA[], SA[])
-  return integration_launcher(IntegrationTracking.cavity!, params, tm, 0, 0, L)
+  E0 = mc2/tilde_m/beta_0
+  params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, E_ref, p0c, gyromagnetic_anomaly(bunch.species), omega, E0_over_Rref, t0, SA[], SA[], SA[])
+  photon_params = nothing
+  return integration_launcher(IntegrationTracking.cavity!, params, photon_params, tm, 0, 0, L)
 end
 
 @inline function thick_bmultipole_rf(tm::Union{SplitIntegration,DriftKick,SolenoidKick}, bunch, bm, rf, bl, L)
@@ -307,6 +322,8 @@ end
   p0c = BeamTracking.R_to_pc(bunch.species, R_ref)
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
-  params = (q, mc2, tm.radiation_damping_on, tm.radiation_fluctuations_on, beta_0, gamsqr_0, tilde_m, E_ref, p0c, gyromagnetic_anomaly(bunch.species), omega, E0_over_Rref, t0, mm, kn, ks)
-  return integration_launcher(IntegrationTracking.cavity!, params, tm, 0, 0, L)
+  E0 = mc2/tilde_m/beta_0
+  params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, E_ref, p0c, gyromagnetic_anomaly(bunch.species), omega, E0_over_Rref, t0, mm, kn, ks)
+  photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
+  return integration_launcher(IntegrationTracking.cavity!, params, photon_params, tm, 0, 0, L)
 end

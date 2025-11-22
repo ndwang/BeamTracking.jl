@@ -468,6 +468,22 @@ function bessel01_RF(x::TPS{T}) where {T}
 end
 =#
 
+"""
+This function computes a Gaussian random number with mean zero and standard deviation sigma.
+"""
+function gaussian_random(sigma)
+  return randn() * sigma 
+end
+
+
+"""
+See gaussian_random, but for SIMD vectors.
+"""
+function gaussian_random(sigma::SIMD.Vec{N,T}) where {N,T}
+  return vmap(gaussian_random, sigma)
+end
+
+
 # Particle energy conversions =============================================================
 R_to_E(species::Species, R) = @FastGTPSA sqrt((R*C_LIGHT*chargeof(species))^2 + massof(species)^2)
 E_to_R(species::Species, E) = @FastGTPSA massof(species)*sinh(acosh(E/massof(species)))/C_LIGHT/chargeof(species) 

@@ -10,7 +10,8 @@ using GTPSA,
       Adapt,
       Accessors,
       SpecialFunctions,
-      AtomicAndPhysicalConstants
+      AtomicAndPhysicalConstants,
+      Random
 
 using KernelAbstractions
 using SIMD: SIMD
@@ -24,6 +25,7 @@ export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick,
 export track!
 export sincu, sinhcu, sincuc, expq, atan2, one_cos, one_cos_norm
 export rot_quaternion, inv_rot_quaternion, quat_mul, quat_rotate
+export gaussian_random
 export Species, E_CHARGE, EPS_0, H_BAR
 
 include("utils.jl")
