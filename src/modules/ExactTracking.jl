@@ -18,9 +18,9 @@ const TRACKING_METHOD = Exact
 
   v[i,PXI] = v[i,PXI] * R_ref_initial / R_ref_final
   v[i,PYI] = v[i,PYI] * R_ref_initial / R_ref_final
-
-  new_pz = (R_ref_initial * (1 + v[i,PZI]) - R_ref_final) / R_ref_final
-  v[i,PZI] = vifelse(ramp_without_rf, v[i,PZI], new_pz)
+  if !ramp_without_rf
+    v[i,PZI] = (R_ref_initial * (1 + v[i,PZI]) - R_ref_final) / R_ref_final
+  end
 end
 
 
