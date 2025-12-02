@@ -27,7 +27,7 @@ function check_species!(species_ref::Species, bunch::Bunch, notify=true)
   return
 end
 
-function check_R_ref!(bl::Beamline, ref, bunch::Bunch, notify=true)
+function check_R_ref!(bl::Union{Beamline,BitsBeamline}, ref, bunch::Bunch, notify=true)
   t_ref = bunch.t_ref
   if isnan(bunch.R_ref)
     if isnothing(ref)
@@ -35,7 +35,11 @@ function check_R_ref!(bl::Beamline, ref, bunch::Bunch, notify=true)
         println("WARNING: Both the bunch and beamline do not have any set reference energy. If any LineElements have unnormalized fields stored as independent variables, there will be an error.")
       end
     else
-      R_ref = bl.R_ref
+      if bl isa Beamline
+        R_ref = bl.R_ref
+      else
+        R_ref = ref
+      end
       if notify
         if ref isa TimeDependentParam
           println("Setting bunch.R_ref = $(R_ref(t_ref)) (reference R_ref from the Beamline at t_ref = $t_ref)")
