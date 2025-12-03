@@ -2,7 +2,7 @@
 function _track!(
   coords::Coords,
   bunch::Bunch,
-  ele:::LineElement, 
+  ele::LineElement, 
   tm,
   ramp_without_rf;
   kwargs...
