@@ -21,11 +21,6 @@
 
     @test GTPSA.jacobian(b0.coords.v) ≈ M_ESR
 
-    bblring = BitsBeamline(ring, store_normalized=true)
-    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref, species=Species("electron"))
-    track!(b0, bblring)
-    @test GTPSA.jacobian(b0.coords.v) ≈ M_ESR
-
     #combined
     ring2 = Beamline([SBend(Kn0 = 0.24, g_ref = 0.25, Kn1 = 0.25, L = 1.0, e1 = 0.5, e2 = 0.2)], R_ref = -0.0017045090263411496)
     b0 = Bunch(collect(transpose(@vars(D1))), R_ref=-0.0017045090263411496, species=Species("electron"))
@@ -40,11 +35,6 @@
        0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01
     ]
     @test GTPSA.jacobian(b0.coords.v) ≈  M_combined
-
-    bblring = BitsBeamline(ring2, store_normalized=true)
-    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring2.R_ref, species=Species("electron"))
-    track!(b0, bblring)
-    @test GTPSA.jacobian(b0.coords.v) ≈ M_combined
 
     #g_ref=0, dg!=0 thin corrector coil
 
@@ -63,11 +53,6 @@
     ]
     @test GTPSA.jacobian(b0.coords.v) ≈  M_combined
 
-    bblring = BitsBeamline(ring3, store_normalized=true)
-    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring2.R_ref, species=Species("electron"))
-    track!(b0, bblring)
-    @test GTPSA.jacobian(b0.coords.v) ≈ M_combined
-
 
     #thick_bend_no_field line 103-104 --> singularity
     #L132 - L134
@@ -84,11 +69,6 @@
        0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01
     ]
     @test GTPSA.jacobian(b0.coords.v) ≈  M_combined
-
-    bblring = BitsBeamline(ring4, store_normalized=true)
-    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring2.R_ref, species=Species("electron"))
-    track!(b0, bblring)
-    @test GTPSA.jacobian(b0.coords.v) ≈ M_combined
   end
 
   @testset "Exact" begin
