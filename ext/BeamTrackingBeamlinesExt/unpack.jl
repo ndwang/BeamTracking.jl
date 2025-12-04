@@ -27,7 +27,6 @@ end
 
 # Step 2: Push particles through -----------------------------------------
 function universal!(
-  i, 
   coords,
   tm,
   ramp_without_rf, 
@@ -213,7 +212,7 @@ function universal!(
   end
 
   # noinline necessary here for small binaries and faster execution
-  @noinline runkernels!(i, coords, kc; kwargs...)
+  @noinline launch!(coords, kc; kwargs...)
   return nothing
 end
 
