@@ -1,11 +1,4 @@
 
-# For BitsBeamline tracking, add the linear tracking method per Beamlines instructions:
-function __init__()
-  Beamlines.TRACKING_METHOD_MAP[Linear] = 0x1
-end
-Beamlines.get_tracking_method_extras(::Linear) = SA[]
-
-
 # =========== STRAIGHT ELEMENTS ============= #
 # === Thin elements === #
 # Only thin element currently supported is thin quadrupole

@@ -1,9 +1,8 @@
 # Step 1: Unpack the element ---------------------------------------------
 function _track!(
-  i,
   coords::Coords,
   bunch::Bunch,
-  ele::Union{LineElement,BitsLineElement}, 
+  ele::LineElement, 
   tm,
   ramp_without_rf;
   kwargs...
@@ -19,15 +18,9 @@ function _track!(
   pp = deval(ele.PatchParams)
   dp = deval(ele.ApertureParams)
   mp = deval(ele.MapParams)
-  if ele isa LineElement
-    rp = deval(ele.RFParams)
-    lp = deval(ele.BeamlineParams)
-    R_ref = lp.beamline.R_ref
-  else
-    rp = nothing
-    lp = nothing
-    R_ref = nothing
-  end
+  rp = deval(ele.RFParams)
+  lp = deval(ele.BeamlineParams)
+  R_ref = lp.beamline.R_ref
 
   # Function barrier
   universal!(i, coords, tm, ramp_without_rf, bunch, L, R_ref, ap, bp, bm, pp, dp, rp, lp, mp; kwargs...)
@@ -35,7 +28,6 @@ end
 
 # Step 2: Push particles through -----------------------------------------
 function universal!(
-  i, 
   coords,
   tm,
   ramp_without_rf, 
@@ -237,7 +229,7 @@ function universal!(
   end
 
   # noinline necessary here for small binaries and faster execution
-  @noinline runkernels!(i, coords, kc; kwargs...)
+  @noinline launch!(coords, kc; kwargs...)
   return nothing
 end
 
