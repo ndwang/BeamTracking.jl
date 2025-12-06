@@ -276,9 +276,12 @@ end
 end
 
 
-# =========== PATCH ============= #
+# =========== TRANSFORMS ============= #
 @inline pure_patch(tm::SplitIntegration, bunch, patchparams, L)  = 
   pure_patch(Exact(), bunch, patchparams, L)
+
+@inline pure_map(tm::SplitIntegration, bunch, mapparams, L) = 
+  pure_map(Exact(), bunch, mapparams, L)
 
 
 # =========== RF ============= #

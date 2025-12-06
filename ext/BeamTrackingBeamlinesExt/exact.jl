@@ -51,7 +51,7 @@ end
   return KernelCall(ExactTracking.exact_curved_drift!, (e1, e2, theta, g, w, w_inv, gyromagnetic_anomaly(bunch.species), tilde_m, beta_0, L))
 end
 
-@inline pure_map(tm::Exact, bunch, mapparams) = KernelCall(ExactTracking.map!, (mapparams.transport_map))
+@inline pure_map(tm::Exact, bunch, mapparams, L) = KernelCall(ExactTracking.map!, (mapparams.transport_map, L))
 
 #=
 @inline function bend_entrance_fringe(tm::Exact, bunch, bendparams, bmp, L)

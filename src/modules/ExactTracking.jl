@@ -427,13 +427,13 @@ end
 
 # Map ==========================================================================
 
-@makekernel fastgtpsa=true function map!(i, coords::Coords, transport_map)
+@makekernel fastgtpsa=true function map!(i, coords::Coords, transport_map, L)
   v = coords.v
   q = coords.q
   alive = (coords.state[i] == STATE_ALIVE)
   
   v_in = (v[i,XI], v[i,PXI], v[i,YI], v[i,PYI], v[i,ZI], v[i,PZI])
-  
+
   if !isnothing(q)
     q_in = (q[i,Q0], q[i,QX], q[i,QY], q[i,QZ])
   else
@@ -455,6 +455,8 @@ end
     q[i,QZ] = vifelse(alive, q_out[QZ], q[i,QZ])
   end
 end
+
+
 
 # Utility functions ============================================================
 

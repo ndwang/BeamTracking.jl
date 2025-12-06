@@ -23,7 +23,7 @@ function _track!(
   R_ref = lp.beamline.R_ref
 
   # Function barrier
-  universal!(i, coords, tm, ramp_without_rf, bunch, L, R_ref, ap, bp, bm, pp, dp, rp, lp, mp; kwargs...)
+  universal!(coords, tm, ramp_without_rf, bunch, L, R_ref, ap, bp, bm, pp, dp, rp, lp, mp; kwargs...)
 end
 
 # Step 2: Push particles through -----------------------------------------
@@ -89,10 +89,10 @@ function universal!(
       error("Tracking through a LineElement containing both MapParams and BMultipoleParams not currently defined")
     elseif isactive(rfparams)
       error("Tracking through a LineElement containing both MapParams and RFParams not currently defined")
-    elseif isactive(patchparaams)
+    elseif isactive(patchparams)
       error("Tracking through a LineElement containing both MapParams and PatchParams not currently defined")
     else
-      kc = push(kc, @inline(pure_map(tm, bunch, mapparams)))
+      kc = push(kc, @inline(pure_map(tm, bunch, mapparams, L)))
     end
 
   elseif isactive(patchparams)    
@@ -235,7 +235,7 @@ end
 
 # === Coordinate transformations === #
 @inline pure_patch(tm, bunch, patchparams, L) = error("Undefined for tracking method $tm")
-@inline pure_map(tm, bunch, mapparams) = error("Undefined for tracking method $tm")
+@inline pure_map(tm, bunch, mapparams, L) = error("Undefined for tracking method $tm")
 
 # === Straight Elements === #
 # "Pure" means only ONE SINGLE multipole.
