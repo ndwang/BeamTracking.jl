@@ -17,12 +17,13 @@ function _track!(
   bm = deval(ele.BMultipoleParams)
   pp = deval(ele.PatchParams)
   dp = deval(ele.ApertureParams)
+  mp = deval(ele.MapParams)
   rp = deval(ele.RFParams)
   lp = deval(ele.BeamlineParams)
   R_ref = lp.beamline.R_ref
 
   # Function barrier
-  universal!(coords, tm, ramp_without_rf, bunch, L, R_ref, ap, bp, bm, pp, dp, rp, lp; kwargs...)
+  universal!(coords, tm, ramp_without_rf, bunch, L, R_ref, ap, bp, bm, pp, dp, rp, lp, mp; kwargs...)
 end
 
 # Step 2: Push particles through -----------------------------------------
@@ -39,7 +40,8 @@ function universal!(
   patchparams,
   apertureparams,
   rfparams,
-  beamlineparams;
+  beamlineparams,
+  mapparams;
   kwargs...
 ) 
   beta_gamma_ref = R_to_beta_gamma(bunch.species, bunch.R_ref)
@@ -78,7 +80,22 @@ function universal!(
     kc = push(kc, @inline(aperture(tm, bunch, apertureparams, true)))
   end
 
-  if isactive(patchparams)    
+  if isactive(mapparams)    
+    if isactive(alignmentparams)
+      error("Tracking through a LineElement containing both MapParams and AlignmentParams is undefined")
+    elseif isactive(bendparams)
+      error("Tracking through a LineElement containing both MapParams and BendParams not currently defined")
+    elseif isactive(bmultipoleparams)
+      error("Tracking through a LineElement containing both MapParams and BMultipoleParams not currently defined")
+    elseif isactive(rfparams)
+      error("Tracking through a LineElement containing both MapParams and RFParams not currently defined")
+    elseif isactive(patchparams)
+      error("Tracking through a LineElement containing both MapParams and PatchParams not currently defined")
+    else
+      kc = push(kc, @inline(pure_map(tm, bunch, mapparams, L)))
+    end
+
+  elseif isactive(patchparams)    
     if isactive(alignmentparams)
       error("Tracking through a LineElement containing both PatchParams and AlignmentParams is undefined")
     elseif isactive(bendparams)
@@ -216,8 +233,9 @@ function universal!(
   return nothing
 end
 
-# === Coordinate system transformations === #
+# === Coordinate transformations === #
 @inline pure_patch(tm, bunch, patchparams, L) = error("Undefined for tracking method $tm")
+@inline pure_map(tm, bunch, mapparams, L) = error("Undefined for tracking method $tm")
 
 # === Straight Elements === #
 # "Pure" means only ONE SINGLE multipole.

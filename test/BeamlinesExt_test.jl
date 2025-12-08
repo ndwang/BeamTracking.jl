@@ -875,6 +875,36 @@
     v_expected = [0.022813869607319508 0.02259460588210925 0.04729868720097375 0.038077653342022774 0.04953599990242161 0.05999085207779174]
     @test b0.coords.v ≈ v_expected
 
+    # Map:
+    function transport_map(v, q)
+      v_out = (sin(v[1]), 2*v[2], exp(v[3]), 1-v[4], v[6], v[5])
+      if !isnothing(q)
+        q_out = (q[2], q[1], q[4], q[3])
+      else
+        q_out = nothing
+      end
+      return v_out, q_out
+    end
+
+    ele = LineElement(transport_map=transport_map, tracking_method=SplitIntegration())
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
+    bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [sin(0.01) 2*0.02 exp(0.03) 1-0.04 0.06 0.05]
+    @test b0.coords.v ≈ v_expected
+
+    ele = LineElement(transport_map=transport_map, tracking_method=SplitIntegration())
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    q = [1/sqrt(2) 0.0 1/sqrt(2) 0.0]
+    b0 = Bunch(v, q, R_ref=-18e9/C_LIGHT, species=Species("electron"))
+    bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [sin(0.01) 2*0.02 exp(0.03) 1-0.04 0.06 0.05]
+    q_expected = [0.0 1/sqrt(2) 0.0 1/sqrt(2)]
+    @test b0.coords.v ≈ v_expected
+    @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
+
     # Particle lost in dipole (momentum is too small):
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
