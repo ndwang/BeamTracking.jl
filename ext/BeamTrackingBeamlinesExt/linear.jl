@@ -135,11 +135,14 @@ end
 
 # Ignore higher order multipoles:
 @inline thick_bend_bquadrupole(tm::Linear, bunch, bendparams, bmultipoleparams, L) = thick_bend_pure_bquadrupole(tm, bunch, bendparams, bmultipoleparams[2], L)
+
 # Ignore higher order multipoles: treat like bend no field
 @inline thick_bend_pure_bmultipole(tm::Linear, bunch, bendparams, bmk, L) = thick_bend_no_field(tm, bunch, bendparams, L)
 @inline thick_bend_bmultipole(tm::Linear, bunch, bendparams, bmultipoleparams, L) = thick_bend_no_field(tm, bunch, bendparams, L)
+
 # Ignore RF (for now):
 @inline thick_pure_rf(tm::Linear, bunch, rfparams, beamlineparams, L) = drift(tm, bunch, L)
+
 # Fringe is already built in:
 @inline bend_entrance_fringe(tm::Linear, bunch, bendparams, bmp, L) = drift(tm, bunch, 0)
 @inline bend_exit_fringe(tm::Linear, bunch, bendparams, bmp, L)     = drift(tm, bunch, 0)
