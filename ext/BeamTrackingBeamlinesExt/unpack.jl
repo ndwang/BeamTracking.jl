@@ -111,7 +111,7 @@ function universal!(
 
   elseif isactive(rfparams)
     !rfparams.is_crabcavity || error("Crab cavities not yet supported for tracking")
-    rfparams.zero_phase != PhaseReference.Accelerating || error("RF zero_phase not yet settable.")
+    rfparams.zero_phase == PhaseReference.Accelerating || error("RF zero_phase not yet settable.")
     omega = rf_omega(rfparams, beamlineparams.beamline.line[end].s_downstream, bunch.species, bunch.R_ref)
 
     if isactive(bendparams)
