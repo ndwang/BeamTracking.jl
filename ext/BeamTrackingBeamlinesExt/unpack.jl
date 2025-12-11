@@ -110,7 +110,7 @@ function universal!(
     end
 
   elseif isactive(rfparams)
-    if rfparams.is_crabcavity; error("CrabCavity elements not yet supported for tracking"); end
+    !rfparams.is_crabcavity || error("Crab cavities not yet supported for tracking")
     omega = rf_omega(rfparams, beamlineparams.beamline.line[end].s_downstream, bunch.species, bunch.R_ref)
 
     if isactive(bendparams)
