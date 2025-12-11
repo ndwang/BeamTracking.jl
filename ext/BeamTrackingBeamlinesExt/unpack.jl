@@ -110,7 +110,10 @@ function universal!(
     end
 
   elseif isactive(rfparams)
+    !rfparams.is_crabcavity || error("Crab cavities not yet supported for tracking")
+    rfparams.zero_phase == PhaseReference.Accelerating || error("RF zero_phase not yet settable.")
     omega = rf_omega(rfparams, beamlineparams.beamline.line[end].s_downstream, bunch.species, bunch.R_ref)
+
     if isactive(bendparams)
       error("Tracking through a LineElement containing both RFParams and BendParams not currently defined")
     else
@@ -122,6 +125,7 @@ function universal!(
     end
 
   elseif isactive(bendparams)
+    if bendparams.edge1_int != 0 || bendparams.edge2_int != 0; error("edge1_int and edge2_int not yet handled for tracking"); end
     # Bend
     if !isactive(bmultipoleparams) 
       # Bend no field
