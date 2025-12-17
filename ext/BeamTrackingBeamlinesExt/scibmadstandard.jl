@@ -1,4 +1,4 @@
-
+@inline drift(tm::SciBmadStandard, bunch, L) = drift(Exact(), bunch, L) 
 @inline pure_patch(tm::SciBmadStandard, bunch, patchparams, L) = pure_patch(Exact(), bunch, patchparams, L)
 @inline pure_map(tm::SciBmadStandard, bunch, mapparams, L) = pure_map(Exact(), bunch, mapparams, L)
 
