@@ -361,7 +361,7 @@ zf_mn4  = [ 0., 3.140908277834687e-8, -3.1503450227072763e-8, 3.140908186274627e
 
 
 # test individual elements
-@testset "ExactTracking" begin
+@testset "BeamTracking" begin
   @testset "Particles" begin
 
     # ===  D R I F T  ===
