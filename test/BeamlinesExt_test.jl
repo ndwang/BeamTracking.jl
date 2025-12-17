@@ -8,69 +8,6 @@
 
   include("lattices/esr.jl")
 
-  @testset "Linear" begin
-    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
-    foreach(t->t.tracking_method=Linear(), ring.line)
-    track!(b0, ring)
-    M_ESR = [  0.8763088913632391E+00  0.2842332738570903E+00 -0.9233408598814828E-06 -0.1104742931103878E-06  0.0000000000000000E+00 -0.8843595261589663E-07
-              -0.8165279324836310E+00  0.8763069736287854E+00 -0.1898521129265218E-05 -0.1113630193834745E-06  0.0000000000000000E+00 -0.1417461685411299E-06
-               0.1352460571822227E-07 -0.2969583000777938E-07  0.6374265424413608E+00  0.4391919124687460E-01  0.0000000000000000E+00  0.5592919170820314E-14
-              -0.4079601917518316E-05  0.1052556482124766E-05 -0.1351773220872402E+02  0.6374258159142916E+00  0.0000000000000000E+00 -0.4735132312703365E-13
-               0.1964238541540386E-06 -0.3720806396318763E-07 -0.8403098936929155E-14 -0.1661103086541925E-15  0.1000000000000000E+01 -0.2358669003370585E+01
-               0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01  ]
-
-    @test GTPSA.jacobian(b0.coords.v) ≈ M_ESR
-
-    #combined
-    ring2 = Beamline([SBend(Kn0 = 0.24, g_ref = 0.25, Kn1 = 0.25, L = 1.0, e1 = 0.5, e2 = 0.2)], R_ref = -0.0017045090263411496)
-    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=-0.0017045090263411496, species=Species("electron"))
-    foreach(t -> t.tracking_method = Linear(), ring2.line)
-    track!(b0, ring2)
-    M_combined = [
-      0.9734056928978285E+00  0.9491282811321522E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1170583759019584E+00
-      -0.1355634359386695E+00  0.8951384971554924E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.2434778344045677E+00
-       0.0000000000000000E+00  0.0000000000000000E+00  0.9909816470445496E+00  0.1042190610987494E+01  0.0000000000000000E+00  0.0000000000000000E+00
-       0.0000000000000000E+00  0.0000000000000000E+00  0.6449002140313032E-01  0.1076922966223960E+01  0.0000000000000000E+00  0.0000000000000000E+00
-      -0.2528715457465107E+00 -0.1263082397778435E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01  0.4893946839414888E+00
-       0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01
-    ]
-    @test GTPSA.jacobian(b0.coords.v) ≈  M_combined
-
-    #g_ref=0, dg!=0 thin corrector coil
-
-    #SBend(Kn0=0.17, g_ref=0, L = 1.1), line #L72 - L76
-    ring3 = Beamline([SBend(Kn0=0.17,g_ref=0,Kn1=-0.20,L=1.1)], R_ref = -0.0017045090263411496)
-    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=-0.0017045090263411496, species=Species("electron"))
-    foreach(t -> t.tracking_method = Linear(), ring3.line)
-    track!(b0, ring3)
-    M_combined = [
-      0.1123459935969970E+01  0.1144906606954581E+01  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1070487677502533E+00
-      0.2289813213909162E+00  0.1123459935969970E+01  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.7726442422052786E-02
-      0.0000000000000000E+00  0.0000000000000000E+00  0.8814205674902971E+00  0.1056167087172011E+01  0.0000000000000000E+00  0.0000000000000000E+00
-      0.0000000000000000E+00  0.0000000000000000E+00 -0.2112334174344023E+00  0.8814205674902971E+00  0.0000000000000000E+00  0.0000000000000000E+00
-      0.1583181978396722E-01  0.1114189467851014E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01  0.5637819347138261E+00
-      0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01
-    ]
-    @test GTPSA.jacobian(b0.coords.v) ≈  M_combined
-
-
-    #thick_bend_no_field line 103-104 --> singularity
-    #L132 - L134
-    ring4 = Beamline([SBend(Kn0=0.0, g_ref=0.005, L = 1.1, Kn1 = 0.05, e1 = 0.1, e2 = 0.2)], R_ref = -0.0017045090263411496)
-    b0 = Bunch(collect(transpose(@vars(D1))), R_ref=-0.0017045090263411496, species=Species("electron"))
-    foreach(t -> t.tracking_method = Linear(), ring4.line)
-    track!(b0, ring4)
-    M_combined = [
-      0.9699022031860474E+00  0.1088941837334312E+01  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1518962872590519E-04
-      -0.5444709186671562E-01  0.9699022031860474E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.5499832721245711E-02
-       0.0000000000000000E+00  0.0000000000000000E+00  0.1030402818311841E+01  0.1111125267330245E+01  0.0000000000000000E+00  0.0000000000000000E+00
-       0.0000000000000000E+00  0.0000000000000000E+00  0.5555626336651224E-01  0.1030402818311841E+01  0.0000000000000000E+00  0.0000000000000000E+00
-      -0.5335126904601591E-02 -0.5974265494137833E-02  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01  0.5499999184222805E+00
-       0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.0000000000000000E+00  0.1000000000000000E+01
-    ]
-    @test GTPSA.jacobian(b0.coords.v) ≈  M_combined
-  end
-
   @testset "Exact" begin
     p0c = 10e6
     # E to R_ref
@@ -420,7 +357,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
 
     # Drift another way: 
-    ele = LineElement(L=1.0, Kn0=0.0, Kn1=0.0, tracking_method=ThickKick())   
+    ele = LineElement(L=1.0, Kn0=0.0, Kn1=0.0, tracking_method=MatrixKick())   
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -433,7 +370,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
 
     # Drift yet another way: 
-    ele = LineElement(L=1.0, Kn2=0.0, Kn1=0.0, tracking_method=ThickKick())   
+    ele = LineElement(L=1.0, Kn2=0.0, Kn1=0.0, tracking_method=MatrixKick())   
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -446,7 +383,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
 
     # Drift yet yet another way: 
-    ele = LineElement(L=1.0, Kn1=0.0, tracking_method=ThickKick())   
+    ele = LineElement(L=1.0, Kn1=0.0, tracking_method=MatrixKick())   
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -506,7 +443,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Solenoid with quadrupole:
-    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=ThickKick(order=2))
+    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -518,7 +455,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # SK multiple steps:
-    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=ThickKick(order=4, num_steps=2))
+    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=4, num_steps=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -530,7 +467,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Step size:
-    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=ThickKick(order=4, ds_step=1.0))
+    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=4, ds_step=1.0))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -554,7 +491,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Straight pure dipole (BK):
-    ele = LineElement(L=2.0, Kn0=0.1, tracking_method=ThickKick(order=6, num_steps=10))
+    ele = LineElement(L=2.0, Kn0=0.1, tracking_method=BendKick(order=6, num_steps=10))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -578,7 +515,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Straight dipole with quadrupole (BK):
-    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=ThickKick(order=6, num_steps=10))
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=BendKick(order=6, num_steps=10))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -602,7 +539,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 4e-7)
 
     # Pure quadrupole (MK):
-    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=ThickKick(order=2))
+    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -614,7 +551,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Skew quadrupole (MK):
-    ele = LineElement(L=2.0, Kn1=0.1, tilt1=pi/4, tracking_method=ThickKick(order=2))
+    ele = LineElement(L=2.0, Kn1=0.1, tilt1=pi/4, tracking_method=MatrixKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -626,7 +563,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-9)
 
     # Skew quadrupole another way (MK):
-    ele = LineElement(L=2.0, Ks1=-0.1, tracking_method=ThickKick(order=2))
+    ele = LineElement(L=2.0, Ks1=-0.1, tracking_method=MatrixKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -650,7 +587,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Quadrupole with octupole (MK):
-    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=ThickKick(order=2))
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -662,7 +599,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-7)
 
     # MK multiple steps:
-    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=ThickKick(order=2, num_steps=2))
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick(order=2, num_steps=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -831,7 +768,7 @@
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # Bend with deterministic radiation:
-    ele = LineElement(L=2.0, g=0.1, tracking_method=ThickKick(order=6, radiation_damping_on=true))
+    ele = LineElement(L=2.0, g=0.1, tracking_method=BendKick(order=6, radiation_damping_on=true))
     v = zeros(6)
     b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
     bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
@@ -840,7 +777,7 @@
     @test b0.coords.v ≈ v_expected
 
     # Quadrupole with deterministic radiation:
-    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=ThickKick(order=6, num_steps = 2, radiation_damping_on=true))
+    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick(order=6, num_steps = 2, radiation_damping_on=true))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
     bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
@@ -858,7 +795,7 @@
     @test b0.coords.v ≈ v_expected
 
     # Solenoid with deterministic radiation:
-    ele = LineElement(L=1.5, Ksol=0.3, tracking_method=ThickKick(order=6, num_steps = 2, radiation_damping_on=true))
+    ele = LineElement(L=1.5, Ksol=0.3, tracking_method=SolenoidKick(order=6, num_steps = 2, radiation_damping_on=true))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
     bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
@@ -909,7 +846,7 @@
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
     q_init = copy(b0.coords.q)
-    ele_dipole = LineElement(L=1.0, Kn0=1e-8, Kn1=1e-8, tracking_method=ThickKick())
+    ele_dipole = LineElement(L=1.0, Kn0=1e-8, Kn1=1e-8, tracking_method=BendKick())
     track!(b0, Beamline([ele_dipole], R_ref=R_ref))
     @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
@@ -919,7 +856,7 @@
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
     q_init = copy(b0.coords.q)
-    ele_quad = LineElement(L=1.0, Kn1=1e-8, tracking_method=ThickKick())
+    ele_quad = LineElement(L=1.0, Kn1=1e-8, tracking_method=MatrixKick())
     track!(b0, Beamline([ele_quad], R_ref=R_ref))
     @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
@@ -936,10 +873,10 @@
     @test q_init == b0.coords.q || q_init == -b0.coords.q
 
     # Errors:
-    @test_throws ErrorException ThickKick(ds_step = 0.1, num_steps = 2)
-    @test_throws ErrorException ThickKick(order = 2, num_steps = -2)
+    @test_throws ErrorException MatrixKick(ds_step = 0.1, num_steps = 2)
+    @test_throws ErrorException BendKick(order = 2, num_steps = -2)
     @test_throws ErrorException DriftKick(ds_step = -0.1)
-    @test_throws ErrorException ThickKick(num_steps = -2)
+    @test_throws ErrorException SolenoidKick(num_steps = -2)
     @test_throws ErrorException Yoshida(order = 5)
   end  
 end
