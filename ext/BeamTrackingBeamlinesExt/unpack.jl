@@ -58,7 +58,7 @@ function universal!(
     R_ref_initial = bunch.R_ref
     R_ref_final = R_ref(bunch.t_ref)
     if !(R_ref_initial ≈ R_ref_final)
-      kc = push(kc, KernelCall(ExactTracking.update_P0!, (R_ref_initial, R_ref_final, ramp_without_rf)))
+      kc = push(kc, KernelCall(BeamTracking.update_P0!, (R_ref_initial, R_ref_final, ramp_without_rf)))
       setfield!(bunch, :R_ref, R_ref_final)
     end
   end
@@ -238,6 +238,10 @@ function universal!(
   return nothing
 end
 
+
+# === Drift === #
+@inline drift(tm, bunch, L) = error("Undefined for tracking method $tm")
+
 # === Coordinate transformations === #
 @inline pure_patch(tm, bunch, patchparams, L) = error("Undefined for tracking method $tm")
 @inline pure_map(tm, bunch, mapparams, L) = error("Undefined for tracking method $tm")
@@ -322,4 +326,3 @@ end
 @inline bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams, L)        = L == 0 ? thin_bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams)       : thick_bend_bquadrupole(tm, bunch, bendparams, bmultipoleparams, L)           
 @inline bend_pure_bmultipole(tm, bunch, bendparams, bmk, L)                 = L == 0 ? thin_bend_pure_bmultipole(tm, bunch, bendparams, bmk)                : thick_bend_pure_bmultipole(tm, bunch, bendparams, bmk, L)                   
 @inline bend_bmultipole(tm, bunch, bendparams, bmultipoleparams, L)         = L == 0 ? thin_bend_bmultipole(tm, bunch, bendparams, bmultipoleparams)        : thick_bend_bmultipole(tm, bunch, bendparams, bmultipoleparams, L)                      
-
