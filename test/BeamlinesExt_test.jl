@@ -823,7 +823,7 @@
       return v_out, q_out
     end
 
-    ele = LineElement(transport_map=transport_map, tracking_method=Yoshida())
+    ele = LineElement(transport_map=transport_map)
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
     bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
@@ -831,7 +831,7 @@
     v_expected = [sin(0.01) 2*0.02 exp(0.03) 1-0.04 0.06 0.05]
     @test b0.coords.v ≈ v_expected
 
-    ele = LineElement(transport_map=transport_map, tracking_method=Yoshida())
+    ele = LineElement(transport_map=transport_map)
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1/sqrt(2) 0.0 1/sqrt(2) 0.0]
     b0 = Bunch(v, q, R_ref=-18e9/C_LIGHT, species=Species("electron"))
