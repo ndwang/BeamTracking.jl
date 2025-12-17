@@ -10,7 +10,9 @@ using Test,
       SIMD
 
 using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST, C_LIGHT,
-      STATE_LOST_NEG_X, STATE_LOST_POS_X, STATE_LOST_NEG_Y, STATE_LOST_POS_Y, STATE_LOST_PZ, STATE_LOST_Z
+      STATE_LOST_NEG_X, STATE_LOST_POS_X, STATE_LOST_NEG_Y, STATE_LOST_POS_Y, STATE_LOST_PZ, STATE_LOST_Z,
+      rot_quaternion, inv_rot_quaternion, atan2, sincu, sinhcu, sincuc, expq, atan2, one_cos, one_cos_norm
+      quat_mul, quat_rotate, gaussian_random
 using Beamlines: isactive
 
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
