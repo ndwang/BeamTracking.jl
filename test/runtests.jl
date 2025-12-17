@@ -196,6 +196,6 @@ end
 include("BeamlinesExt_test.jl")
 include("alignment_tracking_test.jl")
 include("aperture_tracking_test.jl")
-include("BeamTracking_test.jl")
-include("BeamTracking_test.jl")
+include("ExactTracking_test.jl")
+include("IntegrationTracking_test.jl")
 include("time_test.jl")
