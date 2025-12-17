@@ -58,7 +58,7 @@ function universal!(
     R_ref_initial = bunch.R_ref
     R_ref_final = R_ref(bunch.t_ref)
     if !(R_ref_initial ≈ R_ref_final)
-      kc = push(kc, KernelCall(ExactTracking.update_P0!, (R_ref_initial, R_ref_final, ramp_without_rf)))
+      kc = push(kc, KernelCall(BeamTracking.update_P0!, (R_ref_initial, R_ref_final, ramp_without_rf)))
       setfield!(bunch, :R_ref, R_ref_final)
     end
   end

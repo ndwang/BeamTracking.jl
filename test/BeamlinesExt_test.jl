@@ -317,9 +317,9 @@
     @test_throws ErrorException track!(b0, Beamline([ele_bend_quad],  R_ref=R_ref))
   end
   
-  @testset "SplitIntegration" begin
+  @testset "Yoshida" begin
     b0 = Bunch(collect(transpose(@vars(D1))), R_ref=ring.R_ref)
-    foreach(t->t.tracking_method=SplitIntegration(), ring.line)
+    foreach(t->t.tracking_method=Yoshida(), ring.line)
     track!(b0, ring)
     M_ESR = [0.8763088913632153E+00  0.2842332738570844E+00 -0.9233408564026070E-06 -0.1104742929395010E-06  0.1231581327803036E-08 -0.8939291467979220E-07 
             -0.8165279324836996E+00  0.8763069736287663E+00 -0.1898521122770908E-05 -0.1113630178379456E-06 -0.2820752660094096E-08 -0.1395543922780640E-06
@@ -335,7 +335,7 @@
     R_ref = BeamTracking.E_to_R(Species("electron"), sqrt(p0c^2 + massof(Species("electron"))^2))
 
     # Thin straight pure dipole:
-    ele = LineElement(L=0.0, Kn0L=0.1, tracking_method=SplitIntegration())
+    ele = LineElement(L=0.0, Kn0L=0.1, tracking_method=Yoshida())
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -347,7 +347,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Thin straight dipole:
-    ele = LineElement(L=0.0, Kn0L=0.1, Kn5L=1000.0, tracking_method=SplitIntegration())
+    ele = LineElement(L=0.0, Kn0L=0.1, Kn5L=1000.0, tracking_method=Yoshida())
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -359,7 +359,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Thin pure quadrupole:
-    ele = LineElement(L=0.0, Kn1L=1.0, tilt1=pi, tracking_method=SplitIntegration())
+    ele = LineElement(L=0.0, Kn1L=1.0, tilt1=pi, tracking_method=Yoshida())
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -371,7 +371,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Thin quadrupole:
-    ele = LineElement(L=0.0, Kn1L=1.0, tilt1=pi, Kn5L=100.0, tilt5=-0.1*pi, tracking_method=SplitIntegration())
+    ele = LineElement(L=0.0, Kn1L=1.0, tilt1=pi, Kn5L=100.0, tilt5=-0.1*pi, tracking_method=Yoshida())
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -383,7 +383,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Thin pure multipole:
-    ele = LineElement(L=0.0, Kn3L=10.0, tilt3=0.5*pi, tracking_method=SplitIntegration())
+    ele = LineElement(L=0.0, Kn3L=10.0, tilt3=0.5*pi, tracking_method=Yoshida())
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -395,7 +395,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Thin multipole:
-    ele = LineElement(L=0.0, Kn2L=1.0, tilt2=0.3*pi, Kn6L=100.0, tilt6=0.15*pi, tracking_method=SplitIntegration())
+    ele = LineElement(L=0.0, Kn2L=1.0, tilt2=0.3*pi, Kn6L=100.0, tilt6=0.15*pi, tracking_method=Yoshida())
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -407,7 +407,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Drift: 
-    ele = LineElement(L=1.0, tracking_method=SplitIntegration())   
+    ele = LineElement(L=1.0, tracking_method=Yoshida())   
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -420,7 +420,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
 
     # Drift another way: 
-    ele = LineElement(L=1.0, Kn0=0.0, Kn1=0.0, tracking_method=MatrixKick())   
+    ele = LineElement(L=1.0, Kn0=0.0, Kn1=0.0, tracking_method=ThickKick())   
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -433,7 +433,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
 
     # Drift yet another way: 
-    ele = LineElement(L=1.0, Kn2=0.0, Kn1=0.0, tracking_method=MatrixKick())   
+    ele = LineElement(L=1.0, Kn2=0.0, Kn1=0.0, tracking_method=ThickKick())   
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -446,7 +446,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
 
     # Drift yet yet another way: 
-    ele = LineElement(L=1.0, Kn1=0.0, tracking_method=MatrixKick())   
+    ele = LineElement(L=1.0, Kn1=0.0, tracking_method=ThickKick())   
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -459,7 +459,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 0.0)
 
     # Curved drift: 
-    ele = LineElement(L=2.0, g_ref=0.1, tracking_method=SplitIntegration())   
+    ele = LineElement(L=2.0, g_ref=0.1, tracking_method=Yoshida())   
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -471,7 +471,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
 
     # Rotated and curved drift: 
-    ele = LineElement(L=2.0, g_ref=0.1, tilt_ref=-pi/3, tracking_method=SplitIntegration())   
+    ele = LineElement(L=2.0, g_ref=0.1, tilt_ref=-pi/3, tracking_method=Yoshida())   
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -483,7 +483,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
 
     # Pure bend:
-    ele = LineElement(L=2.0, g=0.1, tracking_method=SplitIntegration(order=6, num_steps=10))   
+    ele = LineElement(L=2.0, g=0.1, tracking_method=Yoshida(order=6, num_steps=10))   
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -494,7 +494,7 @@
            || b0.coords.q ≈ -[0.99999555887473 0.00000197685011 0.00297918168991 0.00008187412527])
 
     # Pure solenoid:
-    ele = LineElement(L=1.0, Ksol=2.0, tracking_method=SplitIntegration(order=2))
+    ele = LineElement(L=1.0, Ksol=2.0, tracking_method=Yoshida(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -506,7 +506,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Solenoid with quadrupole:
-    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=2))
+    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=ThickKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -518,7 +518,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # SK multiple steps:
-    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=4, num_steps=2))
+    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=ThickKick(order=4, num_steps=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -530,7 +530,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Step size:
-    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=SolenoidKick(order=4, ds_step=1.0))
+    ele = LineElement(L=2.0, Ksol=0.1, Kn1=0.1, tracking_method=ThickKick(order=4, ds_step=1.0))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -554,7 +554,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Straight pure dipole (BK):
-    ele = LineElement(L=2.0, Kn0=0.1, tracking_method=BendKick(order=6, num_steps=10))
+    ele = LineElement(L=2.0, Kn0=0.1, tracking_method=ThickKick(order=6, num_steps=10))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -578,7 +578,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Straight dipole with quadrupole (BK):
-    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=BendKick(order=6, num_steps=10))
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=ThickKick(order=6, num_steps=10))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -590,7 +590,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-6)
 
     # Straight dipole with quadrupole (MK):
-    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=SplitIntegration(order=6, num_steps=10))
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.1, tracking_method=Yoshida(order=6, num_steps=10))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -602,7 +602,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 4e-7)
 
     # Pure quadrupole (MK):
-    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick(order=2))
+    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=ThickKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -614,7 +614,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Skew quadrupole (MK):
-    ele = LineElement(L=2.0, Kn1=0.1, tilt1=pi/4, tracking_method=MatrixKick(order=2))
+    ele = LineElement(L=2.0, Kn1=0.1, tilt1=pi/4, tracking_method=ThickKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -626,7 +626,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-9)
 
     # Skew quadrupole another way (MK):
-    ele = LineElement(L=2.0, Ks1=-0.1, tracking_method=MatrixKick(order=2))
+    ele = LineElement(L=2.0, Ks1=-0.1, tracking_method=ThickKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -650,7 +650,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-9)
 
     # Quadrupole with octupole (MK):
-    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick(order=2))
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=ThickKick(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -662,7 +662,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-7)
 
     # MK multiple steps:
-    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=MatrixKick(order=2, num_steps=2))
+    ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=ThickKick(order=2, num_steps=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -686,7 +686,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 4e-8)
 
     # Pure sextupole:
-    ele = LineElement(L=2.0, Kn2=10.0, tilt2=0.2*pi, tracking_method=SplitIntegration(order=2))
+    ele = LineElement(L=2.0, Kn2=10.0, tilt2=0.2*pi, tracking_method=Yoshida(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -698,7 +698,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 7e-8)
 
     # DK multiple steps:
-    ele = LineElement(L=2.0, Kn2=10.0, tracking_method=SplitIntegration(order=4, num_steps=2))
+    ele = LineElement(L=2.0, Kn2=10.0, tracking_method=Yoshida(order=4, num_steps=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -710,7 +710,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-7)
 
     # Sextupole with decapole:
-    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=2))
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=Yoshida(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -722,7 +722,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-8)
 
     # Order 4:
-    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=4))
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=Yoshida(order=4))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -734,7 +734,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-7)
 
     # Order 6:
-    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=6))
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=Yoshida(order=6))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -746,7 +746,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 6e-8)
 
     # Order 8:
-    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=SplitIntegration(order=8))
+    ele = LineElement(L=2.0, Kn2=10.0, Kn4=100.0, tracking_method=Yoshida(order=8))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -758,7 +758,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 3e-7)
 
     # Patch:
-    ele = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
+    ele = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=Yoshida())
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -770,7 +770,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-14)
 
     # RF Cavity (PTC):
-    ele = LineElement(L=4.01667, voltage=3.3210942126011E6, rf_frequency=5.9114268014977E8, tracking_method=SplitIntegration(order=2))
+    ele = LineElement(L=4.01667, voltage=3.3210942126011E6, rf_frequency=5.9114268014977E8, tracking_method=Yoshida(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -783,7 +783,7 @@
 
     # Harmon:
     ele_drift = LineElement(L=1.04812778909)
-    ele = LineElement(L=4.01667, voltage=3.3210942126011E6, harmon=10, tracking_method=SplitIntegration(order=2))
+    ele = LineElement(L=4.01667, voltage=3.3210942126011E6, harmon=10, tracking_method=Yoshida(order=2))
     v = collect(transpose(@vars(D10)))
     q = TPS64{D10}[1 0 0 0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -795,7 +795,7 @@
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 1e-7)
 
     # With solenoid (RK4):
-    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Ksol=0.6, tracking_method=SplitIntegration(order=6, num_steps=2))
+    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Ksol=0.6, tracking_method=Yoshida(order=6, num_steps=2))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -807,7 +807,7 @@
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # With sextupole:
-    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, phi0=0.1, Kn2=1.3, tracking_method=SplitIntegration(order=6, num_steps=20))
+    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, phi0=0.1, Kn2=1.3, tracking_method=Yoshida(order=6, num_steps=20))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -819,7 +819,7 @@
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # With solenoid and quadrupole:
-    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Ksol=-0.3, Kn1=0.15, tracking_method=SplitIntegration(order=6, num_steps=20))
+    ele = LineElement(L=4.01667, voltage=3321.0942126011, rf_frequency=591142.68014977, Ksol=-0.3, Kn1=0.15, tracking_method=Yoshida(order=6, num_steps=20))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1.0 0.0 0.0 0.0]
     b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
@@ -831,7 +831,7 @@
     @test b0.coords.q ≈ q_expected || b0.coords.q ≈ -q_expected
 
     # Bend with deterministic radiation:
-    ele = LineElement(L=2.0, g=0.1, tracking_method=BendKick(order=6, radiation_damping_on=true))
+    ele = LineElement(L=2.0, g=0.1, tracking_method=ThickKick(order=6, radiation_damping_on=true))
     v = zeros(6)
     b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
     bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
@@ -840,7 +840,7 @@
     @test b0.coords.v ≈ v_expected
 
     # Quadrupole with deterministic radiation:
-    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=MatrixKick(order=6, num_steps = 2, radiation_damping_on=true))
+    ele = LineElement(L=2.0, Kn1=0.1, tracking_method=ThickKick(order=6, num_steps = 2, radiation_damping_on=true))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
     bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
@@ -858,7 +858,7 @@
     @test b0.coords.v ≈ v_expected
 
     # Solenoid with deterministic radiation:
-    ele = LineElement(L=1.5, Ksol=0.3, tracking_method=SolenoidKick(order=6, num_steps = 2, radiation_damping_on=true))
+    ele = LineElement(L=1.5, Ksol=0.3, tracking_method=ThickKick(order=6, num_steps = 2, radiation_damping_on=true))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
     bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
@@ -867,7 +867,7 @@
     @test b0.coords.v ≈ v_expected
 
     # Cavity-solenoid with deterministic radiation:
-    ele = LineElement(L=0.5, Ksol=0.3, rf_frequency=1e8, voltage=-0.25e6, tracking_method=SplitIntegration(order=6, num_steps = 5, radiation_damping_on=true))
+    ele = LineElement(L=0.5, Ksol=0.3, rf_frequency=1e8, voltage=-0.25e6, tracking_method=Yoshida(order=6, num_steps = 5, radiation_damping_on=true))
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
     bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
@@ -886,7 +886,7 @@
       return v_out, q_out
     end
 
-    ele = LineElement(transport_map=transport_map, tracking_method=SplitIntegration())
+    ele = LineElement(transport_map=transport_map, tracking_method=Yoshida())
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     b0 = Bunch(v, R_ref=-18e9/C_LIGHT, species=Species("electron"))
     bl = Beamline([ele], R_ref=-18e9/C_LIGHT, species_ref=Species("electron"))
@@ -894,7 +894,7 @@
     v_expected = [sin(0.01) 2*0.02 exp(0.03) 1-0.04 0.06 0.05]
     @test b0.coords.v ≈ v_expected
 
-    ele = LineElement(transport_map=transport_map, tracking_method=SplitIntegration())
+    ele = LineElement(transport_map=transport_map, tracking_method=Yoshida())
     v = [0.01 0.02 0.03 0.04 0.05 0.06]
     q = [1/sqrt(2) 0.0 1/sqrt(2) 0.0]
     b0 = Bunch(v, q, R_ref=-18e9/C_LIGHT, species=Species("electron"))
@@ -909,7 +909,7 @@
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
     q_init = copy(b0.coords.q)
-    ele_dipole = LineElement(L=1.0, Kn0=1e-8, Kn1=1e-8, tracking_method=BendKick())
+    ele_dipole = LineElement(L=1.0, Kn0=1e-8, Kn1=1e-8, tracking_method=ThickKick())
     track!(b0, Beamline([ele_dipole], R_ref=R_ref))
     @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
@@ -919,7 +919,7 @@
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
     q_init = copy(b0.coords.q)
-    ele_quad = LineElement(L=1.0, Kn1=1e-8, tracking_method=MatrixKick())
+    ele_quad = LineElement(L=1.0, Kn1=1e-8, tracking_method=ThickKick())
     track!(b0, Beamline([ele_quad], R_ref=R_ref))
     @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
@@ -929,17 +929,17 @@
     b0 = Bunch([0.4 0.4 0.4 0.4 0.4 -0.5], [1.0 0.0 0.0 0.0], R_ref=R_ref, species=Species("electron"))
     v_init = copy(b0.coords.v)
     q_init = copy(b0.coords.q)
-    ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=SplitIntegration())
+    ele_patch = LineElement(dt=1e-9, dx=2.0, dy=3.0, dz=4.0, dx_rot=-5.0, dy_rot=6.0, dz_rot=7.0, L=-1.9458360380198412, tracking_method=Yoshida())
     track!(b0, Beamline([ele_patch], R_ref=R_ref))
     @test b0.coords.state[1] == STATE_LOST
     @test v_init == b0.coords.v
     @test q_init == b0.coords.q || q_init == -b0.coords.q
 
     # Errors:
-    @test_throws ErrorException MatrixKick(ds_step = 0.1, num_steps = 2)
-    @test_throws ErrorException BendKick(order = 2, num_steps = -2)
+    @test_throws ErrorException ThickKick(ds_step = 0.1, num_steps = 2)
+    @test_throws ErrorException ThickKick(order = 2, num_steps = -2)
     @test_throws ErrorException DriftKick(ds_step = -0.1)
-    @test_throws ErrorException SolenoidKick(num_steps = -2)
-    @test_throws ErrorException SplitIntegration(order = 5)
+    @test_throws ErrorException ThickKick(num_steps = -2)
+    @test_throws ErrorException Yoshida(order = 5)
   end  
 end

@@ -20,10 +20,15 @@
   end
 end
 
+@inline alignment(tm::AbstractYoshida, bunch, alignmentparams, bendparams, L, entering) =
+  alignment(Exact(), bunch, alignmentparams, bendparams, L, entering)
+
+@inline aperture(tm::AbstractYoshida, bunch, apertureparams, entering) =
+  aperture(Exact(), bunch, apertureparams, entering)
 
 # =========== STRAIGHT ELEMENTS ============= #
 # === Thin elements === #
-@inline function thin_pure_bdipole(tm::SplitIntegration, bunch, bm)
+@inline function thin_pure_bdipole(tm::Yoshida, bunch, bm)
   R_ref = bunch.R_ref
   mm = bm.order
   knl, ksl = get_integrated_strengths(bm, 0, R_ref)
@@ -37,7 +42,7 @@ end
   end
 end
 
-@inline function thin_bdipole(tm::SplitIntegration, bunch, bm)
+@inline function thin_bdipole(tm::Yoshida, bunch, bm)
   R_ref = bunch.R_ref
   mm = bm.order
   knl, ksl = get_integrated_strengths(bm, 0, R_ref)
@@ -51,19 +56,19 @@ end
   end
 end
 
-@inline thin_pure_bquadrupole(tm::SplitIntegration, bunch, bm) = thin_pure_bdipole(tm, bunch, bm)
+@inline thin_pure_bquadrupole(tm::Yoshida, bunch, bm) = thin_pure_bdipole(tm, bunch, bm)
 
-@inline thin_bquadrupole(tm::SplitIntegration, bunch, bm) = thin_bdipole(tm, bunch, bm)
+@inline thin_bquadrupole(tm::Yoshida, bunch, bm) = thin_bdipole(tm, bunch, bm)
 
-@inline thin_pure_bmultipole(tm::SplitIntegration, bunch, bm) = thin_pure_bdipole(tm, bunch, bm)
+@inline thin_pure_bmultipole(tm::Yoshida, bunch, bm) = thin_pure_bdipole(tm, bunch, bm)
 
-@inline thin_bmultipole(tm::SplitIntegration, bunch, bm) = thin_bdipole(tm, bunch, bm)
+@inline thin_bmultipole(tm::Yoshida, bunch, bm) = thin_bdipole(tm, bunch, bm)
 
 
 # === Thick elements === #
-@inline drift(tm::Union{SplitIntegration,DriftKick}, bunch, L) = drift(Exact(), bunch, L)
+@inline drift(tm::Union{Yoshida,DriftKick}, bunch, L) = drift(Exact(), bunch, L)
 
-@inline function thick_pure_bsolenoid(tm::Union{SplitIntegration,SolenoidKick}, bunch, bm, L) 
+@inline function thick_pure_bsolenoid(tm::Union{Yoshida,SolenoidKick}, bunch, bm, L) 
   if isnothing(bunch.coords.q) && !(tm.radiation_damping_on || tm.radiation_fluctuations_on)
     return thick_pure_bsolenoid(Exact(), bunch, bm, L)
   else
@@ -82,7 +87,7 @@ end
   end
 end
 
-@inline function thick_bsolenoid(tm::Union{SplitIntegration,SolenoidKick}, bunch, bm, L) 
+@inline function thick_bsolenoid(tm::Union{Yoshida,SolenoidKick}, bunch, bm, L) 
   R_ref = bunch.R_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
   mm = bm.order
@@ -122,7 +127,7 @@ end
   return integration_launcher(IntegrationTracking.dkd_multipole!, params, photon_params, tm, 0, 0, L)
 end
 
-@inline function thick_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bm1, L) 
+@inline function thick_pure_bdipole(tm::Union{Yoshida,BendKick}, bunch, bm1, L) 
   if isnothing(bunch.coords.q) && !(tm.radiation_damping_on || tm.radiation_fluctuations_on)
     return thick_pure_bdipole(Exact(), bunch, bm1, L)
   else
@@ -184,7 +189,7 @@ end
   return integration_launcher(IntegrationTracking.mkm_quadrupole!, params, photon_params, tm, 0, 0, L)
 end
 
-@inline function thick_bdipole(tm::SplitIntegration, bunch, bm, L)
+@inline function thick_bdipole(tm::Yoshida, bunch, bm, L)
   if bm.order[2] == 2
     return thick_bdipole(MatrixKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step, radiation_damping_on=tm.radiation_damping_on, radiation_fluctuations_on=tm.radiation_fluctuations_on), bunch, bm, L)
   else
@@ -192,7 +197,7 @@ end
   end
 end
 
-@inline function thick_pure_bquadrupole(tm::Union{SplitIntegration,MatrixKick}, bunch, bm, L)
+@inline function thick_pure_bquadrupole(tm::Union{Yoshida,MatrixKick}, bunch, bm, L)
   R_ref = bunch.R_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
   mm = bm.order
@@ -215,7 +220,7 @@ end
 @inline thick_pure_bquadrupole(tm::DriftKick, bunch, bm, L) = 
   thick_pure_bdipole(tm, bunch, bm, L)
 
-@inline function thick_bquadrupole(tm::Union{SplitIntegration,MatrixKick}, bunch, bm, L)
+@inline function thick_bquadrupole(tm::Union{Yoshida,MatrixKick}, bunch, bm, L)
   R_ref = bunch.R_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
   mm = bm.order
@@ -237,18 +242,18 @@ end
 
 @inline thick_bquadrupole(tm::DriftKick, bunch, bm, L) = thick_bdipole(tm, bunch, bm, L)
 
-@inline thick_pure_bmultipole(tm::Union{SplitIntegration,DriftKick}, bunch, bm, L) = 
+@inline thick_pure_bmultipole(tm::Union{Yoshida,DriftKick}, bunch, bm, L) = 
   thick_pure_bdipole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step, radiation_damping_on=tm.radiation_damping_on, radiation_fluctuations_on=tm.radiation_fluctuations_on), bunch, bm, L)
 
-@inline thick_bmultipole(tm::Union{SplitIntegration,DriftKick}, bunch, bm, L) = 
+@inline thick_bmultipole(tm::Union{Yoshida,DriftKick}, bunch, bm, L) = 
   thick_bdipole(DriftKick(order=tm.order, num_steps=tm.num_steps, ds_step=tm.ds_step, radiation_damping_on=tm.radiation_damping_on, radiation_fluctuations_on=tm.radiation_fluctuations_on), bunch, bm, L)
 
 
 # =========== BENDING ELEMENTS ============= #
-@inline thick_bend_no_field(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, L) = 
+@inline thick_bend_no_field(tm::Union{Yoshida,BendKick}, bunch, bendparams, L) = 
   thick_bend_no_field(Exact(), bunch, bendparams, L)
 
-@inline function thick_bend_pure_bdipole(tm::Union{SplitIntegration,BendKick}, bunch, bendparams, bm1, L)
+@inline function thick_bend_pure_bdipole(tm::Union{Yoshida,BendKick}, bunch, bendparams, bm1, L)
   if isnothing(bunch.coords.q) && !(tm.radiation_damping_on || tm.radiation_fluctuations_on)
     return thick_bend_pure_bdipole(Exact(), bunch, bendparams, bm1, L)
   else
@@ -277,15 +282,12 @@ end
 
 
 # =========== TRANSFORMS ============= #
-@inline pure_patch(tm::SplitIntegration, bunch, patchparams, L)  = 
+@inline pure_patch(tm::Yoshida, bunch, patchparams, L)  = 
   pure_patch(Exact(), bunch, patchparams, L)
-
-@inline pure_map(tm::SplitIntegration, bunch, mapparams, L) = 
-  pure_map(Exact(), bunch, mapparams, L)
 
 
 # =========== RF ============= #
-@inline function thick_pure_rf(tm::Union{SplitIntegration,DriftKick}, bunch, rf, omega, L)
+@inline function thick_pure_rf(tm::Union{Yoshida,DriftKick}, bunch, rf, omega, L)
   R_ref = bunch.R_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
   E0_over_Rref = rf.voltage/L/R_ref
@@ -301,7 +303,7 @@ end
   return integration_launcher(IntegrationTracking.cavity!, params, photon_params, tm, 0, 0, L)
 end
 
-@inline function thick_bmultipole_rf(tm::Union{SplitIntegration,DriftKick,SolenoidKick}, bunch, bm, rf, omega, L)
+@inline function thick_bmultipole_rf(tm::Union{Yoshida,DriftKick,SolenoidKick}, bunch, bm, rf, omega, L)
   R_ref = bunch.R_ref
   tilde_m, gamsqr_0, beta_0 = ExactTracking.drift_params(bunch.species, R_ref)
   E0_over_Rref = rf.voltage/L/R_ref
