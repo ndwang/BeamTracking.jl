@@ -3,7 +3,7 @@ using Beamlines, BeamTracking, GTPSA, StaticArrays, KernelAbstractions, AtomicAn
 using Beamlines: isactive, deval, unsafe_getparams, isnullspecies
 using BeamTracking: get_N_particle, R_to_beta_gamma, R_to_gamma, R_to_pc, R_to_v, beta_gamma_to_v,
                     @makekernel, Coords, KernelCall, KernelChain, push, TimeDependentParam, RefState, 
-                    launch!, AbstractYoshida, rot_quaternion
+                    launch!, AbstractYoshida, rot_quaternion, inv_rot_quaternion, atan2
 import BeamTracking: track!
 
 include("utils.jl")
