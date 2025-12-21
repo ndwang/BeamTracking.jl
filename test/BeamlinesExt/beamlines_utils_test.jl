@@ -1,3 +1,4 @@
+include("../../ext/BeamTrackingBeamlinesExt/BeamTrackingBeamlinesExt.jl")
 import .BeamTrackingBeamlinesExt as btbl
 
 @testset "BeamlinesUtils" begin
