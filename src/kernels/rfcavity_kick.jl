@@ -2,38 +2,38 @@
   multipoles = (length(mm) > 0)
   sol = (multipoles && mm[1] == 0)
   if sol
-    exact_solenoid!(i, coords, kn[1], beta_0, gamsqr_0, tilde_m, 0.5*L)
+    exact_solenoid!(i, coords, kn[1], beta_0, gamsqr_0, tilde_m, L/2)
   else
-    exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, 0.5*L)
+    exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, L/2)
   end
   #t0 = t0 + (L/2)/(beta_0*C_LIGHT)
 
   if multipoles
     if radiation_damping
-      deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, 0.5*L)
+      deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, L/2)
     end
-    multipole_kick!(i, coords, mm, kn * 0.5*L, ks * 0.5*L, -1)
+    multipole_kick!(i, coords, mm, kn * L/2, ks * L/2, -1)
   end
 
   if isnothing(coords.q)
     cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, t0, E0_over_Rref, L)
   else
-    cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, t0, E0_over_Rref, 0.5*L)
+    cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, t0, E0_over_Rref, L/2)
     rotate_spin_cavity!(          i, coords, a, tilde_m, omega, t0, E0_over_Rref, mm, kn, ks, L)
-    cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, t0, E0_over_Rref, 0.5*L)
+    cavity_kick!(                 i, coords, beta_0, tilde_m, E_ref, p0c, omega, t0, E0_over_Rref, L/2)
   end
 
   if multipoles
-    multipole_kick!(i, coords, mm, kn * 0.5*L, ks * 0.5*L, -1)
+    multipole_kick!(i, coords, mm, kn * L/2, ks * L/2, -1)
     if radiation_damping
-      deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, 0.5*L)
+      deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, L/2)
     end
   end
 
   if sol
-    exact_solenoid!(i, coords, kn[1], beta_0, gamsqr_0, tilde_m, 0.5*L)
+    exact_solenoid!(i, coords, kn[1], beta_0, gamsqr_0, tilde_m, L/2)
   else
-    exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, 0.5*L)
+    exact_drift!(   i, coords, beta_0, gamsqr_0, tilde_m, L/2)
   end
 end
 

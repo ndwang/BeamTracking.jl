@@ -1,5 +1,5 @@
-include("../../ext/BeamTrackingBeamlinesExt/BeamTrackingBeamlinesExt.jl")
-import .BeamTrackingBeamlinesExt as btbl
+#include("../../ext/BeamTrackingBeamlinesExt/BeamTrackingBeamlinesExt.jl")
+const btbl = Base.get_extension(BeamTracking, :BeamTrackingBeamlinesExt)
 
 @testset "BeamlinesUtils" begin
   @test btbl.rf_phi0(RFParams(phi0 = 0.1)) ≈ 0.1
