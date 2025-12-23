@@ -1,4 +1,3 @@
-#include("../../ext/BeamTrackingBeamlinesExt/BeamTrackingBeamlinesExt.jl")
 const btbl = Base.get_extension(BeamTracking, :BeamTrackingBeamlinesExt)
 
 @testset "BeamlinesUtils" begin
