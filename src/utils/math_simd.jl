@@ -167,5 +167,5 @@ end
 See gaussian_random, but for SIMD vectors.
 """
 function gaussian_random(sigma::SIMD.Vec{N,T}) where {N,T}
-  return vmap(gaussian_random, sigma)
+  return SIMDMathFunctions.vmap(gaussian_random, sigma)
 end
