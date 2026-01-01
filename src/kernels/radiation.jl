@@ -156,7 +156,6 @@ end
   q2 = q*q
 
   sigma2 = dt_ds * coeff * q2/mc27 * E05 * rel_p4 * b_perp_3 * L
-  alive = (coords.state[i] == STATE_ALIVE)
   sigma2_1 = one(sigma2)
   sigma = sqrt(vifelse(alive, sigma2, sigma2_1)) 
 
