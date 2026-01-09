@@ -54,8 +54,11 @@ function _track!(
     kc = push(kc, @inline(aperture(tm, bunch, dp, true)))
   end
 
-  # Only track through body if element has length
-  if L != 0
+    # Only track through body if element has length
+    if L <= 0.0
+      error("RungeKutta tracking does not support zero-length elements") 
+    end
+
     # Setup physics parameters
     species, R_ref = bunch.species, bunch.R_ref
     tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(species, R_ref)
@@ -63,13 +66,14 @@ function _track!(
     p0c = BeamTracking.R_to_pc(species, R_ref)
     mc2 = massof(species)
 
-    # Calculate integration steps
+    # Determine step size to use
     if tm.ds_step > 0
-      n_steps = Int(ceil(L / tm.ds_step))
+      ds_step = tm.ds_step
     elseif tm.n_steps > 0
-      n_steps = tm.n_steps
+      # Fallback: calculate ds_step from n_steps for backward compatibility
+      ds_step = L / tm.n_steps
     else
-      n_steps = max(1, Int(ceil(L / BeamTracking.DEFAULT_RK4_DS_STEP)))
+      ds_step = BeamTracking.DEFAULT_RK4_DS_STEP
     end
 
     s_span = (0.0, L)
@@ -80,10 +84,9 @@ function _track!(
     # Get field function from Beamlines and pass full element
     field_func = Beamlines.field_calc(ele)
 
-    params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, n_steps, g_bend,
+    params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend,
               field_func, ele)
     kc = push(kc, KernelCall(BeamTracking.RungeKuttaTracking.rk4_kernel!, params))
-  end
 
   # Exit aperture and alignment
   if isactive(ap)

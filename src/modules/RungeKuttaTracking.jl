@@ -59,16 +59,13 @@ returns zero derivatives (caller should mark particle as lost).
     vy = beta * C_LIGHT * vt_y
     vz = beta * C_LIGHT * vz_norm
 
-    # Lorentz force: F = q*(E + v×B) in Newtons
-    # E_force in eV/m = (charge * e) * E[V/m]
-    E_force_x = charge * E_CHARGE * Ex
-    E_force_y = charge * E_CHARGE * Ey
-    E_force_z = charge * E_CHARGE * Ez
-
-    # B_force = q*(v × B), component by component
-    B_force_x = charge * E_CHARGE * (vy*Bz - vz*By)
-    B_force_y = charge * E_CHARGE * (vz*Bx - vx*Bz)
-    B_force_z = charge * E_CHARGE * (vx*By - vy*Bx)
+    # Lorentz force: F = q*(E + v×B)
+    E_force_x = charge * Ex
+    E_force_y = charge * Ey
+    E_force_z = charge * Ez
+    B_force_x = charge * (vy*Bz - vz*By)
+    B_force_y = charge * (vz*Bx - vx*Bz)
+    B_force_z = charge * (vx*By - vy*Bx)
 
     # Time derivative w.r.t. arc length
     dh_bend = x * g_bend  # Longitudinal distance deviation
@@ -92,15 +89,16 @@ returns zero derivatives (caller should mark particle as lost).
     dy_ds = vy * dt_ds
 
     # Momentum derivatives: dp_i/ds = F_i * dt/ds / p0c + corrections
-    dpx_ds = (E_force_x + B_force_x) * dt_ds / p0c + g_bend * pz_p0
-    dpy_ds = (E_force_y + B_force_y) * dt_ds / p0c
+    p0 = p0c / C_LIGHT
+    dpx_ds = (E_force_x + B_force_x) * dt_ds / p0 + g_bend * pz_p0
+    dpy_ds = (E_force_y + B_force_y) * dt_ds / p0
 
     # Longitudinal coordinate z derivative
     sqrt_1mvt2 = sqrt(1 - vt2_safe)
-    dz_ds = rel_dir * (beta / beta_0 - 1) + rel_dir * (sqrt_1mvt2 - dh_bend) / sqrt_1mvt2 + dbeta_ds * z / beta
+    dz_ds = rel_dir * (beta / beta_0 - 1) + rel_dir * (sqrt_1mvt2 - 1 - dh_bend) / sqrt_1mvt2 + dbeta_ds * z / beta
 
     # Energy deviation derivative
-    dpz_ds = dp_ds / p0c
+    dpz_ds = dp_ds / p0
 
     # Return zero derivatives if momenta are unphysical (branchless)
     zero_deriv = zero(dx_ds)
@@ -192,7 +190,7 @@ end
 
 """
     rk4_kernel!(i, coords, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2,
-                      s_span, n_steps, g_bend, field_func, field_params)
+                      s_span, ds_step, g_bend, field_func, field_params)
 
 Kernelized RK4 tracking through arbitrary electromagnetic fields.
 Compatible with @makekernel and the package's kernel architecture.
@@ -201,7 +199,7 @@ The field_func should have signature: field_func(x, px, y, py, z, pz, s, params)
 and return (Ex, Ey, Ez, Bx, By, Bz).
 """
 @makekernel function rk4_kernel!(i, coords::Coords, beta_0, gamsqr_0, tilde_m,
-                                        charge, p0c, mc2, s_span, n_steps, g_bend,
+                                        charge, p0c, mc2, s_span, ds_step, g_bend,
                                         field_func, field_params)
     # Check if particle is alive at start
     alive_at_start = (coords.state[i] == STATE_ALIVE)
@@ -211,11 +209,18 @@ and return (Ex, Ey, Ez, Bx, By, Bz).
 
     # Integration loop - only if particle was alive at start
     if alive_at_start
-        h = (s_span[2] - s_span[1]) / n_steps
-        s = s_span[1]
+        s_start = s_span[1]
+        s_end = s_span[2]
+        s = s_start
 
         v = coords.v
-        for step in 1:n_steps
+        while s < s_end
+            # Calculate remaining distance
+            remaining = s_end - s
+            
+            # Use ds_step, but if remaining is smaller, use remaining
+            h = min(ds_step, remaining)
+            
             # Check momenta before step
             rel_p = 1 + v[i, PZI]
             vt2 = (v[i, PXI] / rel_p)^2 + (v[i, PYI] / rel_p)^2

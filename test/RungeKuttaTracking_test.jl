@@ -52,11 +52,11 @@
 
     s_span = (0.0, 1.0)  # 1 meter arc length
     field_params = nothing
-    n_steps = 100
+    ds_step = 0.01  # 1 cm step size
     g_bend = 0.0
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
-                                   charge, p0c, mc2, s_span, n_steps, g_bend,
+                                   charge, p0c, mc2, s_span, ds_step, g_bend,
                                    drift, field_params)
 
     # For drift, dx/ds ≈ px (for small px and pz ≈ 0)
@@ -84,11 +84,11 @@
 
     s_span = (0.0, 1.0)  # 1 meter arc length
     field_params = (Ex=-1e4,)  # -10 kV/m (negative field accelerates electron in +x)
-    n_steps = 100
+    ds_step = 0.01  # 1 cm step size
     g_bend = 0.0
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
-                                   charge, p0c, mc2, s_span, n_steps, g_bend, 
+                                   charge, p0c, mc2, s_span, ds_step, g_bend, 
                                    uniform_efield, field_params)
 
     # Electron in negative E-field should accelerate in +x direction
@@ -112,11 +112,11 @@
 
     s_span = (0.0, 1.0)  # 1 meter
     field_params = (Bz=0.01,)  # 0.01 Tesla
-    n_steps = 200
+    ds_step = 0.001  # 1 mm step size
     g_bend = 0.0
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
-                                   charge, p0c, mc2, s_span, n_steps, g_bend,
+                                   charge, p0c, mc2, s_span, ds_step, g_bend,
                                    uniform_bfield, field_params)
 
     # In uniform B-field, particle should follow circular path
@@ -139,11 +139,11 @@
 
     s_span = (0.0, 1.0)
     field_params = nothing
-    n_steps = 10
+    ds_step = 0.1  # 10 cm step size
     g_bend = 0.0
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
-                                   charge, p0c, mc2, s_span, n_steps, g_bend,
+                                   charge, p0c, mc2, s_span, ds_step, g_bend,
                                    drift, field_params)
 
     # Particle should be marked as lost
@@ -164,10 +164,10 @@
 
     # Track with different step sizes
     RungeKuttaTracking.rk4_kernel!(1, bunch1.coords, beta_0, gamsqr_0, tilde_m,
-                                   charge, p0c, mc2, s_span, 50, g_bend,
+                                   charge, p0c, mc2, s_span, 0.02, g_bend,
                                    uniform_efield, field_params)
     RungeKuttaTracking.rk4_kernel!(1, bunch2.coords, beta_0, gamsqr_0, tilde_m,
-                                   charge, p0c, mc2, s_span, 200, g_bend,
+                                   charge, p0c, mc2, s_span, 0.005, g_bend,
                                    uniform_efield, field_params)
 
     # Results should be similar with finer steps being more accurate
