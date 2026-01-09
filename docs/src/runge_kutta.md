@@ -99,10 +99,10 @@ u(s+h) = u(s) + \frac{h}{6}(k₁ + 2k₂ + 2k₃ + k₄)
 The Runge-Kutta method requires a field function that returns the electromagnetic field components at a given position:
 
 ```julia
-field_func(x, px, y, py, z, pz, s, field_params) -> (Ex, Ey, Ez, Bx, By, Bz)
+field_func(x, y, z, s, field_params) -> (Ex, Ey, Ez, Bx, By, Bz)
 ```
 
-When used with `Beamlines.jl` elements, the field function is automatically obtained from `Beamlines.em_field_calc(ele)`.
+The field function depends only on position coordinates (x, y, z, s), not on momenta. When used with `Beamlines.jl` elements, the field function is automatically obtained from `Beamlines.em_field_calc(ele)`.
 
 ### Particle Loss Detection
 
@@ -145,7 +145,7 @@ For custom field configurations, you can use the low-level API:
 using BeamTracking.RungeKuttaTracking
 
 # Define a custom field function
-function my_field(x, px, y, py, z, pz, s, params)
+function my_field(x, y, z, s, params)
     Ex = params.E0 * sin(2π * s / params.λ)
     return (Ex, 0.0, 0.0, 0.0, 0.0, 0.0)
 end
