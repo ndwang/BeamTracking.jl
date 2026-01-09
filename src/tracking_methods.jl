@@ -41,3 +41,12 @@ end
 
 # ========== Exact ===========================
 struct Exact end
+
+# ========== Explicit RK4 Tracking ==========
+struct RungeKutta
+  ds_step::Float64
+  n_steps::Int
+end
+
+DEFAULT_RK4_DS_STEP = 0.2
+RungeKutta(; ds_step::Float64=DEFAULT_RK4_DS_STEP, n_steps::Int=-1) = RungeKutta(ds_step, n_steps)

@@ -1,17 +1,14 @@
-struct RungeKutta end
-
 """
-    RungeKuttaFieldTracking
+    RungeKuttaTracking
 
 Module implementing particle tracking through arbitrary electromagnetic fields using a 4th order Runge-Kutta method.
 """
 module RungeKuttaTracking
 using ..BeamTracking, ..StaticArrays
 using ..BeamTracking: @makekernel, Coords
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, STATE_ALIVE, STATE_LOST, STATE_LOST_PZ
+using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, STATE_ALIVE, STATE_LOST_PZ
 using ..BeamTracking: C_LIGHT, E_CHARGE, vifelse
 
-const TRACKING_METHOD = RungeKutta
 
 """
     kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
@@ -86,6 +83,10 @@ returns zero derivatives (caller should mark particle as lost).
     F_dot_v = E_force_x*vx + E_force_y*vy + E_force_z*vz
     dp_ds = F_dot_v * dt_ds / (beta * C_LIGHT)
 
+    # Total energy for dbeta_ds calculation
+    e_tot = p0c * rel_p / beta
+    dbeta_ds = mc2^2 * dp_ds * C_LIGHT / e_tot^3
+
     # Position derivatives: dr/ds = v * dt/ds
     dx_ds = vx * dt_ds
     dy_ds = vy * dt_ds
@@ -95,9 +96,8 @@ returns zero derivatives (caller should mark particle as lost).
     dpy_ds = (E_force_y + B_force_y) * dt_ds / p0c
 
     # Longitudinal coordinate z derivative
-    # Simplified formula (can add full Fortran version later)
     sqrt_1mvt2 = sqrt(1 - vt2_safe)
-    dz_ds = rel_dir * (beta / beta_0 - 1) + rel_dir * (sqrt_1mvt2 - dh_bend) / sqrt_1mvt2
+    dz_ds = rel_dir * (beta / beta_0 - 1) + rel_dir * (sqrt_1mvt2 - dh_bend) / sqrt_1mvt2 + dbeta_ds * z / beta
 
     # Energy deviation derivative
     dpz_ds = dp_ds / p0c
@@ -191,58 +191,43 @@ Uses stack-allocated SVectors for all intermediate values.
 end
 
 """
-    rk4_track!(i, coords, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2,
-               s_span, field_func, field_params, n_steps, g_bend)
+    rk4_kernel!(i, coords, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2,
+                      s_span, n_steps, g_bend, field_func, field_params)
 
-Track particle through arbitrary electromagnetic fields using RK4.
+Kernelized RK4 tracking through arbitrary electromagnetic fields.
+Compatible with @makekernel and the package's kernel architecture.
 
-# Arguments
-- `i`: Particle index
-- `coords`: Coords object containing particle coordinates and state
-- `beta_0`: Reference velocity β₀ = v₀/c
-- `gamsqr_0`: Squared reference Lorentz factor γ₀²
-- `tilde_m`: Normalized mass mc²/(p₀c)
-- `charge`: Particle charge in units of e
-- `p0c`: Reference momentum × c (eV)
-- `mc2`: Rest mass energy (eV)
-- `s_span`: Arc length span [s_start, s_end]
-- `field_func`: Function returning (Ex, Ey, Ez, Bx, By, Bz) = field_func(x, px, y, py, z, pz, s, field_params)
-- `field_params`: Parameters for field function
-- `n_steps`: Number of integration steps
-- `g_bend`: Curvature (0 for drift, 1/ρ for bends)
+The field_func should have signature: field_func(x, px, y, py, z, pz, s, params)
+and return (Ex, Ey, Ez, Bx, By, Bz).
 """
-function rk4_track!(i, coords::Coords, beta_0, gamsqr_0, tilde_m,
-                    charge, p0c, mc2, s_span, field_func,
-                    field_params, n_steps, g_bend)
-    v = coords.v
-
+@makekernel function rk4_kernel!(i, coords::Coords, beta_0, gamsqr_0, tilde_m,
+                                        charge, p0c, mc2, s_span, n_steps, g_bend,
+                                        field_func, field_params)
     # Check if particle is alive at start
     alive_at_start = (coords.state[i] == STATE_ALIVE)
 
-    # Skip if particle is not alive
-    if !alive_at_start
-        return
-    end
-
+    # Pack tracking parameters for rk4_step!
     tracking_params = (charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
-    # Integration
-    h = (s_span[2] - s_span[1]) / n_steps
-    s = s_span[1]
+    # Integration loop - only if particle was alive at start
+    if alive_at_start
+        h = (s_span[2] - s_span[1]) / n_steps
+        s = s_span[1]
 
-    for step in 1:n_steps
-        # Check momenta before step
-        rel_p = 1 + v[i, PZI]
-        vt2 = (v[i, PXI] / rel_p)^2 + (v[i, PYI] / rel_p)^2
-        good_momenta = (vt2 < 1)
+        v = coords.v
+        for step in 1:n_steps
+            # Check momenta before step
+            rel_p = 1 + v[i, PZI]
+            vt2 = (v[i, PXI] / rel_p)^2 + (v[i, PYI] / rel_p)^2
 
-        # Mark particle as lost if momenta are unphysical
-        alive = (coords.state[i] == STATE_ALIVE)
-        coords.state[i] = vifelse(!good_momenta & alive, STATE_LOST_PZ, coords.state[i])
+            # Mark particle as lost if momenta are unphysical (branchless)
+            alive = (coords.state[i] == STATE_ALIVE)
+            coords.state[i] = vifelse(vt2 >= 1 && alive, STATE_LOST_PZ, coords.state[i])
 
-        # Perform RK4 step (will return zero derivatives if lost)
-        rk4_step!(v, i, s, h, field_func, field_params, tracking_params)
-        s += h
+            # Perform RK4 step
+            rk4_step!(v, i, s, h, field_func, field_params, tracking_params)
+            s += h
+        end
     end
 end
 
