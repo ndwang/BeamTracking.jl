@@ -4,12 +4,9 @@
                       RungeKuttaTracking, Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE
 
   # Helper function to setup tracking parameters
-  function setup_particle(kinetic_energy=5e3)  # 5 keV default
+  function setup_particle(pc=1e4)  # pc in eV, default corresponds to 5 keV
     species = Species("electron")
     mc2 = massof(species)  # eV
-    ek = kinetic_energy
-    βγ = sqrt(ek / mc2 * (ek / mc2 + 2))
-    pc = mc2 * βγ
     R_ref = pc_to_R(species, pc)
 
     # Calculate tracking parameters
@@ -24,16 +21,17 @@
   end
 
   # Field functions with new signature
-  function drift(x, px, y, py, z, pz, s, params)
+  function drift(x, y, z, s, params)
     return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
   end
 
-  function uniform_efield(x, px, y, py, z, pz, s, params)
+  function uniform_efield(x, y, z, s, params)
     Ex = params.Ex  # V/m
-    return (Ex, 0.0, 0.0, 0.0, 0.0, 0.0)
+    Ez = params.Ez
+    return (Ex, 0.0, Ez, 0.0, 0.0, 0.0)
   end
 
-  function uniform_bfield(x, px, y, py, z, pz, s, params)
+  function uniform_bfield(x, y, z, s, params)
     Bz = params.Bz  # Tesla
     return (0.0, 0.0, 0.0, 0.0, 0.0, Bz)
   end
@@ -59,31 +57,19 @@
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
                                    drift, field_params)
 
-    # For drift, dx/ds ≈ px (for small px and pz ≈ 0)
-    # So x_final ≈ x0 + px * L
     @test isapprox(bunch.coords.v[1, 1], 0.01, rtol=1e-3)  # x ≈ 0.01 m
     @test isapprox(bunch.coords.v[1, 2], 0.01, rtol=1e-5)  # px unchanged
     @test bunch.coords.v[1, 3] ≈ 0.0  # y unchanged
     @test bunch.coords.v[1, 4] ≈ 0.0  # py unchanged
   end
 
-  @testset "Uniform E-field - weak field" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle()
+  @testset "Uniform E-field - Ex" begin
+    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)  # 1 GeV
 
     bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-    # Start with small initial momentum in x (can't integrate arc length from rest)
-    bunch.coords.v[1, 1] = 0.0
-    bunch.coords.v[1, 2] = 0.001  # Small initial px
-    bunch.coords.v[1, 3] = 0.0
-    bunch.coords.v[1, 4] = 0.0
-    bunch.coords.v[1, 5] = 0.0
-    bunch.coords.v[1, 6] = 0.0
-
-    px_initial = bunch.coords.v[1, 2]
-    x_initial = bunch.coords.v[1, 1]
 
     s_span = (0.0, 1.0)  # 1 meter arc length
-    field_params = (Ex=-1e4,)  # -10 kV/m (negative field accelerates electron in +x)
+    field_params = (Ex=-1e4, Ez=0.0)
     ds_step = 0.01  # 1 cm step size
     g_bend = 0.0
 
@@ -91,15 +77,33 @@
                                    charge, p0c, mc2, s_span, ds_step, g_bend, 
                                    uniform_efield, field_params)
 
-    # Electron in negative E-field should accelerate in +x direction
-    @test bunch.coords.v[1, 2] > px_initial  # px should increase
-    @test bunch.coords.v[1, 1] > x_initial  # x should increase
+    @test isapprox(bunch.coords.v[1, 2], 1e-5, rtol=1e-5)
+    @test bunch.coords.v[1, 1] > 0.0  # x should increase
     @test bunch.coords.v[1, 3] ≈ 0.0  # y unchanged
     @test bunch.coords.v[1, 4] ≈ 0.0  # py unchanged
   end
 
+  @testset "Uniform E-field - Ez" begin
+    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)  # 1 GeV
+
+    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+
+    s_span = (0.0, 1.0)  # 1 meter arc length
+    field_params = (Ex=0.0, Ez=-1e4)
+    ds_step = 0.01  # 1 cm step size
+    g_bend = 0.0
+
+    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
+                                   charge, p0c, mc2, s_span, ds_step, g_bend, 
+                                   uniform_efield, field_params)
+
+    @test isapprox(bunch.coords.v[1, 6], 1e-5, rtol=1e-5)
+    @test bunch.coords.v[1, 1] ≈ 0.0  # x unchanged
+    @test bunch.coords.v[1, 2] ≈ 0.0  # px unchanged
+  end
+
   @testset "Uniform B-field - circular motion" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle()
+    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
     bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
     # Initial velocity in x-direction
@@ -126,7 +130,7 @@
   end
 
   @testset "Particle loss detection" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle()
+    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
     bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
     # Set unphysical initial momenta (vt² > 1)
@@ -151,7 +155,7 @@
   end
 
   @testset "Convergence test" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle()
+    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
     bunch1 = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
     bunch2 = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
@@ -159,7 +163,7 @@
     bunch2.coords.v[1, 2] = 0.01
 
     s_span = (0.0, 1.0)
-    field_params = (Ex=1e4,)
+    field_params = (Ex=1e4, Ez=0.0)
     g_bend = 0.0
 
     # Track with different step sizes
