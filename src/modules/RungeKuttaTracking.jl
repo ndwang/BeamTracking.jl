@@ -123,7 +123,7 @@ Uses stack-allocated SVectors for all intermediate values.
 - `i`: Particle index
 - `s`: Current arc length
 - `h`: Step size
-- `field_func`: Function returning (Ex, Ey, Ez, Bx, By, Bz) = field_func(x, px, y, py, z, pz, s, field_params)
+- `field_func`: Function returning (Ex, Ey, Ez, Bx, By, Bz) = field_func(x, y, z, s, field_params)
 - `field_params`: Parameters for field function
 - `tracking_params`: Tuple of (charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 """
@@ -140,7 +140,7 @@ Uses stack-allocated SVectors for all intermediate values.
     pz = v[i, PZI]
 
     # k1 = f(u, s)
-    Ex, Ey, Ez, Bx, By, Bz = field_func(x, px, y, py, z, pz, s, field_params)
+    Ex, Ey, Ez, Bx, By, Bz = field_func(x, y, z, s, field_params)
     k1 = kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
                      charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -152,7 +152,7 @@ Uses stack-allocated SVectors for all intermediate values.
     py2 = py + h2 * k1[4]
     z2 = z + h2 * k1[5]
     pz2 = pz + h2 * k1[6]
-    Ex, Ey, Ez, Bx, By, Bz = field_func(x2, px2, y2, py2, z2, pz2, s + h2, field_params)
+    Ex, Ey, Ez, Bx, By, Bz = field_func(x2, y2, z2, s + h2, field_params)
     k2 = kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, Ex, Ey, Ez, Bx, By, Bz,
                      charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -163,7 +163,7 @@ Uses stack-allocated SVectors for all intermediate values.
     py3 = py + h2 * k2[4]
     z3 = z + h2 * k2[5]
     pz3 = pz + h2 * k2[6]
-    Ex, Ey, Ez, Bx, By, Bz = field_func(x3, px3, y3, py3, z3, pz3, s + h2, field_params)
+    Ex, Ey, Ez, Bx, By, Bz = field_func(x3, y3, z3, s + h2, field_params)
     k3 = kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, Ex, Ey, Ez, Bx, By, Bz,
                      charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -174,7 +174,7 @@ Uses stack-allocated SVectors for all intermediate values.
     py4 = py + h * k3[4]
     z4 = z + h * k3[5]
     pz4 = pz + h * k3[6]
-    Ex, Ey, Ez, Bx, By, Bz = field_func(x4, px4, y4, py4, z4, pz4, s + h, field_params)
+    Ex, Ey, Ez, Bx, By, Bz = field_func(x4, y4, z4, s + h, field_params)
     k4 = kick_vector(x4, px4, y4, py4, z4, pz4, s + h, Ex, Ey, Ez, Bx, By, Bz,
                      charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -195,7 +195,7 @@ end
 Kernelized RK4 tracking through arbitrary electromagnetic fields.
 Compatible with @makekernel and the package's kernel architecture.
 
-The field_func should have signature: field_func(x, px, y, py, z, pz, s, params)
+The field_func should have signature: field_func(x, y, z, s, params)
 and return (Ex, Ey, Ez, Bx, By, Bz).
 """
 @makekernel function rk4_kernel!(i, coords::Coords, beta_0, gamsqr_0, tilde_m,
