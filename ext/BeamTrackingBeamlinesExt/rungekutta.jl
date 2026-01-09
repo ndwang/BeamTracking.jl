@@ -17,7 +17,7 @@ function _track!(
   ap = deval(ele.AlignmentParams)
   bp = deval(ele.BendParams)
   dp = deval(ele.ApertureParams)
-  lp = deval(ele.BeamlineParams)
+  patch = deval(ele.PatchParams)
   R_ref = bunch.R_ref
 
   # Setup reference state
@@ -35,6 +35,10 @@ function _track!(
       kc = push(kc, KernelCall(BeamTracking.update_P0!, (R_ref_initial, R_ref_final, ramp_without_rf)))
       setfield!(bunch, :R_ref, R_ref_final)
     end
+  end
+
+  if isactive(patch)
+    error("RungeKutta tracking does not support patch elements")
   end
 
   # Entrance aperture and alignment
@@ -70,7 +74,6 @@ function _track!(
     if tm.ds_step > 0
       ds_step = tm.ds_step
     elseif tm.n_steps > 0
-      # Fallback: calculate ds_step from n_steps for backward compatibility
       ds_step = L / tm.n_steps
     else
       ds_step = BeamTracking.DEFAULT_RK4_DS_STEP
@@ -82,7 +85,7 @@ function _track!(
     g_bend = isactive(bp) ? bp.g : 0.0
 
     # Get field function from Beamlines and pass full element
-    field_func = Beamlines.field_calc(ele)
+    field_func = Beamlines.em_field_calc(ele)
 
     params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend,
               field_func, ele)
@@ -111,7 +114,6 @@ function _track!(
 end
 
 # =========== ALIGNMENT AND APERTURE ============= #
-# These are still needed for other tracking methods that go through universal!
 
 @inline alignment(tm::RungeKutta, bunch, alignmentparams, bendparams, L, entering) =
   alignment(Exact(), bunch, alignmentparams, bendparams, L, entering)

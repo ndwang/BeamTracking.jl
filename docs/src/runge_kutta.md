@@ -102,7 +102,7 @@ The Runge-Kutta method requires a field function that returns the electromagneti
 field_func(x, px, y, py, z, pz, s, field_params) -> (Ex, Ey, Ez, Bx, By, Bz)
 ```
 
-When used with `Beamlines.jl` elements, the field function is automatically obtained from `Beamlines.field_calc(ele)`.
+When used with `Beamlines.jl` elements, the field function is automatically obtained from `Beamlines.em_field_calc(ele)`.
 
 ### Particle Loss Detection
 
