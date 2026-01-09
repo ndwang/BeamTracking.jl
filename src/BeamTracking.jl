@@ -10,45 +10,49 @@ using GTPSA,
       Adapt,
       Accessors,
       SpecialFunctions,
-      AtomicAndPhysicalConstants
+      AtomicAndPhysicalConstants,
+      Random
 
 using KernelAbstractions
-using SIMD: SIMD
-      
-import GTPSA: sincu, sinhcu, normTPS
-import Base: setproperty!
 
-export Bunch, State, ParticleView, sincu, sinhcu, sincuc, expq, quat_mul, atan2, Time, TimeDependentParam
-export LinearTracking, Linear
-export ExactTracking, Exact
-export FieldTracking, Field
-export RungeKuttaTracking, RungeKutta
-export IntegrationTracking, SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
+import GTPSA: sincu, sinhcu
+
+export Bunch, State, ParticleView, Time, TimeDependentParam
+export Yoshida, Yoshida, MatrixKick, BendKick, SolenoidKick, DriftKick, Exact
 export track!
-export rot_quaternion, inv_rot_quaternion
-export Species, E_CHARGE, EPS_0, H_BAR
 
-include("utils.jl")
+
+include("utils/coord_transforms.jl")
+include("utils/energy.jl")
+include("utils/math_simd.jl")
+include("utils/quaternions.jl")
+include("utils/z_to_time.jl")
+
 include("types.jl")
 include("time.jl")
 include("kernel.jl")
+include("tracking_methods.jl")
 
-include("kernels/alignment_kernel.jl")
-include("kernels/aperture_kernel.jl")
-include("kernels/coord_rotation.jl")
-include("modules/ExactTracking.jl") #; TRACKING_METHOD(::ExactTracking) = Exact
-include("modules/LinearTracking.jl") #; TRACKING_METHOD(::LinearTracking) = Linear
-include("modules/IntegrationTracking.jl") #; TRACKING_METHOD(::LinearTracking) = SplitIntegration, DriftKick, BendKick, SolenoidKick, MatrixKick
+include("kernels/alignment.jl")
+include("kernels/aperture.jl")
+include("kernels/bend_kick.jl")
+include("kernels/drift_kick.jl")
+include("kernels/map.jl")
+include("kernels/multipole.jl")
+include("kernels/patch.jl")
+include("kernels/quadrupole_kick.jl")
+include("kernels/radiation.jl")
+include("kernels/ramp_P0.jl")
+include("kernels/rfcavity_kick.jl")
+include("kernels/solenoid_kick.jl")
+include("kernels/spin.jl")
+include("kernels/transforms.jl")
+include("kernels/yoshida.jl")
+
 include("modules/FieldTracking.jl") #; TRACKING_METHOD(::FieldTracking) = Field
 include("modules/RungeKuttaTracking.jl") #; TRACKING_METHOD(::RungeKuttaTracking) = RungeKutta
 
 # Empty tracking method to be imported+implemented by package extensions
 function track! end
-
-# --------------------------------------------------
-
-# Modules separated:
-#include("MatrixKick/MatrixKick.jl")
-#include("Linear/Linear.jl")
 
 end
