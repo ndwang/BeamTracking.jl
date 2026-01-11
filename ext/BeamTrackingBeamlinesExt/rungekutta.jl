@@ -84,11 +84,15 @@ function _track!(
     # Get curvature from BendParams if present
     g_bend = isactive(bp) ? bp.g : 0.0
 
-    # Get field function from Beamlines and pass full element
-    field_func = Beamlines.em_field_calc(ele)
+    # Extract multipole parameters
+    bm = deval(ele.BMultipoleParams)
+    if isactive(bm)
+      mm = bm.order
+      kn, ks = get_strengths(bm, L, R_ref)
+    end
 
-    params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend,
-              field_func, ele)
+    # Build kernel call
+    params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks)
     kc = push(kc, KernelCall(BeamTracking.RungeKuttaTracking.rk4_kernel!, params))
 
   # Exit aperture and alignment

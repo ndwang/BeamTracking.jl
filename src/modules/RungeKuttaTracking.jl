@@ -11,6 +11,43 @@ using ..BeamTracking: C_LIGHT, E_CHARGE, vifelse
 
 
 """
+    multipole_em_field(x, y, z, s, mm, kn, ks)
+
+Compute EM field from multipole moments for RK4 tracking.
+Handles ALL multipole orders:
+- m=0: solenoid (longitudinal Bz)
+- m=1: dipole (transverse By, Bx)
+- m≥2: higher-order multipoles (quadrupole, sextupole, etc.)
+
+Returns (Ex, Ey, Ez, Bx, By, Bz) where:
+- Bx, By: transverse field from all orders except m=0 (via normalized_field)
+- Bz: longitudinal field from m=0 term if present
+- Ex, Ey, Ez: zero (static magnetic elements only)
+"""
+@inline function multipole_em_field(x, y, z, s, mm, kn, ks)
+    # Handle empty multipole arrays (pure drift or pure bend)
+    if length(mm) == 0
+        # No multipole field, return zeros
+        bx = zero(x)
+        by = zero(y)
+        bz = zero(x)
+    else
+        # Get transverse field components, excluding m=0 (solenoid)
+        # normalized_field from multipole.jl handles all orders including m=1 (dipole)
+        bx, by = BeamTracking.normalized_field(mm, kn, ks, x, y, 0)
+
+        # Extract longitudinal field from m=0 term if present
+        bz = zero(bx)
+        if mm[1] == 0
+            bz = kn[1]  # Solenoid strength is the m=0 normal component
+        end
+    end
+
+    # No electric field from static magnets
+    return (zero(bx), zero(by), zero(bz), bx, by, bz)
+end
+
+"""
     kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -113,7 +150,7 @@ returns zero derivatives (caller should mark particle as lost).
 end
 
 """
-    rk4_step!(v, i, s, h, field_func, field_params, tracking_params)
+    rk4_step!(v, i, s, h, mm, kn, ks, tracking_params)
 
 Perform a single RK4 step for particle i, updating coordinates in-place.
 Uses stack-allocated SVectors for all intermediate values.
@@ -123,14 +160,18 @@ Uses stack-allocated SVectors for all intermediate values.
 - `i`: Particle index
 - `s`: Current arc length
 - `h`: Step size
-- `field_func`: Function returning (Ex, Ey, Ez, Bx, By, Bz) = field_func(x, y, z, s, field_params)
-- `field_params`: Parameters for field function
-- `tracking_params`: Tuple of (charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+- `mm`: Multipole orders (StaticArray)
+- `kn`: Normal multipole strengths (StaticArray)
+- `ks`: Skew multipole strengths (StaticArray)
+- `charge`: Particle charge in units of e
+- `tilde_m`: Normalized mass mc²/(p₀c)
+- `beta_0`: Reference velocity β₀ = v₀/c
+- `gamsqr_0`: Squared reference Lorentz factor γ₀²
+- `g_bend`: Curvature (0 for drift, 1/ρ for bends)
+- `p0c`: Reference momentum × c (eV)
+- `mc2`: Rest mass energy (eV)
 """
-@inline function rk4_step!(v, i, s, h, field_func, field_params, tracking_params)
-    # Unpack tracking parameters
-    charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2 = tracking_params
-
+@inline function rk4_step!(v, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
     # Extract current state (scalars)
     x = v[i, XI]
     px = v[i, PXI]
@@ -140,7 +181,7 @@ Uses stack-allocated SVectors for all intermediate values.
     pz = v[i, PZI]
 
     # k1 = f(u, s)
-    Ex, Ey, Ez, Bx, By, Bz = field_func(x, y, z, s, field_params)
+    Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x, y, z, s, mm, kn, ks)
     k1 = kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
                      charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -152,7 +193,7 @@ Uses stack-allocated SVectors for all intermediate values.
     py2 = py + h2 * k1[4]
     z2 = z + h2 * k1[5]
     pz2 = pz + h2 * k1[6]
-    Ex, Ey, Ez, Bx, By, Bz = field_func(x2, y2, z2, s + h2, field_params)
+    Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x2, y2, z2, s + h2, mm, kn, ks)
     k2 = kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, Ex, Ey, Ez, Bx, By, Bz,
                      charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -163,7 +204,7 @@ Uses stack-allocated SVectors for all intermediate values.
     py3 = py + h2 * k2[4]
     z3 = z + h2 * k2[5]
     pz3 = pz + h2 * k2[6]
-    Ex, Ey, Ez, Bx, By, Bz = field_func(x3, y3, z3, s + h2, field_params)
+    Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x3, y3, z3, s + h2, mm, kn, ks)
     k3 = kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, Ex, Ey, Ez, Bx, By, Bz,
                      charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -174,7 +215,7 @@ Uses stack-allocated SVectors for all intermediate values.
     py4 = py + h * k3[4]
     z4 = z + h * k3[5]
     pz4 = pz + h * k3[6]
-    Ex, Ey, Ez, Bx, By, Bz = field_func(x4, y4, z4, s + h, field_params)
+    Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x4, y4, z4, s + h, mm, kn, ks)
     k4 = kick_vector(x4, px4, y4, py4, z4, pz4, s + h, Ex, Ey, Ez, Bx, By, Bz,
                      charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -190,22 +231,18 @@ end
 
 """
     rk4_kernel!(i, coords, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2,
-                      s_span, ds_step, g_bend, field_func, field_params)
+                      s_span, ds_step, g_bend, mm, kn, ks)
 
-Kernelized RK4 tracking through arbitrary electromagnetic fields.
+Kernelized RK4 tracking through multipole fields.
 Compatible with @makekernel and the package's kernel architecture.
 
-The field_func should have signature: field_func(x, y, z, s, params)
-and return (Ex, Ey, Ez, Bx, By, Bz).
+The electromagnetic field is computed from multipole moments (mm, kn, ks) using
+the multipole_em_field function.
 """
 @makekernel function rk4_kernel!(i, coords::Coords, beta_0, gamsqr_0, tilde_m,
-                                        charge, p0c, mc2, s_span, ds_step, g_bend,
-                                        field_func, field_params)
+                                        charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks)
     # Check if particle is alive at start
     alive_at_start = (coords.state[i] == STATE_ALIVE)
-
-    # Pack tracking parameters for rk4_step!
-    tracking_params = (charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
     # Integration loop - only if particle was alive at start
     if alive_at_start
@@ -217,10 +254,8 @@ and return (Ex, Ey, Ez, Bx, By, Bz).
         while s < s_end
             # Calculate remaining distance
             remaining = s_end - s
-            
             # Use ds_step, but if remaining is smaller, use remaining
             h = min(ds_step, remaining)
-            
             # Check momenta before step
             rel_p = 1 + v[i, PZI]
             vt2 = (v[i, PXI] / rel_p)^2 + (v[i, PYI] / rel_p)^2
@@ -230,7 +265,7 @@ and return (Ex, Ey, Ez, Bx, By, Bz).
             coords.state[i] = vifelse(vt2 >= 1 && alive, STATE_LOST_PZ, coords.state[i])
 
             # Perform RK4 step
-            rk4_step!(v, i, s, h, field_func, field_params, tracking_params)
+            rk4_step!(v, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
             s += h
         end
     end

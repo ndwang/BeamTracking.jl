@@ -68,6 +68,7 @@ The `z` coordinate represents the phase space deviation and is integrated with c
 ```math
 \frac{dz}{ds} = \text{rel\_dir} \left(\frac{\beta}{\beta₀} - 1\right) + \text{rel\_dir} \frac{\sqrt{1-v_t²} - 1 - dh_{bend}}{\sqrt{1-v_t²}} + \frac{d\beta}{ds} \frac{z}{\beta}
 ```
+At the moment `rel_dir` is hardcoded to be 1. In the future this could be extended to track particles going backwards.
 
 ### Energy Deviation
 
@@ -102,7 +103,6 @@ The Runge-Kutta method requires a field function that returns the electromagneti
 field_func(x, y, z, s, field_params) -> (Ex, Ey, Ez, Bx, By, Bz)
 ```
 
-The field function depends only on position coordinates (x, y, z, s), not on momenta. When used with `Beamlines.jl` elements, the field function is automatically obtained from `Beamlines.em_field_calc(ele)`.
 
 ### Particle Loss Detection
 
