@@ -4,6 +4,7 @@ function _track!(
   bunch::Bunch,
   ele::LineElement, 
   tm,
+  scalar_params,
   ramp_without_rf;
   kwargs...
 )
@@ -21,6 +22,19 @@ function _track!(
   rp = deval(ele.RFParams)
   lp = deval(ele.BeamlineParams)
   R_ref = lp.beamline.R_ref
+
+  if scalar_params
+    L = scalarize(L)
+    ap = scalarize(ap)
+    bp = scalarize(bp)
+    bm = scalarize(bm)
+    pp = scalarize(pp)
+    dp = scalarize(dp)
+    mp = scalarize(mp)
+    rp = scalarize(rp)
+    lp = scalarize(lp)
+    R_ref = scalarize(R_ref)
+  end
 
   # Function barrier
   universal!(coords, tm, ramp_without_rf, bunch, L, R_ref, ap, bp, bm, pp, dp, rp, lp, mp; kwargs...)
