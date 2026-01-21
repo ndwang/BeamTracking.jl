@@ -611,6 +611,18 @@
     @test coeffs_approx_equal(v_expected, b0.coords.v, 5e-10)
     @test quaternion_coeffs_approx_equal(q_expected, q_z, 2e-7)
 
+    # Quadrupole with dipole and sextupole (MK):
+    ele = LineElement(L=2.0, Kn0=0.1, Kn1=0.2, Kn2=0.3, tracking_method=MatrixKick(order=6, num_steps=10))
+    v = [0.01 0.02 0.03 0.04 0.05 0.06]
+    q = [1.0 0.0 0.0 0.0]
+    b0 = Bunch(v, q, R_ref=R_ref, species=Species("electron"))
+    bl = Beamline([ele], R_ref=R_ref, species_ref=Species("electron"))
+    track!(b0, bl)
+    v_expected = [-0.13784912725589 -0.16544887326705 0.12734512769155 0.06742027838098 0.03975920093905 0.06]
+    q_expected = [0.99586268249262 -0.01331711276472 -0.08988910144266 0.00034866609706]
+    @test b0.coords.v ≈ v_expected
+    @test (b0.coords.q ≈ q_expected) || (b0.coords.q ≈ -q_expected)
+
     # Quadrupole with octupole (DK):
     ele = LineElement(L=2.0, Kn1=0.1, Kn3=100.0, tracking_method=DriftKick(order=2))
     v = collect(transpose(@vars(D10)))
