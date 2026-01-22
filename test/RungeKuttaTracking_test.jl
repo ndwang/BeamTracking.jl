@@ -1,10 +1,11 @@
 @testset "RungeKuttaTracking" begin
   using BeamTracking
   using BeamTracking: Species, massof, chargeof, R_to_beta_gamma, R_to_pc, pc_to_R,
-                      RungeKuttaTracking, Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE
+                      RungeKuttaTracking, Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE, C_LIGHT
+  using StaticArrays
 
   # Helper function to setup tracking parameters
-  function setup_particle(pc=1e4)  # pc in eV, default corresponds to 5 keV
+  function setup_particle(pc=1e9)  # pc in eV, default corresponds to 1 GeV
     species = Species("electron")
     mc2 = massof(species)  # eV
     R_ref = pc_to_R(species, pc)
@@ -20,137 +21,112 @@
     return species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2
   end
 
-  # Field functions with new signature
-  function drift(x, y, z, s, params)
-    return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-  end
-
-  function uniform_efield(x, y, z, s, params)
-    Ex = params.Ex  # V/m
-    Ez = params.Ez
-    return (Ex, 0.0, Ez, 0.0, 0.0, 0.0)
-  end
-
-  function uniform_bfield(x, y, z, s, params)
-    Bz = params.Bz  # Tesla
-    return (0.0, 0.0, 0.0, 0.0, 0.0, Bz)
-  end
-
   @testset "Pure drift" begin
     species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle()
 
     # Create bunch with small transverse momentum
     bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-    bunch.coords.v[1, 1] = 0.0   # x0 = 0
-    bunch.coords.v[1, 2] = 0.01  # px0 = 0.01
-    bunch.coords.v[1, 3] = 0.0   # y0 = 0
-    bunch.coords.v[1, 4] = 0.0   # py0 = 0
-    bunch.coords.v[1, 5] = 0.0   # z0 = 0
-    bunch.coords.v[1, 6] = 0.0   # pz0 = 0
+    bunch.coords.v[1, BeamTracking.PXI] = 0.01
 
-    s_span = (0.0, 1.0)  # 1 meter arc length
-    field_params = nothing
-    ds_step = 0.01  # 1 cm step size
+    s_span = (0.0, 1.0)
+    ds_step = 0.01
     g_bend = 0.0
+    
+    # Empty multipole vectors for drift
+    mm = SVector{0, Int}()
+    kn = SVector{0, Float64}()
+    ks = SVector{0, Float64}()
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
-                                   drift, field_params)
+                                   mm, kn, ks)
 
-    @test isapprox(bunch.coords.v[1, 1], 0.01, rtol=1e-3)  # x ≈ 0.01 m
-    @test isapprox(bunch.coords.v[1, 2], 0.01, rtol=1e-5)  # px unchanged
-    @test bunch.coords.v[1, 3] ≈ 0.0  # y unchanged
-    @test bunch.coords.v[1, 4] ≈ 0.0  # py unchanged
+    # Regression test
+    solution = [0.0100005  0.01  0.0  0.0  -5.00038e-5  0.0]
+    @test isapprox(bunch.coords.v, solution, rtol=1e-6)
+    @test bunch.coords.state[1] == STATE_ALIVE
   end
 
-  @testset "Uniform E-field - Ex" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)  # 1 GeV
-
-    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-
-    s_span = (0.0, 1.0)  # 1 meter arc length
-    field_params = (Ex=-1e4, Ez=0.0)
-    ds_step = 0.01  # 1 cm step size
-    g_bend = 0.0
-
-    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
-                                   charge, p0c, mc2, s_span, ds_step, g_bend, 
-                                   uniform_efield, field_params)
-
-    @test isapprox(bunch.coords.v[1, 2], 1e-5, rtol=1e-5)
-    @test bunch.coords.v[1, 1] > 0.0  # x should increase
-    @test bunch.coords.v[1, 3] ≈ 0.0  # y unchanged
-    @test bunch.coords.v[1, 4] ≈ 0.0  # py unchanged
-  end
-
-  @testset "Uniform E-field - Ez" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)  # 1 GeV
-
-    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-
-    s_span = (0.0, 1.0)  # 1 meter arc length
-    field_params = (Ex=0.0, Ez=-1e4)
-    ds_step = 0.01  # 1 cm step size
-    g_bend = 0.0
-
-    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
-                                   charge, p0c, mc2, s_span, ds_step, g_bend, 
-                                   uniform_efield, field_params)
-
-    @test isapprox(bunch.coords.v[1, 6], 1e-5, rtol=1e-5)
-    @test bunch.coords.v[1, 1] ≈ 0.0  # x unchanged
-    @test bunch.coords.v[1, 2] ≈ 0.0  # px unchanged
-  end
-
-  @testset "Uniform B-field - circular motion" begin
+  @testset "Solenoid" begin
     species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
     bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-    # Initial velocity in x-direction
-    bunch.coords.v[1, 1] = 0.0   # x0 = 0
-    bunch.coords.v[1, 2] = 0.01  # px0 = 0.01
-    bunch.coords.v[1, 3] = 0.0   # y0 = 0
-    bunch.coords.v[1, 4] = 0.0   # py0 = 0
-    bunch.coords.v[1, 5] = 0.0   # z0 = 0
-    bunch.coords.v[1, 6] = 0.0   # pz0 = 0
+    bunch.coords.v[1, BeamTracking.PXI] = 0.01
 
-    s_span = (0.0, 1.0)  # 1 meter
-    field_params = (Bz=0.01,)  # 0.01 Tesla
-    ds_step = 0.001  # 1 mm step size
+    s_span = (0.0, 1.0)
+    ds_step = 0.01
     g_bend = 0.0
+    
+    # Solenoid field
+    Bz_physical = 0.01  # Tesla
+    Bz_normalized = Bz_physical / R_ref
+    mm = SVector(0)  # Solenoid (m=0)
+    kn = SVector(Bz_normalized)
+    ks = SVector(0.0)
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
-                                   uniform_bfield, field_params)
+                                   mm, kn, ks)
 
     # In uniform B-field, particle should follow circular path
     # Total transverse momentum should be conserved
     pt2 = bunch.coords.v[1, 2]^2 + bunch.coords.v[1, 4]^2
     @test isapprox(pt2, 0.01^2, rtol=1e-4)
+    # Regression test
+    solution = [0.0100005  0.01  -4.49423e-6  -8.988e-6  -5.00038e-5  0.0]
+    @test isapprox(bunch.coords.v, solution, rtol=1e-6)
+    @test bunch.coords.state[1] == STATE_ALIVE
+  end
+
+  @testset "Dipole" begin
+    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
+
+    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch.coords.v[1, BeamTracking.PXI] = 0.01
+
+    s_span = (0.0, 1.0)
+    ds_step = 0.01
+    g_bend = 0.0
+    
+    # Dipole field
+    By_physical = 0.01  # Tesla
+    By_normalized = By_physical / R_ref
+    mm = SVector(1)  # Dipole (m=1)
+    kn = SVector(By_normalized)
+    ks = SVector(0.0)
+
+    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
+                                   charge, p0c, mc2, s_span, ds_step, g_bend,
+                                   mm, kn, ks)
+
+    # Regression test
+    solution = [0.00955106  0.00910124  0.0  0.0  -4.5644e-5  0.0]
+    @test isapprox(bunch.coords.v, solution, rtol=1e-6)
+    @test bunch.coords.state[1] == STATE_ALIVE
   end
 
   @testset "Particle loss detection" begin
     species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
     bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-    # Set unphysical initial momenta (vt² > 1)
-    bunch.coords.v[1, 1] = 0.0
-    bunch.coords.v[1, 2] = 1.5  # px too large
-    bunch.coords.v[1, 3] = 0.0
-    bunch.coords.v[1, 4] = 0.0
-    bunch.coords.v[1, 5] = 0.0
-    bunch.coords.v[1, 6] = 0.0  # pz = 0, so rel_p = 1
+    bunch.coords.v[1, BeamTracking.PXI] = 1.5 # Unphysical initial momentum
 
     s_span = (0.0, 1.0)
-    field_params = nothing
     ds_step = 0.1  # 10 cm step size
     g_bend = 0.0
+    
+    # Empty multipole vectors for drift
+    mm = SVector{0, Int}()
+    kn = SVector{0, Float64}()
+    ks = SVector{0, Float64}()
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
-                                   drift, field_params)
+                                   mm, kn, ks)
 
-    # Particle should be marked as lost
+    # Particle should not track
+    solution = [0.0  1.5  0.0  0.0  0.0  0.0]
+    @test isapprox(bunch.coords.v, solution, rtol=1e-6)
     @test bunch.coords.state[1] == STATE_LOST_PZ
   end
 
@@ -159,91 +135,84 @@
 
     bunch1 = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
     bunch2 = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-    bunch1.coords.v[1, 2] = 0.01  # px0 = 0.01
-    bunch2.coords.v[1, 2] = 0.01
+    bunch1.coords.v[1, BeamTracking.PXI] = 0.01
+    bunch2.coords.v[1, BeamTracking.PXI] = 0.01
 
     s_span = (0.0, 1.0)
-    field_params = (Ex=1e4, Ez=0.0)
     g_bend = 0.0
+    
+    # Empty multipole vectors for drift
+    mm = SVector{0, Int}()
+    kn = SVector{0, Float64}()
+    ks = SVector{0, Float64}()
 
     # Track with different step sizes
     RungeKuttaTracking.rk4_kernel!(1, bunch1.coords, beta_0, gamsqr_0, tilde_m,
-                                   charge, p0c, mc2, s_span, 0.02, g_bend,
-                                   uniform_efield, field_params)
+                                   charge, p0c, mc2, s_span, 0.1, g_bend,
+                                   mm, kn, ks)
     RungeKuttaTracking.rk4_kernel!(1, bunch2.coords, beta_0, gamsqr_0, tilde_m,
-                                   charge, p0c, mc2, s_span, 0.005, g_bend,
-                                   uniform_efield, field_params)
+                                   charge, p0c, mc2, s_span, 0.05, g_bend,
+                                   mm, kn, ks)
 
-    # Results should be similar with finer steps being more accurate
-    @test isapprox(bunch1.coords.v[1, 1], bunch2.coords.v[1, 1], rtol=1e-2)
-    @test isapprox(bunch1.coords.v[1, 2], bunch2.coords.v[1, 2], rtol=1e-2)
+    # Results should be identical
+    @test isapprox(bunch1.coords.v, bunch2.coords.v, rtol=1e-2)
   end
 
-  @testset "Integration with track! and BeamlinesExt" begin
+  @testset "Beamlines integration - Drift" begin
     using Beamlines
 
-    species = Species("electron")
-    mc2 = massof(species)
-    ek = 5e3  # 5 keV
-    βγ = sqrt(ek / mc2 * (ek / mc2 + 2))
-    pc = mc2 * βγ
-    R_ref = pc_to_R(species, pc)
+    species, R_ref, _, _, _, _, _, _ = setup_particle()
+    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch.coords.v[1, BeamTracking.PXI] = 0.01
 
-    # Create a simple drift element
-    L_drift = 1.0  # 1 meter
-    drift_ele = Drift(L=L_drift)
+    drift_ele = Drift(L=1.0)
     drift_ele.tracking_method = RungeKutta()
 
-    # Create bunch with small transverse momentum
-    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-    bunch.coords.v[1, 1] = 0.0   # x0 = 0
-    bunch.coords.v[1, 2] = 0.01  # px0 = 0.01
-    bunch.coords.v[1, 3] = 0.0   # y0 = 0
-    bunch.coords.v[1, 4] = 0.0   # py0 = 0
-    bunch.coords.v[1, 5] = 0.0   # z0 = 0
-    bunch.coords.v[1, 6] = 0.0   # pz0 = 0
-
-    # Track through drift using track!
     track!(bunch, drift_ele)
 
-    # For drift, dx/ds ≈ px (for small px and pz ≈ 0)
-    # So x_final ≈ x0 + px * L
-    @test isapprox(bunch.coords.v[1, 1], 0.01, rtol=1e-3)  # x ≈ 0.01 m
-    @test isapprox(bunch.coords.v[1, 2], 0.01, rtol=1e-5)  # px unchanged
-    @test bunch.coords.v[1, 3] ≈ 0.0  # y unchanged
-    @test bunch.coords.v[1, 4] ≈ 0.0  # py unchanged
-    @test bunch.coords.state[1] == STATE_ALIVE
+    # Regression test
+    solution = [0.0100005  0.01  0.0  0.0  -5.00038e-5  0.0]
+    @test isapprox(bunch.coords.v, solution, rtol=1e-6)
+  end
+
+  @testset "Beamlines integration - SBend" begin
+    using Beamlines
+
+    species, R_ref, _, _, _, _, _, _ = setup_particle()
+    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch.coords.v[1, BeamTracking.PXI] = 0.01
+
+    sbend_ele = SBend(L=1.0, angle=pi/132)
+    sbend_ele.tracking_method = RungeKutta()
+
+    track!(bunch, sbend_ele)
+
+    # Regression test
+    solution = [0.0100005  0.01  0.0  0.0  -5.00038e-5  0.0]
+    @test isapprox(bunch.coords.v, solution, rtol=1e-6)
   end
 
   @testset "RungeKutta with different step configurations" begin
     using Beamlines
 
-    species = Species("electron")
-    mc2 = massof(species)
-    ek = 5e3
-    βγ = sqrt(ek / mc2 * (ek / mc2 + 2))
-    pc = mc2 * βγ
-    R_ref = pc_to_R(species, pc)
-
-    L_drift = 1.0
+    species, R_ref, _, _, _, _, _, _ = setup_particle()
 
     # Test with ds_step
-    drift_ds = Drift(L=L_drift)
+    drift_ds = Drift(L=1.0)
     drift_ds.tracking_method = RungeKutta(ds_step=0.1)
     bunch_ds = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-    bunch_ds.coords.v[1, 2] = 0.01
+    bunch_ds.coords.v[1, BeamTracking.PXI] = 0.01
     track!(bunch_ds, drift_ds)
 
     # Test with n_steps
-    drift_ns = Drift(L=L_drift)
-    drift_ns.tracking_method = RungeKutta(ds_step=-1.0, n_steps=50)
+    drift_ns = Drift(L=1.0)
+    drift_ns.tracking_method = RungeKutta(n_steps=10)
     bunch_ns = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-    bunch_ns.coords.v[1, 2] = 0.01
+    bunch_ns.coords.v[1, BeamTracking.PXI] = 0.01
     track!(bunch_ns, drift_ns)
 
-    # Both should give similar results
-    @test isapprox(bunch_ds.coords.v[1, 1], bunch_ns.coords.v[1, 1], rtol=1e-2)
-    @test isapprox(bunch_ds.coords.v[1, 2], bunch_ns.coords.v[1, 2], rtol=1e-4)
+    # Both should give the same results
+    @test isapprox(bunch_ds.coords.v, bunch_ns.coords.v, rtol=1e-2)
   end
 
 end
