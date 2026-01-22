@@ -41,6 +41,7 @@ using BeamTracking, Beamlines
 # Create an element with Runge-Kutta tracking
 ele = Quadrupole(L=1.0, k1=0.1)
 ele.tracking_method = RungeKutta(ds_step=0.1)
+bl = Beamline([ele], R_ref=1e6)
 
 # Create a bunch and track
 bunch = Bunch(zeros(100, 6), R_ref=1e6, species=Species("electron"))
