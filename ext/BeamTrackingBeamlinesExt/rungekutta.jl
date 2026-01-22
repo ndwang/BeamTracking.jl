@@ -58,42 +58,47 @@ function _track!(
     kc = push(kc, @inline(aperture(tm, bunch, dp, true)))
   end
 
-    # Only track through body if element has length
-    if L <= 0.0
-      error("RungeKutta tracking does not support zero-length elements") 
-    end
+  # Only track through body if element has length
+  if L <= 0.0
+    error("RungeKutta tracking does not support zero-length elements") 
+  end
 
-    # Setup physics parameters
-    species, R_ref = bunch.species, bunch.R_ref
-    tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(species, R_ref)
-    charge = chargeof(species) / BeamTracking.E_CHARGE
-    p0c = BeamTracking.R_to_pc(species, R_ref)
-    mc2 = massof(species)
+  # Setup physics parameters
+  species, R_ref = bunch.species, bunch.R_ref
+  tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(species, R_ref)
+  charge = chargeof(species) / BeamTracking.E_CHARGE
+  p0c = BeamTracking.R_to_pc(species, R_ref)
+  mc2 = massof(species)
 
-    # Determine step size to use
-    if tm.ds_step > 0
-      ds_step = tm.ds_step
-    elseif tm.n_steps > 0
-      ds_step = L / tm.n_steps
-    else
-      ds_step = BeamTracking.DEFAULT_RK4_DS_STEP
-    end
+  # Determine step size to use
+  if tm.ds_step > 0
+    ds_step = tm.ds_step
+  elseif tm.n_steps > 0
+    ds_step = L / tm.n_steps
+  else
+    ds_step = BeamTracking.DEFAULT_RK4_DS_STEP
+  end
 
-    s_span = (0.0, L)
+  s_span = (0.0, L)
 
-    # Get curvature from BendParams if present
-    g_bend = isactive(bp) ? bp.g : 0.0
+  # Get curvature from BendParams if present
+  g_bend = isactive(bp) ? bp.g : 0.0
 
-    # Extract multipole parameters
-    bm = deval(ele.BMultipoleParams)
-    if isactive(bm)
-      mm = bm.order
-      kn, ks = get_strengths(bm, L, R_ref)
-    end
+  # Extract multipole parameters
+  bm = deval(ele.BMultipoleParams)
+  if isactive(bm)
+    mm = bm.order
+    kn, ks = get_strengths(bm, L, R_ref)
+  else
+    # Default to empty multipole parameters for elements without multipoles
+    mm = SVector{Int}()
+    kn = SVector{typeof(L)}()
+    ks = SVector{typeof(L)}()
+  end
 
-    # Build kernel call
-    params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks)
-    kc = push(kc, KernelCall(BeamTracking.RungeKuttaTracking.rk4_kernel!, params))
+  # Build kernel call
+  params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks)
+  kc = push(kc, KernelCall(BeamTracking.RungeKuttaTracking.rk4_kernel!, params))
 
   # Exit aperture and alignment
   if isactive(ap)
