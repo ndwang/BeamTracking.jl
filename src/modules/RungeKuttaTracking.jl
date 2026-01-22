@@ -7,7 +7,7 @@ module RungeKuttaTracking
 using ..BeamTracking, ..StaticArrays
 using ..BeamTracking: @makekernel, Coords
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, STATE_ALIVE, STATE_LOST_PZ
-using ..BeamTracking: C_LIGHT, E_CHARGE, vifelse
+using ..BeamTracking: C_LIGHT, E_CHARGE, vifelse, normalized_field
 
 
 """
@@ -26,7 +26,7 @@ Returns (Ex, Ey, Ez, Bx, By, Bz) where:
 """
 @inline function multipole_em_field(x, y, z, s, mm::SVector{N}, kn, ks) where N
     bx, by = normalized_field(mm, kn, ks, x, y, 0)
-    is_solenoid = (N > 0) && (mm[1] == 0)
+    is_solenoid = (mm[1] == 0)
     bz = vifelse(is_solenoid, kn[1], zero(x))
 
     return (zero(x), zero(x), zero(x), bx, by, bz)
@@ -255,9 +255,9 @@ the multipole_em_field function.
         rel_p = 1 + v[i, PZI]
         inv_rel_p = 1.0 / rel_p
         vt2 = (v[i, PXI] * inv_rel_p)^2 + (v[i, PYI] * inv_rel_p)^2
-
+        alive = (coords.state[i] == STATE_ALIVE)
         # Mark particle as lost
-        coords.state[i] = vifelse(vt2 >= 1.0 && alive, STATE_LOST_PZ, coords.state[i])
+        coords.state[i] = vifelse((vt2 >= 1.0) & alive, STATE_LOST_PZ, coords.state[i])
 
         # Perform RK4 step (check for alive status is now inside rk4_step!)
         rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)

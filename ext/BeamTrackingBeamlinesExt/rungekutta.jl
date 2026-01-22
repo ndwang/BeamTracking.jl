@@ -66,7 +66,7 @@ function _track!(
   # Setup physics parameters
   species, R_ref = bunch.species, bunch.R_ref
   tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(species, R_ref)
-  charge = chargeof(species) / BeamTracking.E_CHARGE
+  charge = chargeof(species)
   p0c = BeamTracking.R_to_pc(species, R_ref)
   mc2 = massof(species)
 
@@ -82,7 +82,7 @@ function _track!(
   s_span = (0.0, L)
 
   # Get curvature from BendParams if present
-  g_bend = isactive(bp) ? bp.g : 0.0
+  g_bend = isactive(bp) ? bp.g_ref : 0.0
 
   # Extract multipole parameters
   bm = deval(ele.BMultipoleParams)
