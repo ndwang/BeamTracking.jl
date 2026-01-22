@@ -18,7 +18,7 @@ function _track!(
   bp = deval(ele.BendParams)
   dp = deval(ele.ApertureParams)
   patch = deval(ele.PatchParams)
-  R_ref = bunch.R_ref
+  bm = deval(ele.BMultipoleParams)
 
   # Setup reference state
   beta_gamma_ref = R_to_beta_gamma(bunch.species, bunch.R_ref)
@@ -37,6 +37,10 @@ function _track!(
     end
   end
 
+  # Error conditions
+  if L <= 0.0
+    error("RungeKutta tracking does not support zero-length elements") 
+  end
   if isactive(patch)
     error("RungeKutta tracking does not support patch elements")
   end
@@ -56,11 +60,6 @@ function _track!(
     end
   elseif isactive(dp)
     kc = push(kc, @inline(aperture(tm, bunch, dp, true)))
-  end
-
-  # Only track through body if element has length
-  if L <= 0.0
-    error("RungeKutta tracking does not support zero-length elements") 
   end
 
   # Setup physics parameters
@@ -85,18 +84,17 @@ function _track!(
   g_bend = isactive(bp) ? bp.g_ref : 0.0
 
   # Extract multipole parameters
-  bm = deval(ele.BMultipoleParams)
   if isactive(bm)
     mm = bm.order
     kn, ks = get_strengths(bm, L, R_ref)
   else
-    # Default to empty multipole parameters for elements without multipoles
+    # Default to drift
     mm = SVector{0, Int}()
     kn = SVector{0, typeof(L)}()
     ks = SVector{0, typeof(L)}()
   end
 
-  # Build kernel call
+  # Build RK4 kernel call
   params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks)
   kc = push(kc, KernelCall(BeamTracking.RungeKuttaTracking.rk4_kernel!, params))
 
