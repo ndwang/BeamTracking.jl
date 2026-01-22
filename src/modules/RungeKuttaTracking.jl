@@ -24,6 +24,10 @@ Returns (Ex, Ey, Ez, Bx, By, Bz) where:
 - Bz: longitudinal field from m=0 term if present
 - Ex, Ey, Ez: zero (static magnetic elements only)
 """
+@inline function multipole_em_field(x, y, z, s, mm::SVector{0}, kn, ks)
+    return (zero(x), zero(x), zero(x), zero(x), zero(x), zero(x))
+end
+
 @inline function multipole_em_field(x, y, z, s, mm::SVector{N}, kn, ks) where N
     bx, by = normalized_field(mm, kn, ks, x, y, 0)
     is_solenoid = (mm[1] == 0)

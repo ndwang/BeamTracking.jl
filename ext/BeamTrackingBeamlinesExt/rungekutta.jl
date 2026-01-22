@@ -91,9 +91,9 @@ function _track!(
     kn, ks = get_strengths(bm, L, R_ref)
   else
     # Default to empty multipole parameters for elements without multipoles
-    mm = SVector{Int}()
-    kn = SVector{typeof(L)}()
-    ks = SVector{typeof(L)}()
+    mm = SVector{0, Int}()
+    kn = SVector{0, typeof(L)}()
+    ks = SVector{0, typeof(L)}()
   end
 
   # Build kernel call
