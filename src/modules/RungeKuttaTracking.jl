@@ -24,27 +24,12 @@ Returns (Ex, Ey, Ez, Bx, By, Bz) where:
 - Bz: longitudinal field from m=0 term if present
 - Ex, Ey, Ez: zero (static magnetic elements only)
 """
-@inline function multipole_em_field(x, y, z, s, mm, kn, ks)
-    # Handle empty multipole arrays (pure drift or pure bend)
-    if length(mm) == 0
-        # No multipole field, return zeros
-        bx = zero(x)
-        by = zero(y)
-        bz = zero(x)
-    else
-        # Get transverse field components, excluding m=0 (solenoid)
-        # normalized_field from multipole.jl handles all orders including m=1 (dipole)
-        bx, by = BeamTracking.normalized_field(mm, kn, ks, x, y, 0)
+@inline function multipole_em_field(x, y, z, s, mm::SVector{N}, kn, ks) where N
+    bx, by = normalized_field(mm, kn, ks, x, y, 0)
+    is_solenoid = (N > 0) && (mm[1] == 0)
+    bz = vifelse(is_solenoid, kn[1], zero(x))
 
-        # Extract longitudinal field from m=0 term if present
-        bz = zero(bx)
-        if mm[1] == 0
-            bz = kn[1]  # Solenoid strength is the m=0 normal component
-        end
-    end
-
-    # No electric field from static magnets
-    return (zero(bx), zero(by), zero(bz), bx, by, bz)
+    return (zero(x), zero(x), zero(x), bx, by, bz)
 end
 
 """
@@ -87,7 +72,10 @@ returns zero derivatives (caller should mark particle as lost).
 
     # Particle beta and velocity
     rel_p2 = rel_p^2
-    beta = rel_p / sqrt(rel_p2 + tilde_m^2)
+    inv_gamma_v = sqrt(rel_p2 + tilde_m^2)
+    beta = rel_p / inv_gamma_v
+    
+    inv_beta_c = 1.0 / (beta * C_LIGHT)
 
     # Longitudinal velocity component
     rel_dir = 1  # +1 for forward tracking
@@ -111,11 +99,11 @@ returns zero derivatives (caller should mark particle as lost).
     dt_ds = rel_dir * (1 + dh_bend) / abs_vz_safe
 
     # Longitudinal momentum (normalized)
-    pz_p0 = rel_p * rel_dir * abs_vz / (beta * C_LIGHT)
+    pz_p0 = rel_p * rel_dir * abs_vz * inv_beta_c
 
-    # Energy derivative: dp/ds = (F · v) * dt/ds / (β*c)
+    # Energy derivative: dp/ds = (F · v) * dt/ds * inv_beta_c
     F_dot_v = E_force_x*vx + E_force_y*vy + E_force_z*vz
-    dp_ds = F_dot_v * dt_ds / (beta * C_LIGHT)
+    dp_ds = F_dot_v * dt_ds * inv_beta_c
 
     # Total energy for dbeta_ds calculation
     e_tot = p0c * rel_p / beta
@@ -150,13 +138,13 @@ returns zero derivatives (caller should mark particle as lost).
 end
 
 """
-    rk4_step!(v, i, s, h, mm, kn, ks, tracking_params)
+    rk4_step!(coords, i, s, h, mm, kn, ks, tracking_params)
 
 Perform a single RK4 step for particle i, updating coordinates in-place.
-Uses stack-allocated SVectors for all intermediate values.
+Only updates state if particle is alive.
 
 # Arguments
-- `v`: Coordinate matrix (N_particles × 6)
+- `coords`: Coordinates structure
 - `i`: Particle index
 - `s`: Current arc length
 - `h`: Step size
@@ -171,8 +159,12 @@ Uses stack-allocated SVectors for all intermediate values.
 - `p0c`: Reference momentum × c (eV)
 - `mc2`: Rest mass energy (eV)
 """
-@inline function rk4_step!(v, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
-    # Extract current state (scalars)
+@inline function rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+    # Check if particle is alive
+    alive = (coords.state[i] == STATE_ALIVE)
+    
+    # Extract current particle
+    v = coords.v
     x = v[i, XI]
     px = v[i, PXI]
     y = v[i, YI]
@@ -220,13 +212,14 @@ Uses stack-allocated SVectors for all intermediate values.
                      charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
     # Update state: u += h/6 * (k1 + 2*k2 + 2*k3 + k4)
+    # Only update if particle is alive
     h6 = h / 6
-    v[i, XI] = x + h6 * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
-    v[i, PXI] = px + h6 * (k1[2] + 2*k2[2] + 2*k3[2] + k4[2])
-    v[i, YI] = y + h6 * (k1[3] + 2*k2[3] + 2*k3[3] + k4[3])
-    v[i, PYI] = py + h6 * (k1[4] + 2*k2[4] + 2*k3[4] + k4[4])
-    v[i, ZI] = z + h6 * (k1[5] + 2*k2[5] + 2*k3[5] + k4[5])
-    v[i, PZI] = pz + h6 * (k1[6] + 2*k2[6] + 2*k3[6] + k4[6])
+    v[i, XI] = vifelse(alive, x + h6 * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1]), v[i, XI])
+    v[i, PXI] = vifelse(alive, px + h6 * (k1[2] + 2*k2[2] + 2*k3[2] + k4[2]), v[i, PXI])
+    v[i, YI] = vifelse(alive, y + h6 * (k1[3] + 2*k2[3] + 2*k3[3] + k4[3]), v[i, YI])
+    v[i, PYI] = vifelse(alive, py + h6 * (k1[4] + 2*k2[4] + 2*k3[4] + k4[4]), v[i, PYI])
+    v[i, ZI] = vifelse(alive, z + h6 * (k1[5] + 2*k2[5] + 2*k3[5] + k4[5]), v[i, ZI])
+    v[i, PZI] = vifelse(alive, pz + h6 * (k1[6] + 2*k2[6] + 2*k3[6] + k4[6]), v[i, PZI])
 end
 
 """
@@ -243,31 +236,32 @@ the multipole_em_field function.
                                         charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks)
     # Check if particle is alive at start
     alive_at_start = (coords.state[i] == STATE_ALIVE)
+    
+    s_start = s_span[1]
+    s_end = s_span[2]
+    s = s_start
 
-    # Integration loop - only if particle was alive at start
-    if alive_at_start
-        s_start = s_span[1]
-        s_end = s_span[2]
-        s = s_start
+    v = coords.v
+    
+    # Calculate number of steps for deterministic iteration
+    total_distance = s_end - s_start
+    n_steps = ceil(Int, total_distance / ds_step)
+    
+    for step in 1:n_steps
+        remaining = s_end - s
+        h = min(ds_step, remaining)
+                
+        # Chck if particle is lost
+        rel_p = 1 + v[i, PZI]
+        inv_rel_p = 1.0 / rel_p
+        vt2 = (v[i, PXI] * inv_rel_p)^2 + (v[i, PYI] * inv_rel_p)^2
 
-        v = coords.v
-        while s < s_end
-            # Calculate remaining distance
-            remaining = s_end - s
-            # Use ds_step, but if remaining is smaller, use remaining
-            h = min(ds_step, remaining)
-            # Check momenta before step
-            rel_p = 1 + v[i, PZI]
-            vt2 = (v[i, PXI] / rel_p)^2 + (v[i, PYI] / rel_p)^2
+        # Mark particle as lost
+        coords.state[i] = vifelse(vt2 >= 1.0 && alive, STATE_LOST_PZ, coords.state[i])
 
-            # Mark particle as lost if momenta are unphysical (branchless)
-            alive = (coords.state[i] == STATE_ALIVE)
-            coords.state[i] = vifelse(vt2 >= 1 && alive, STATE_LOST_PZ, coords.state[i])
-
-            # Perform RK4 step
-            rk4_step!(v, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
-            s += h
-        end
+        # Perform RK4 step (check for alive status is now inside rk4_step!)
+        rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+        s += h
     end
 end
 
