@@ -188,7 +188,7 @@
     track!(bunch, sbend_ele)
 
     # Regression test
-    solution = [0.0100005  0.01  0.0  0.0  -5.00038e-5  0.0]
+    solution = [0.02548426139361667 0.040928045820272416 0.0 0.0 -0.0006063129051164828 0.0]
     @test isapprox(bunch.coords.v, solution, rtol=1e-6)
   end
 

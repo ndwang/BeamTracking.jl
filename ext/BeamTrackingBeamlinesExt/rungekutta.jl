@@ -19,9 +19,11 @@ function _track!(
   dp = deval(ele.ApertureParams)
   patch = deval(ele.PatchParams)
   bm = deval(ele.BMultipoleParams)
+  R_ref = bunch.R_ref
+  species = bunch.species
 
   # Setup reference state
-  beta_gamma_ref = R_to_beta_gamma(bunch.species, bunch.R_ref)
+  beta_gamma_ref = R_to_beta_gamma(species, R_ref)
   kc = KernelChain(Val{6}(), RefState(bunch.t_ref, beta_gamma_ref))
 
   # Evolve time through whole element
@@ -29,7 +31,7 @@ function _track!(
 
   # Handle reference momentum ramping
   if R_ref isa TimeDependentParam
-    R_ref_initial = bunch.R_ref
+    R_ref_initial = R_ref
     R_ref_final = R_ref(bunch.t_ref)
     if !(R_ref_initial ≈ R_ref_final)
       kc = push(kc, KernelCall(BeamTracking.update_P0!, (R_ref_initial, R_ref_final, ramp_without_rf)))
@@ -63,7 +65,7 @@ function _track!(
   end
 
   # Setup physics parameters
-  species, R_ref = bunch.species, bunch.R_ref
+  R_ref = bunch.R_ref
   tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(species, R_ref)
   charge = chargeof(species)
   p0c = BeamTracking.R_to_pc(species, R_ref)
