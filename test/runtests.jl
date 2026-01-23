@@ -7,7 +7,6 @@ using Test,
       GTPSA,
       StaticArrays,
       ReferenceFrameRotations,
-      OrdinaryDiffEq,
       SIMD
 
 using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST, C_LIGHT,
