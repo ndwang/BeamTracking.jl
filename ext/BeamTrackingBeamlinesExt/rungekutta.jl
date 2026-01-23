@@ -9,33 +9,66 @@ function _track!(
   bunch::Bunch,
   ele::LineElement,
   tm::RungeKutta,
+  scalar_params::Bool,
   ramp_without_rf;
   kwargs...
 )
-  # Get basic element properties
+  # Get basic element properties (type-unstable unpacking)
   L = float(ele.L)
   ap = deval(ele.AlignmentParams)
   bp = deval(ele.BendParams)
   dp = deval(ele.ApertureParams)
   patch = deval(ele.PatchParams)
   bm = deval(ele.BMultipoleParams)
-  R_ref = bunch.R_ref
-  species = bunch.species
+  p_over_q_ref = bunch.p_over_q_ref
 
+  if scalar_params
+    L = scalarize(L)
+    ap = scalarize(ap)
+    bp = scalarize(bp)
+    bm = scalarize(bm)
+    pp = scalarize(pp)
+    dp = scalarize(dp)
+    mp = scalarize(mp)
+    rp = scalarize(rp)
+    lp = scalarize(lp)
+    p_over_q_ref = scalarize(p_over_q_ref)
+  end
+  
+  # Function barrier
+  runge_kutta_universal!(coords, tm, ramp_without_rf, bunch, L, p_over_q_ref, ap, bp, dp, patch, bm; kwargs...)
+end
+
+# Step 2: Type-stable computation -----------------------------------------
+function runge_kutta_universal!(
+  coords,
+  tm,
+  ramp_without_rf,
+  bunch,
+  L,
+  p_over_q_ref,
+  alignmentparams,
+  bendparams,
+  apertureparams,
+  patchparams,
+  bmultipoleparams;
+  kwargs...
+)
+  species = bunch.species
   # Setup reference state
-  beta_gamma_ref = R_to_beta_gamma(species, R_ref)
+  beta_gamma_ref = R_to_beta_gamma(species, p_over_q_ref)
   kc = KernelChain(Val{6}(), RefState(bunch.t_ref, beta_gamma_ref))
 
   # Evolve time through whole element
   bunch.t_ref += L/beta_gamma_to_v(beta_gamma_ref)
 
   # Handle reference momentum ramping
-  if R_ref isa TimeDependentParam
-    R_ref_initial = R_ref
-    R_ref_final = R_ref(bunch.t_ref)
-    if !(R_ref_initial ≈ R_ref_final)
-      kc = push(kc, KernelCall(BeamTracking.update_P0!, (R_ref_initial, R_ref_final, ramp_without_rf)))
-      setfield!(bunch, :R_ref, R_ref_final)
+  if p_over_q_ref isa TimeDependentParam
+    p_over_q_ref_initial = p_over_q_ref
+    p_over_q_ref_final = p_over_q_ref(bunch.t_ref)
+    if !(p_over_q_ref_initial ≈ p_over_q_ref_final)
+      kc = push(kc, KernelCall(BeamTracking.update_P0!, (p_over_q_ref_initial, p_over_q_ref_final, ramp_without_rf)))
+      setfield!(bunch, :p_over_q_ref, p_over_q_ref_final)
     end
   end
 
@@ -43,32 +76,32 @@ function _track!(
   if L <= 0.0
     error("RungeKutta tracking does not support zero-length elements") 
   end
-  if isactive(patch)
+  if isactive(patchparams)
     error("RungeKutta tracking does not support patch elements")
   end
 
   # Entrance aperture and alignment
-  if isactive(ap)
-    if isactive(dp)
-      if dp.aperture_shifts_with_body
-        kc = push(kc, @inline(alignment(tm, bunch, ap, bp, L, true)))
-        kc = push(kc, @inline(aperture(tm, bunch, dp, true)))
+  if isactive(alignmentparams)
+    if isactive(apertureparams)
+      if apertureparams.aperture_shifts_with_body
+        kc = push(kc, @inline(alignment(tm, bunch, alignmentparams, bendparams, L, true)))
+        kc = push(kc, @inline(aperture(tm, bunch, apertureparams, true)))
       else
-        kc = push(kc, @inline(aperture(tm, bunch, dp, true)))
-        kc = push(kc, @inline(alignment(tm, bunch, ap, bp, L, true)))
+        kc = push(kc, @inline(aperture(tm, bunch, apertureparams, true)))
+        kc = push(kc, @inline(alignment(tm, bunch, alignmentparams, bendparams, L, true)))
       end
     else
-      kc = push(kc, @inline(alignment(tm, bunch, ap, bp, L, true)))
+      kc = push(kc, @inline(alignment(tm, bunch, alignmentparams, bendparams, L, true)))
     end
-  elseif isactive(dp)
-    kc = push(kc, @inline(aperture(tm, bunch, dp, true)))
+  elseif isactive(apertureparams)
+    kc = push(kc, @inline(aperture(tm, bunch, apertureparams, true)))
   end
 
   # Setup physics parameters
-  R_ref = bunch.R_ref
-  tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(species, R_ref)
+  p_over_q_ref = bunch.p_over_q_ref
+  tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(species, p_over_q_ref)
   charge = chargeof(species)
-  p0c = BeamTracking.R_to_pc(species, R_ref)
+  p0c = BeamTracking.R_to_pc(species, p_over_q_ref)
   mc2 = massof(species)
 
   # Determine step size to use
@@ -83,12 +116,12 @@ function _track!(
   s_span = (0.0, L)
 
   # Get curvature from BendParams if present
-  g_bend = isactive(bp) ? bp.g_ref : 0.0
+  g_bend = isactive(bendparams) ? bendparams.g_ref : 0.0
 
   # Extract multipole parameters
-  if isactive(bm)
-    mm = bm.order
-    kn, ks = get_strengths(bm, L, R_ref)
+  if isactive(bmultipoleparams)
+    mm = bmultipoleparams.order
+    kn, ks = get_strengths(bmultipoleparams, L, p_over_q_ref)
   else
     # Default to drift
     mm = SVector{0, Int}()
@@ -101,20 +134,20 @@ function _track!(
   kc = push(kc, KernelCall(BeamTracking.RungeKuttaTracking.rk4_kernel!, params))
 
   # Exit aperture and alignment
-  if isactive(ap)
-    if isactive(dp)
-      if dp.aperture_shifts_with_body
-        kc = push(kc, @inline(aperture(tm, bunch, dp, false)))
-        kc = push(kc, @inline(alignment(tm, bunch, ap, bp, L, false)))
+  if isactive(alignmentparams)
+    if isactive(apertureparams)
+      if apertureparams.aperture_shifts_with_body
+        kc = push(kc, @inline(aperture(tm, bunch, apertureparams, false)))
+        kc = push(kc, @inline(alignment(tm, bunch, alignmentparams, bendparams, L, false)))
       else
-        kc = push(kc, @inline(alignment(tm, bunch, ap, bp, L, false)))
-        kc = push(kc, @inline(aperture(tm, bunch, dp, false)))
+        kc = push(kc, @inline(alignment(tm, bunch, alignmentparams, bendparams, L, false)))
+        kc = push(kc, @inline(aperture(tm, bunch, apertureparams, false)))
       end
     else
-      kc = push(kc, @inline(alignment(tm, bunch, ap, bp, L, false)))
+      kc = push(kc, @inline(alignment(tm, bunch, alignmentparams, bendparams, L, false)))
     end
-  elseif isactive(dp)
-    kc = push(kc, @inline(aperture(tm, bunch, dp, false)))
+  elseif isactive(apertureparams)
+    kc = push(kc, @inline(aperture(tm, bunch, apertureparams, false)))
   end
 
   # Launch kernels

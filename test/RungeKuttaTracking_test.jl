@@ -8,24 +8,24 @@
   function setup_particle(pc=1e9)  # pc in eV, default corresponds to 1 GeV
     species = Species("electron")
     mc2 = massof(species)  # eV
-    R_ref = pc_to_R(species, pc)
+    p_over_q_ref = pc_to_R(species, pc)
 
     # Calculate tracking parameters
-    beta_gamma_0 = R_to_beta_gamma(species, R_ref)
+    beta_gamma_0 = R_to_beta_gamma(species, p_over_q_ref)
     tilde_m = 1 / beta_gamma_0
     gamsqr_0 = 1 + beta_gamma_0^2
     beta_0 = beta_gamma_0 / sqrt(gamsqr_0)
     charge = chargeof(species)
-    p0c = R_to_pc(species, R_ref)
+    p0c = R_to_pc(species, p_over_q_ref)
 
-    return species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2
+    return species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2
   end
 
   @testset "Pure drift" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle()
+    species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle()
 
     # Create bunch with small transverse momentum
-    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch.coords.v[1, BeamTracking.PXI] = 0.01
 
     s_span = (0.0, 1.0)
@@ -48,9 +48,9 @@
   end
 
   @testset "Solenoid" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
+    species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
-    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch.coords.v[1, BeamTracking.PXI] = 0.01
 
     s_span = (0.0, 1.0)
@@ -59,7 +59,7 @@
     
     # Solenoid field
     Bz_physical = 0.01  # Tesla
-    Bz_normalized = Bz_physical / R_ref
+    Bz_normalized = Bz_physical / p_over_q_ref
     mm = SVector(0)  # Solenoid (m=0)
     kn = SVector(Bz_normalized)
     ks = SVector(0.0)
@@ -79,9 +79,9 @@
   end
 
   @testset "Dipole" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
+    species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
-    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch.coords.v[1, BeamTracking.PXI] = 0.01
 
     s_span = (0.0, 1.0)
@@ -90,7 +90,7 @@
     
     # Dipole field
     By_physical = 0.01  # Tesla
-    By_normalized = By_physical / R_ref
+    By_normalized = By_physical / p_over_q_ref
     mm = SVector(1)  # Dipole (m=1)
     kn = SVector(By_normalized)
     ks = SVector(0.0)
@@ -106,9 +106,9 @@
   end
 
   @testset "Particle loss detection" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
+    species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
-    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch.coords.v[1, BeamTracking.PXI] = 1.5 # Unphysical initial momentum
 
     s_span = (0.0, 1.0)
@@ -131,10 +131,10 @@
   end
 
   @testset "Convergence test" begin
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
+    species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
-    bunch1 = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
-    bunch2 = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch1 = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
+    bunch2 = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch1.coords.v[1, BeamTracking.PXI] = 0.01
     bunch2.coords.v[1, BeamTracking.PXI] = 0.01
 
@@ -161,8 +161,8 @@
   @testset "Beamlines integration - Drift" begin
     using Beamlines
 
-    species, R_ref, _, _, _, _, _, _ = setup_particle()
-    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    species, p_over_q_ref, _, _, _, _, _, _ = setup_particle()
+    bunch = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch.coords.v[1, BeamTracking.PXI] = 0.01
 
     drift_ele = Drift(L=1.0)
@@ -178,8 +178,8 @@
   @testset "Beamlines integration - SBend" begin
     using Beamlines
 
-    species, R_ref, _, _, _, _, _, _ = setup_particle()
-    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    species, p_over_q_ref, _, _, _, _, _, _ = setup_particle()
+    bunch = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch.coords.v[1, BeamTracking.PXI] = 0.01
 
     sbend_ele = SBend(L=1.0, angle=pi/132)
@@ -195,19 +195,19 @@
   @testset "RungeKutta with different step configurations" begin
     using Beamlines
 
-    species, R_ref, _, _, _, _, _, _ = setup_particle()
+    species, p_over_q_ref, _, _, _, _, _, _ = setup_particle()
 
     # Test with ds_step
     drift_ds = Drift(L=1.0)
     drift_ds.tracking_method = RungeKutta(ds_step=0.1)
-    bunch_ds = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch_ds = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch_ds.coords.v[1, BeamTracking.PXI] = 0.01
     track!(bunch_ds, drift_ds)
 
     # Test with n_steps
     drift_ns = Drift(L=1.0)
     drift_ns.tracking_method = RungeKutta(n_steps=10)
-    bunch_ns = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch_ns = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch_ns.coords.v[1, BeamTracking.PXI] = 0.01
     track!(bunch_ns, drift_ns)
 
