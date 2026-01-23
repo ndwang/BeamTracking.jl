@@ -47,6 +47,7 @@ bl = Beamline([ele], R_ref=1e6)
 bunch = Bunch(zeros(100, 6), R_ref=1e6, species=Species("electron"))
 track!(bunch, ele)
 ```
+The Runge-Kutta method works with all thick elements that have BMultipoleParams. Other thick elements are treated as drifts.
 
 ### Low-Level Kernel Interface
 
@@ -153,7 +154,3 @@ multipole_em_field(x, y, z, s, mm, kn, ks) -> (Ex, Ey, Ez, Bx, By, Bz)
 **Field computation:**
 - For `m=0` (solenoid): Returns longitudinal field `Bz`
 - For `m≥1` (dipole, quadrupole, etc.): Computes transverse fields `Bx`, `By` using a Horner-like scheme for efficient polynomial evaluation
-
-## Supported Elements
-
-The Runge-Kutta method works with all thick elements that have BMultipoleParams. Other thick elements are treated as drifts.
