@@ -21,6 +21,33 @@
     return species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2
   end
 
+  @testset "RungeKutta constructor" begin
+    using BeamTracking: RungeKutta
+
+    # Test default constructor (no arguments)
+    rk_default = RungeKutta()
+    @test rk_default.ds_step == 0.2
+    @test rk_default.n_steps == -1
+
+    # Test constructor with ds_step only
+    rk_ds = RungeKutta(ds_step=0.1)
+    @test rk_ds.ds_step == 0.1
+    @test rk_ds.n_steps == -1
+
+    # Test constructor with n_steps only
+    rk_ns = RungeKutta(n_steps=50)
+    @test rk_ns.ds_step == -1.0
+    @test rk_ns.n_steps == 50
+
+    # Test constructor with both ds_step and n_steps (should error)
+    @test_throws ErrorException RungeKutta(ds_step=0.1, n_steps=50)
+
+    # Test constructor with explicit nothing values (should use defaults)
+    rk_nothing = RungeKutta(ds_step=nothing, n_steps=nothing)
+    @test rk_nothing.ds_step == 0.2
+    @test rk_nothing.n_steps == -1
+  end
+
   @testset "Pure drift" begin
     species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle()
 
@@ -213,6 +240,26 @@
 
     # Both should give the same results
     @test isapprox(bunch_ds.coords.v, bunch_ns.coords.v, rtol=1e-2)
+  end
+
+  @testset "Zero-length elements" begin
+    using Beamlines
+
+    species, p_over_q_ref, _, _, _, _, _, _ = setup_particle()
+
+    # Test zero-length drift should throw an error
+    drift_zero = Drift(L=0.0)
+    drift_zero.tracking_method = RungeKutta()
+    bunch_drift = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
+    
+    @test_throws ErrorException track!(bunch_drift, drift_zero)
+
+    # Test negative length should also throw an error
+    drift_negative = Drift(L=-0.1)
+    drift_negative.tracking_method = RungeKutta()
+    bunch_negative = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
+    
+    @test_throws ErrorException track!(bunch_negative, drift_negative)
   end
 
 end
