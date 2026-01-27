@@ -1,5 +1,5 @@
 # =========== HELPER FUNCTIONS ============= #
-@inline function integration_launcher(ker, params, photon_params, tm, f1, f2, L)
+@inline function integration_launcher(ker, params, photon_params, tm, edge_params, L)
   order = tm.order
   ds_step = tm.ds_step
   num_steps = tm.num_steps
@@ -10,13 +10,13 @@
     ds_step = L / num_steps
   end
   if order == 2
-    return KernelCall(BeamTracking.order_two_integrator!, (ker, params, photon_params, ds_step, num_steps, f1, f2, L))
+    return KernelCall(BeamTracking.order_two_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, L))
   elseif order == 4
-    return KernelCall(BeamTracking.order_four_integrator!, (ker, params, photon_params, ds_step, num_steps, f1, f2, L))
+    return KernelCall(BeamTracking.order_four_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, L))
   elseif order == 6
-    return KernelCall(BeamTracking.order_six_integrator!, (ker, params, photon_params, ds_step, num_steps, f1, f2, L))
+    return KernelCall(BeamTracking.order_six_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, L))
   elseif order == 8
-    return KernelCall(BeamTracking.order_eight_integrator!, (ker, params, photon_params, ds_step, num_steps, f1, f2, L))
+    return KernelCall(BeamTracking.order_eight_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, L))
   end
 end
 
@@ -83,7 +83,7 @@ end
     E0 = mc2/tilde_m/beta_0
     params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), Ksol, mm, kn, ks)
     photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
-    return integration_launcher(BeamTracking.sks_multipole!, params, photon_params, tm, 0, 0, L)
+    return integration_launcher(BeamTracking.sks_multipole!, params, photon_params, tm, nothing, L)
   end
 end
 
@@ -98,7 +98,7 @@ end
   E0 = mc2/tilde_m/beta_0
   params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), Ksol, mm, kn, ks)
   photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
-  return integration_launcher(BeamTracking.sks_multipole!, params, photon_params, tm, 0, 0, L)
+  return integration_launcher(BeamTracking.sks_multipole!, params, photon_params, tm, nothing, L)
 end
 
 @inline function thick_pure_bdipole(tm::DriftKick, bunch, bm, L)
@@ -111,7 +111,7 @@ end
   E0 = mc2/tilde_m/beta_0
   params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), SA[mm], SA[kn], SA[ks])
   photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, SA[mm], SA[kn], SA[ks]), nothing)
-  return integration_launcher(BeamTracking.dkd_multipole!, params, photon_params, tm, 0, 0, L)
+  return integration_launcher(BeamTracking.dkd_multipole!, params, photon_params, tm, nothing, L)
 end
 
 @inline function thick_bdipole(tm::DriftKick, bunch, bm, L)
@@ -124,7 +124,7 @@ end
   E0 = mc2/tilde_m/beta_0
   params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), mm, kn, ks)
   photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
-  return integration_launcher(BeamTracking.dkd_multipole!, params, photon_params, tm, 0, 0, L)
+  return integration_launcher(BeamTracking.dkd_multipole!, params, photon_params, tm, nothing, L)
 end
 
 @inline function thick_pure_bdipole(tm::Union{Yoshida,BendKick}, bunch, bm1, L) 
@@ -144,7 +144,7 @@ end
     E0 = mc2/tilde_m/beta_0
     params = (q, mc2, tm.radiation_damping_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, w, w_inv, k0, SA[mm], SA[kn], SA[ks])
     photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, SA[mm], SA[kn], SA[ks]), nothing)
-    return integration_launcher(BeamTracking.bkb_multipole!, params, photon_params, tm, 0, 0, L)
+    return integration_launcher(BeamTracking.bkb_multipole!, params, photon_params, tm, nothing, L)
   end
 end
 
@@ -162,7 +162,7 @@ end
   E0 = mc2/tilde_m/beta_0
   params = (q, mc2, tm.radiation_damping_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), 0, w, w_inv, k0, mm, kn, ks)
   photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
-  return integration_launcher(BeamTracking.bkb_multipole!, params, photon_params, tm, 0, 0, L)
+  return integration_launcher(BeamTracking.bkb_multipole!, params, photon_params, tm, nothing, L)
 end
 
 @inline function thick_bdipole(tm::MatrixKick, bunch, bm, L)
@@ -186,7 +186,7 @@ end
   E0 = mc2/tilde_m/beta_0
   params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, mm, kn, ks)
   photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
-  return integration_launcher(BeamTracking.mkm_quadrupole!, params, photon_params, tm, 0, 0, L)
+  return integration_launcher(BeamTracking.mkm_quadrupole!, params, photon_params, tm, nothing, L)
 end
 
 @inline function thick_bdipole(tm::Yoshida, bunch, bm, L)
@@ -214,7 +214,7 @@ end
   E0 = mc2/tilde_m/beta_0
   params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, SA[mm], SA[kn], SA[ks])
   photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, SA[mm], SA[kn], SA[ks]), nothing)
-  return integration_launcher(BeamTracking.mkm_quadrupole!, params, photon_params, tm, 0, 0, L)
+  return integration_launcher(BeamTracking.mkm_quadrupole!, params, photon_params, tm, nothing, L)
 end
 
 @inline thick_pure_bquadrupole(tm::DriftKick, bunch, bm, L) = 
@@ -237,7 +237,7 @@ end
   E0 = mc2/tilde_m/beta_0
   params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), w, w_inv, k1, mm, kn, ks)
   photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
-  return integration_launcher(BeamTracking.mkm_quadrupole!, params, photon_params, tm, 0, 0, L)
+  return integration_launcher(BeamTracking.mkm_quadrupole!, params, photon_params, tm, nothing, L)
 end
 
 @inline thick_bquadrupole(tm::DriftKick, bunch, bm, L) = thick_bdipole(tm, bunch, bm, L)
@@ -269,14 +269,14 @@ end
     Ks0 ≈ 0 || error("A skew dipole field cannot yet be used in a bend")
     w = rot_quaternion(0,0,tilt)
     w_inv = inv_rot_quaternion(0,0,tilt)
-    f1 = Kn0*tan(e1)
-    f2 = Kn0*tan(e2)
+    a = gyromagnetic_anomaly(bunch.species)
+    edge_params = (a, tilde_m, Kn0, e1, e2)
     q = chargeof(bunch.species)
     mc2 = massof(bunch.species)
     E0 = mc2/tilde_m/beta_0
-    params = (q, mc2, tm.radiation_damping_on, tilde_m, beta_0, gyromagnetic_anomaly(bunch.species), g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])
+    params = (q, mc2, tm.radiation_damping_on, tilde_m, beta_0, a, g, w, w_inv, Kn0, SA[mm], SA[Kn0], SA[Ks0])
     photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, g, tilt, SA[mm], SA[Kn0], SA[Ks0]), nothing)
-    return integration_launcher(BeamTracking.bkb_multipole!, params, photon_params, tm, f1, f2, L)
+    return integration_launcher(BeamTracking.bkb_multipole!, params, photon_params, tm, edge_params, L)
   end
 end
 
@@ -298,7 +298,7 @@ end
   E0 = mc2/tilde_m/beta_0
   params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, E_ref, p0c, gyromagnetic_anomaly(bunch.species), omega, t0, E0_over_Rref, SA[], SA[], SA[])
   photon_params = nothing
-  return integration_launcher(BeamTracking.cavity!, params, photon_params, tm, 0, 0, L)
+  return integration_launcher(BeamTracking.cavity!, params, photon_params, tm, nothing, L)
 end
 
 @inline function thick_bmultipole_rf(tm::Union{Yoshida,DriftKick,SolenoidKick}, bunch, bm, rf, omega, t0, L)
@@ -314,5 +314,5 @@ end
   E0 = mc2/tilde_m/beta_0
   params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, E_ref, p0c, gyromagnetic_anomaly(bunch.species), omega, t0, E0_over_Rref, mm, kn, ks)
   photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
-  return integration_launcher(BeamTracking.cavity!, params, photon_params, tm, 0, 0, L)
+  return integration_launcher(BeamTracking.cavity!, params, photon_params, tm, nothing, L)
 end
