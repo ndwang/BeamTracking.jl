@@ -80,10 +80,12 @@ end
     ks = SA[Ksol_skew]
     q = chargeof(bunch.species)
     mc2 = massof(bunch.species)
+    a = gyromagnetic_anomaly(bunch.species)
+    edge_params = ifelse(tm.fringe_on, (a, tilde_m, Ksol, 0, 0, 0), nothing)
     E0 = mc2/tilde_m/beta_0
-    params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, gyromagnetic_anomaly(bunch.species), Ksol, mm, kn, ks)
+    params = (q, mc2, tm.radiation_damping_on, beta_0, gamsqr_0, tilde_m, a, Ksol, mm, kn, ks)
     photon_params = ifelse(tm.radiation_fluctuations_on, (q, mc2, E0, 0, 0, mm, kn, ks), nothing)
-    return integration_launcher(BeamTracking.sks_multipole!, params, photon_params, tm, nothing, L)
+    return integration_launcher(BeamTracking.sks_multipole!, params, photon_params, tm, edge_params, L)
   end
 end
 
@@ -270,7 +272,7 @@ end
     w = rot_quaternion(0,0,tilt)
     w_inv = inv_rot_quaternion(0,0,tilt)
     a = gyromagnetic_anomaly(bunch.species)
-    edge_params = (a, tilde_m, Kn0, e1, e2)
+    edge_params = ifelse(tm.fringe_on, (a, tilde_m, 0, Kn0, e1, e2), nothing)
     q = chargeof(bunch.species)
     mc2 = massof(bunch.species)
     E0 = mc2/tilde_m/beta_0
