@@ -98,8 +98,8 @@ end
   prime_to_canonical!(i, coords, g, ax, ay)
 end
 
-
-@makekernel fastgtpsa=true function stochastic_radiation!(i, coords::Coords, q, mc2, E0, g, tilt_ref, mm, kn, ks, L)
+# This should never be called by TPSA so no need for FastGTPSA
+@makekernel function stochastic_radiation!(i, coords::Coords, q, mc2, E0, g, tilt_ref, mm, kn, ks, L)
   v = coords.v
 
   w = rot_quaternion(0, 0, tilt_ref)
@@ -159,8 +159,7 @@ end
   sigma2_1 = one(sigma2)
   sigma = sqrt(vifelse(alive, sigma2, sigma2_1)) 
 
-  dpz   = gaussian_random(sigma)
-  theta = gaussian_random(sqrt(13/55)/gamma)
+  dpz, theta = gaussian_random(sigma, sqrt(13/55)/gamma)
   s, c  = sincos(theta)
 
   b_perp_hat_x = vifelse(b_perp > 0, b_perp_x / b_perp, 0)
