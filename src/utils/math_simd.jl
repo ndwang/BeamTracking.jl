@@ -177,6 +177,6 @@ end
 """
 See gaussian_random, but for SIMD vectors.
 """
-function gaussian_random(sigma1::SIMD.Vec{N,T}, sigma2::SIMD.Vec{N,T}) where {N,T}
+function gaussian_random(sigma1::SIMD.Vec, sigma2::SIMD.Vec) 
   return SIMDMathFunctions.vmap(gaussian_random, sigma1, sigma2)
 end

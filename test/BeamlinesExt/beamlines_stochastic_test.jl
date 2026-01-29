@@ -116,5 +116,10 @@ using Random
   0.04761049389108041
   0.05999621385138163]'
 
+  # Now just check SIMD , if it doesn't bug out
+  bend.tracking_method = Yoshida(order = 8, num_steps = 2, 
+  radiation_damping_on = true, radiation_fluctuations_on = true)
+  b0 = Bunch(rand(10,6), species = line.species_ref, p_over_q_ref = line.p_over_q_ref)
+  track!(b0, line)
 end
  
