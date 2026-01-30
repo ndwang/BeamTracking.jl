@@ -15,7 +15,7 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     permissions: # needed to allow julia-actions/cache to proactively delete old caches that it has created
       actions: write
       contents: read
@@ -28,8 +28,18 @@ jobs:
           - 'lts'
         os:
           - ubuntu-latest
+          - macos-latest
+          - windows-latest
         arch:
           - x64
+          - aarch64
+        exclude:
+          # Windows doesn't support aarch64 on GitHub Actions
+          - os: windows-latest
+            arch: aarch64
+          # Ubuntu aarch64 requires special runners
+          - os: ubuntu-latest
+            arch: aarch64
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
