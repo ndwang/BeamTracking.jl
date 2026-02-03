@@ -12,7 +12,7 @@
     if radiation_damping
       deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, L/2)
     end
-    multipole_kick!(i, coords, mm, kn * L/2, ks * L/2, -1)
+    multipole_kick!(i, coords, mm, kn .* L ./ 2, ks .* L ./ 2, -1)
   end
 
   if isnothing(coords.q)
@@ -24,7 +24,7 @@
   end
 
   if multipoles
-    multipole_kick!(i, coords, mm, kn * L/2, ks * L/2, -1)
+    multipole_kick!(i, coords, mm, kn .* L ./ 2, ks .* L ./ 2, -1)
     if radiation_damping
       deterministic_radiation!(   i, coords, q, mc2, E_ref, 0, mm, kn, ks, L/2)
     end
