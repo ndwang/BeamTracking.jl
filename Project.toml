@@ -22,15 +22,18 @@ Unrolled = "9602ed7d-8fef-5bc8-8597-8f21381861e8"
 
 [weakdeps]
 Beamlines = "5bb90b03-0719-46b8-8ce4-1ef3afd3cd4b"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 
 [extensions]
 BeamTrackingBeamlinesExt = "Beamlines"
+BeamTrackingCUDAExt = "CUDA"
 
 [compat]
 Accessors = "0.1.42"
 Adapt = "4.3.0"
 AtomicAndPhysicalConstants = "0.8.0"
 Beamlines = "0.8.0"
+CUDA = "5.9"
 GTPSA = "1.5.3"
 HostCPUFeatures = "0.1"
 KernelAbstractions = "0.9.35"
