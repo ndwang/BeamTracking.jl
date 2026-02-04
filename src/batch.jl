@@ -78,13 +78,37 @@ for op in (:+,:-,:*,:/,:^)
   @eval begin
     Base.$op(ba::BatchParam, b::Number)   = (let b = b; return BatchParam(map(x->$op(x, b), ba.batch)); end)
     Base.$op(a::Number,   bb::BatchParam) = (let a = a; return BatchParam(map(x->$op(a, x), bb.batch)); end)
+    
     function Base.$op(ba::BatchParam, bb::BatchParam)
-      if !(ba.batch isa Number) && !(bb.batch isa Number) && length(ba.batch) != length(bb.batch)
+      if ba.batch isa Number
+        if bb.batch isa Number
+          return BatchParam($op(ba.batch, bb.batch))
+        else
+          let a = ba.batch
+            # WE HAVE TO WRITE THIS BY HAND FOR EACH OP!!!
+            if a ≈ 0 # So that e.g. big arrays aren't made for skew strengths when only normal is batch
+              return BatchParam(0f0)
+            else
+              return BatchParam(map((bbi)->$op(a, bbi), bb.batch))
+            end
+          end
+        end
+      elseif bb.batch isa Number
+        let b = bb.batch
+          if b ≈ 0
+            return BatchParam(0f0)
+          else
+            return BatchParam(map((bai)->$op(bai, b), ba.batch))
+          end
+        end
+      elseif length(ba.batch) == length(bb.batch)
+        return BatchParam(map((bai,bbi)->$op(bai, bbi), ba.batch, bb.batch))
+      else
         error("Cannot perform operation $($op) with two non-scalar BatchParams of differing 
                lengths (received lengths $(length(ba.batch)) and $(length(bb.batch))).")
       end
-      return BatchParam(map((x,y)->$op(x, y), ba.batch, bb.batch))
     end
+
   end
 end
 

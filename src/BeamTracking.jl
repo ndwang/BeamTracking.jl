@@ -30,6 +30,7 @@ include("utils/z_to_time.jl")
 
 include("types.jl")
 include("time.jl")
+include("batch.jl")
 include("kernel.jl")
 include("tracking_methods.jl")
 

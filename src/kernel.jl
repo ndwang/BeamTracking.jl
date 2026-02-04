@@ -9,7 +9,12 @@ blank_kernel!(args...) = nothing
   kernel::K = blank_kernel!
   args::A   = ()
   function KernelCall(kernel, args)
-    _args = map(t->time_lower(t), args)
+    if args != ()
+      @show args
+      @show batch_lower(args)
+      error("")
+    end
+    _args = map(t->time_lower(batch_lower(t)), args)
     new{typeof(kernel),typeof(_args)}(kernel, _args)
   end 
 end
@@ -55,16 +60,29 @@ _generic_kernel!(i, coords, kc) = __generic_kernel!(i, coords, kc.chain, kc.ref)
 
 @unroll function __generic_kernel!(i, coords::Coords, chain, ref)
   @unroll for kcall in chain
-    args = process_args(i, coords, kcall.args, ref)
+    bargs = process_batch_args(i, kcall.args)
+    args = process_time_args(i, coords, bargs, ref)
     (kcall.kernel)(i, coords, args...)
   end
   return nothing
 end
 
-function process_args(i, coords, args, ref)
+function process_batch_args(i, args)
+      @show args
+    error("")
+  if static_batchcheck(args) 
+    # beval(args, i)
+    #error("")
+    return beval(args, i)
+  else
+    return args
+  end
+end
+
+function process_time_args(i, coords, args, ref)
   if !isnothing(ref) && static_timecheck(args) 
     let t = compute_time(coords.v[i,ZI], coords.v[i,PZI], ref)
-      return map(arg->teval(arg, t), args)
+      return teval(args, t)
     end
   else
     return args
