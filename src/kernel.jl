@@ -64,7 +64,6 @@ end
 function process_args(i, coords, args, ref)
   if !isnothing(ref) && static_timecheck(args) 
     let t = compute_time(coords.v[i,ZI], coords.v[i,PZI], ref)
-      new_args = map(arg->teval(arg, t), args)
       return map(arg->teval(arg, t), args)
     end
   else
