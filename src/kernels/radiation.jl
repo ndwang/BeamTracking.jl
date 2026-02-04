@@ -160,7 +160,7 @@ end
     sigma2_1 = one(sigma2)
     sigma = sqrt(vifelse(alive, sigma2, sigma2_1)) 
 
-    dpz, theta = gaussian_random(sigma, sqrt(13/55)/gamma)
+    dpz, theta = gaussian_random(v, sigma, sqrt(13/55)/gamma)
     s, c  = sincos(theta)
 
     b_perp_hat_x = vifelse(b_perp > 0, b_perp_x / b_perp, 0)

@@ -165,18 +165,14 @@ compiler bug, but CUDA.rand seems to be ok. Nonetheless
 this may also give CPU performance benefits with radiation 
 because we already need to compute two randn's anyways.
 """
-function gaussian_random(sigma1, sigma2)
-  s, c = sincospi(2 * rand())
-  t = sqrt(-2 * log(rand()))
-  z0 = c*t*sigma1
-  z1 = s*t*sigma2
-  return z0, z1
+function gaussian_random(::Matrix, sigma1, sigma2)
+  return randn()*sigma1, randn()*sigma2
 end
 
 
 """
 See gaussian_random, but for SIMD vectors.
 """
-function gaussian_random(sigma1::SIMD.Vec, sigma2::SIMD.Vec) 
+function gaussian_random(::Matrix, sigma1::SIMD.Vec, sigma2::SIMD.Vec)
   return SIMDMathFunctions.vmap(gaussian_random, sigma1, sigma2)
 end
