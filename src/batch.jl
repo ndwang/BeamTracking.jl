@@ -111,6 +111,8 @@ end
 
 
 Base.promote_rule(::Type{BatchParam}, ::Type{U}) where {U<:Number} = BatchParam
+Base.promote_rule(::Type{BatchParam}, ::Type{TimeDependentParam}) = error("Unable to combine BatchParams with TimeDependentParams")
+Base.promote_rule(::Type{TimeDependentParam}, ::Type{BatchParam}) = error("Unable to combine BatchParams with TimeDependentParams")
 Base.broadcastable(o::BatchParam) = Ref(o)
 
 Base.isapprox(b::BatchParam, n::Number; kwargs...) = all(x->isapprox(x, n, kwargs...), b.batch)
@@ -119,69 +121,28 @@ Base.:(==)(b::BatchParam, n::Number) = all(x->x == n, b.batch)
 Base.:(==)(n::Number, b::BatchParam) = all(x->n == x, b.batch)
 Base.isinf(b::BatchParam) = all(x->isinf(x), b.batch)
 
-#=
-@inline teval(f::TimeFunction, t) = f(t)
-@inline teval(f, t) = f
-
-# === THIS BLOCK WAS WRITTEN BY CLAUDE ===
-# Generated function for arbitrary-length tuples
-@generated function teval(f::T, t) where {T<:Tuple}
-    N = length(T.parameters)
-    if N == 0
-        return :(())
-    end
-    # Use getfield with literal integer arguments
-    exprs = [:(teval(Base.getfield(f, $i), t)) for i in 1:N]
-    return :(tuple($(exprs...)))
-end
-# === END CLAUDE ===
-=#
-
 # Batch lowering should convert types to _LoweredBatchParam
 function batch_lower(b::BatchParam)
   if b.batch isa AbstractArray
-    return _LoweredBatchParam(b.batch)
+    return _LoweredBatchParam(b.batch) # Only arrays are lowered to batchparams
   else
     return b.batch
   end
 end
 
-batch_lower(tp::TimeDependentParam) = tp.f
-batch_lower(tp) = tp
-# We can use map on the CPU, but not the GPU. This step of time_lower-ing is on 
+batch_lower(bp) = bp
+# We can use map on the CPU, but not the GPU. This step of batch_lower-ing is on 
 # the CPU and we are already type unstable here anyways, so we should do this.
-time_lower(tp::T) where {T<:Tuple} = map(ti->time_lower(ti), tp)
+batch_lower(bp::T) where {T<:Tuple} = map(bi->batch_lower(bi), bp)
 
 # Arrays MUST be converted into tuples, for SIMD
-time_lower(tp::SArray{N,TimeDependentParam}) where {N} = time_lower(Tuple(tp))
+batch_lower(bp::SArray{N,BatchParam}) where {N} = batch_lower(Tuple(bp))
 
-static_timecheck(tp) = false
-static_timecheck(::TimeFunction) = true
-@unroll function static_timecheck(t::Tuple)
+static_batchcheck(bp) = false
+static_batchcheck(::BatchParam) = true
+@unroll function static_batchcheck(t::Tuple)
   @unroll for ti in t
-    if static_timecheck(ti)
-      return true
-    end
-  end
-  return false
-end
-#static_timecheck(tp::T) where {T<:Tuple} = Val{any(t->static_timecheck(t) isa Val{true}, tp)}()
-
-
-
-batch_lower(b) = b
-batch_lower(b::Tuple) = map(bi->batch_lower(bi), b)
-function batch_lower(ba::SArray{N,BatchParam}) where {N}
-  f = Tuple(map(bi->bi.batch, ba))
-  return TimeFunction(t->SArray{N}(map(fi->fi(t), f)))
-end
-time_lower(tp::SArray{N,Any}) where {N} = time_lower(TimeDependentParam.(tp))
-
-static_timecheck(tp) = false
-static_timecheck(::TimeFunction) = true
-@unroll function static_timecheck(t::Tuple)
-  @unroll for ti in t
-    if static_timecheck(ti)
+    if static_batchcheck(ti)
       return true
     end
   end
@@ -206,6 +167,20 @@ function lane2vec(lane::SIMD.VecRange{N}) where {N}
   end
 end
 
-@inline teval(f::TimeFunction, t) = f(t)
-@inline teval(f, t) = f
-@inline teval(f::Tuple, t) = map(ti->teval(ti, t), f)
+lane2vec(i) = i
+
+@inline beval(b::_LoweredBatchParam, i) = b.batch[lane2vec(i)]
+@inline beval(b, i) = b
+
+# === THIS BLOCK WAS WRITTEN BY CLAUDE ===
+# Generated function for arbitrary-length tuples
+@generated function beval(f::T, t) where {T<:Tuple}
+    N = length(T.parameters)
+    if N == 0
+        return :(())
+    end
+    # Use getfield with literal integer arguments
+    exprs = [:(beval(Base.getfield(f, $i), t)) for i in 1:N]
+    return :(tuple($(exprs...)))
+end
+# === END CLAUDE ===
