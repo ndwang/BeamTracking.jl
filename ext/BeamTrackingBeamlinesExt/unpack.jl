@@ -64,9 +64,6 @@ function universal!(
   # 1 kernel to update the particles' reference energy
   kc = KernelChain(Val{6}(), RefState(bunch.t_ref, beta_gamma_ref))
 
-  # Evolve time through whole element
-  bunch.t_ref += L/beta_gamma_to_v(beta_gamma_ref)
-
   # Ramping
   if p_over_q_ref isa TimeDependentParam
     p_over_q_ref_initial = bunch.p_over_q_ref
@@ -247,6 +244,9 @@ function universal!(
     kc = push(kc, @inline(aperture(tm, bunch, apertureparams, false)))
   end
 
+  # Evolve time through whole element
+  bunch.t_ref += L/beta_gamma_to_v(beta_gamma_ref)
+  
   # noinline necessary here for small binaries and faster execution
   @noinline launch!(coords, kc; kwargs...)
   return nothing
