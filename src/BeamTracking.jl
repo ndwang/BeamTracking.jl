@@ -11,7 +11,8 @@ using GTPSA,
       Accessors,
       SpecialFunctions,
       AtomicAndPhysicalConstants,
-      Random
+      Random,
+      EnumX
 
 using KernelAbstractions
 
@@ -19,6 +20,7 @@ import GTPSA: sincu, sinhcu
 
 export Bunch, State, ParticleView, Time, TimeDependentParam
 export Yoshida, Yoshida, MatrixKick, BendKick, SolenoidKick, DriftKick, Exact
+export Fringe
 export track!
 
 

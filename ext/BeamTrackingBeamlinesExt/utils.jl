@@ -170,3 +170,21 @@ function rf_phi0(rfparams)
     error("RF parameter zero_phase value not set correctly.")
   end
 end
+
+#---------------------------------------------------------------------------------------------------
+
+function fringe_in(f::Fringe.T)
+  if f == Fringe.BothEnds || f == Fringe.EntranceEnd
+    return Val{true}()
+  else
+    return Val{false}()
+  end
+end
+
+function fringe_out(f::Fringe.T)
+  if f == Fringe.BothEnds || f == Fringe.ExitEnd
+    return Val{true}()
+  else
+    return Val{false}()
+  end
+end
