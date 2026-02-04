@@ -76,12 +76,12 @@ end
 @inline function thick_bend_pure_bdipole(tm::Exact, bunch, bendparams, bm1, L)
   g = bendparams.g_ref
   tilt = bendparams.tilt_ref
-  if typeof(tm.fringe_at) == BothEnds || typeof(tm.fringe_at) == EntranceEnd
+  if tm.fringe_at == Fringe.BothEnds || tm.fringe_at == Fringe.EntranceEnd
     e1 = bendparams.e1
   else
     e1 = 0
   end
-  if typeof(tm.fringe_at) == BothEnds || typeof(tm.fringe_at) == ExitEnd
+  if tm.fringe_at == Fringe.BothEnds || tm.fringe_at == Fringe.ExitEnd
     e2 = bendparams.e2
   else
     e2 = 0

@@ -9,14 +9,16 @@
     num_steps = Int(ceil(L / ds_step))
     ds_step = L / num_steps
   end
+  fin  = fringe_in(tm.fringe_at)
+  fout = fringe_out(tm.fringe_at)
   if order == 2
-    return KernelCall(BeamTracking.order_two_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, tm.fringe_at, L))
+    return KernelCall(BeamTracking.order_two_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, fin, fout, L))
   elseif order == 4
-    return KernelCall(BeamTracking.order_four_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, tm.fringe_at, L))
+    return KernelCall(BeamTracking.order_four_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, fin, fout, L))
   elseif order == 6
-    return KernelCall(BeamTracking.order_six_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, tm.fringe_at, L))
+    return KernelCall(BeamTracking.order_six_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, fin, fout, L))
   elseif order == 8
-    return KernelCall(BeamTracking.order_eight_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, tm.fringe_at, L))
+    return KernelCall(BeamTracking.order_eight_integrator!, (ker, params, photon_params, ds_step, num_steps, edge_params, fin, fout, L))
   end
 end
 
