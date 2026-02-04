@@ -76,8 +76,16 @@ end
 @inline function thick_bend_pure_bdipole(tm::Exact, bunch, bendparams, bm1, L)
   g = bendparams.g_ref
   tilt = bendparams.tilt_ref
-  e1 = bendparams.e1
-  e2 = bendparams.e2
+  if typeof(tm.fringe_at) == BothEnds || typeof(tm.fringe_at) == EntranceEnd
+    e1 = bendparams.e1
+  else
+    e1 = 0
+  end
+  if typeof(tm.fringe_at) == BothEnds || typeof(tm.fringe_at) == ExitEnd
+    e2 = bendparams.e2
+  else
+    e2 = 0
+  end
   w = rot_quaternion(0,0,-tilt)
   w_inv = inv_rot_quaternion(0,0,-tilt)
   theta = g * L

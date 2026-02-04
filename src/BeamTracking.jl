@@ -19,6 +19,7 @@ import GTPSA: sincu, sinhcu
 
 export Bunch, State, ParticleView, Time, TimeDependentParam
 export Yoshida, Yoshida, MatrixKick, BendKick, SolenoidKick, DriftKick, Exact
+export NoEnd, BothEnds, EntranceEnd, ExitEnd
 export track!
 
 

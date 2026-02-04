@@ -2,8 +2,8 @@
 # ===============  I N T E G R A T O R S  ===============
 #
 
-@makekernel fastgtpsa=true function order_two_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, L)
-  if !isnothing(edge_params)
+@makekernel fastgtpsa=true function order_two_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, fringe_at, L)
+  if !isnothing(edge_params) && (typeof(fringe_at) == BothEnds || typeof(fringe_at) == EntranceEnd)
     a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
     linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e1, 1)
   end
@@ -19,16 +19,17 @@
   if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
-  if !isnothing(edge_params)
+  if !isnothing(edge_params) && (typeof(fringe_at) == BothEnds || typeof(fringe_at) == ExitEnd)
+    a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
     linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e2, -1)
   end
 end
 
 
-@makekernel fastgtpsa=true function order_four_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, L)
+@makekernel fastgtpsa=true function order_four_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, fringe_at, L)
   w0 = -1.7024143839193153215916254339390434324741363525390625*ds_step
   w1 =  1.3512071919596577718181151794851757586002349853515625*ds_step
-  if !isnothing(edge_params)
+  if !isnothing(edge_params) && (typeof(fringe_at) == BothEnds || typeof(fringe_at) == EntranceEnd)
     a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
     linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e1, 1)
   end
@@ -46,18 +47,19 @@ end
   if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
-  if !isnothing(edge_params)
+  if !isnothing(edge_params) && (typeof(fringe_at) == BothEnds || typeof(fringe_at) == ExitEnd)
+    a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
     linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e2, -1)
   end
 end
 
 
-@makekernel fastgtpsa=true function order_six_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, L)
+@makekernel fastgtpsa=true function order_six_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, fringe_at, L)
   w0 =  1.315186320683911169737712043570355*ds_step
   w1 = -1.17767998417887100694641568096432*ds_step
   w2 =  0.235573213359358133684793182978535*ds_step
   w3 =  0.784513610477557263819497633866351*ds_step
-  if !isnothing(edge_params)
+  if !isnothing(edge_params)  && (typeof(fringe_at) == BothEnds || typeof(fringe_at) == EntranceEnd)
     a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
     linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e1, 1)
   end
@@ -79,13 +81,14 @@ end
   if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
-  if !isnothing(edge_params)
+  if !isnothing(edge_params) && (typeof(fringe_at) == BothEnds || typeof(fringe_at) == ExitEnd)
+    a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
     linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e2, -1)
   end
 end
 
 
-@makekernel fastgtpsa=true function order_eight_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, L)
+@makekernel fastgtpsa=true function order_eight_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, fringe_at, L)
   w0 =  1.7084530707869978*ds_step
   w1 =  0.102799849391985*ds_step
   w2 = -1.96061023297549*ds_step
@@ -94,7 +97,7 @@ end
   w5 = -1.44485223686048*ds_step
   w6 =  0.253693336566229*ds_step
   w7 =  0.914844246229740*ds_step
-  if !isnothing(edge_params)
+  if !isnothing(edge_params) && (typeof(fringe_at) == BothEnds || typeof(fringe_at) == EntranceEnd)
     a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
     linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e1, 1)
   end
@@ -124,7 +127,8 @@ end
   if !isnothing(photon_params)
     stochastic_radiation!(i, coords, photon_params..., ds_step / 2)
   end
-  if !isnothing(edge_params)
+  if !isnothing(edge_params)  && (typeof(fringe_at) == BothEnds || typeof(fringe_at) == ExitEnd)
+    a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
     linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e2, -1)
   end
 end
