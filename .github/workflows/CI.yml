@@ -34,12 +34,12 @@ jobs:
           - x64
           - aarch64
         exclude:
-          # Windows doesn't support aarch64 on GitHub Actions
           - os: windows-latest
             arch: aarch64
-          # Ubuntu aarch64 requires special runners
           - os: ubuntu-latest
             arch: aarch64
+          - os: macos-latest
+            arch: x64
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
