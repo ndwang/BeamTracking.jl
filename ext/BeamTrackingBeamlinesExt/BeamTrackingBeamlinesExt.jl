@@ -16,7 +16,7 @@ function track!(
   kwargs...
 )
   coords = bunch.coords
-  return @noinline _track!(coords, bunch, ele, ele.tracking_method, scalar_params, ramp_particle_energy_without_rf; kwargs...)
+  @noinline _track!(coords, bunch, ele, ele.tracking_method, scalar_params, ramp_particle_energy_without_rf; kwargs...)
   return bunch
 end
 

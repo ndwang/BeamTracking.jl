@@ -16,11 +16,14 @@ blank_kernel!(args...) = nothing
       @show typeof(batch_lower(args))
       error("")
     end=#
-    return new{typeof(kernel),typeof(map(t->time_lower(t), args))}(kernel, map(t->time_lower(t), args))
+    #return new{typeof(kernel),typeof(map(t->time_lower(t), args))}(kernel, map(t->time_lower(t), args))
     _args = map(t->time_lower(batch_lower(t)), args)
     new{typeof(kernel),typeof(_args)}(kernel, _args)
   end 
 end
+
+# In case KernelCall contains batch GPU array
+Adapt.@adapt_structure KernelCall
 
 # Store the state of the reference coordinate system
 # Needed for time-dependent parameters
@@ -35,6 +38,9 @@ struct KernelChain{C<:Tuple{Vararg{<:KernelCall}}, S<:Union{Nothing,RefState}}
   ref::S    # An optional RefState for the initial time-dependent parameters
   KernelChain(chain, ref=nothing) = new{typeof(chain), typeof(ref)}(chain, ref)
 end
+
+# In case KernelChain contains batch GPU array
+Adapt.@adapt_structure KernelChain
 
 KernelChain(::Val{N}, ref=nothing) where {N} = KernelChain(ntuple(t->KernelCall(), Val{N}()), ref)
 

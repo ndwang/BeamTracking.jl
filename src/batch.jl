@@ -262,7 +262,7 @@ batch_lower(bp::T) where {T<:Tuple} = map(bi->batch_lower(bi), bp)
 batch_lower(bp::SArray{N,BatchParam}) where {N} = batch_lower(Tuple(bp))
 
 static_batchcheck(bp) = false
-static_batchcheck(::BatchParam) = true
+static_batchcheck(::_LoweredBatchParam) = true
 @unroll function static_batchcheck(t::Tuple)
   @unroll for ti in t
     if static_batchcheck(ti)
@@ -272,6 +272,7 @@ static_batchcheck(::BatchParam) = true
   return false
 end
 
+#=
 """
     lane2vec(lane::SIMD.VecRange{N}) 
     
@@ -289,10 +290,15 @@ function lane2vec(lane::SIMD.VecRange{N}) where {N}
     return SIMD.Vec{N,UInt64}(ntuple(i->lane.i+i-1, Val{N}()))
   end
 end
+=#
 
-lane2vec(i) = i
+@inline beval(b::_LoweredBatchParam{B}, i) where {B} = b.batch[mod1(i, B)]
 
-@inline beval(b::_LoweredBatchParam, i) = b.batch[lane2vec(i)]
+@inline function beval(b::_LoweredBatchParam{B}, lane::SIMD.VecRange{N}) where {B,N}
+  modlane = SIMD.VecRange{N}(mod1(lane.i, B)) # mod start around batch
+  return b.batch[modlane]
+end
+
 @inline beval(b, i) = b
 
 # === THIS BLOCK WAS WRITTEN BY CLAUDE ===
