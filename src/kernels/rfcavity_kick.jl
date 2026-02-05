@@ -107,7 +107,7 @@ end
 
 
 function omega_cavity(i, coords::Coords, a, tilde_m, omega, t0, E0_over_Rref, mm, kn, ks, L)
-  @FastGTPSA begin @inbounds begin
+  #@FastGTPSA begin @inbounds begin
     v = coords.v
     alive = (coords.state[i] == STATE_ALIVE)
     #r2 = v[i,XI]*v[i,XI] + v[i,YI]*v[i,YI]
@@ -152,7 +152,7 @@ function omega_cavity(i, coords::Coords, a, tilde_m, omega, t0, E0_over_Rref, mm
     else
       omega = (ox, oy, oz)
     end
-  end end
+  #end end
   return omega
 end
 
