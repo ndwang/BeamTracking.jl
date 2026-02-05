@@ -1,8 +1,10 @@
 module BeamTrackingCUDAExt
-using CUDA: CuArray
+using CUDA: CuDeviceArray
 import BeamTracking: gaussian_random
 
-function gaussian_random(::CuArray, sigma1, sigma2)
+# CUDA.jl has horrifying error message with randn, but not rand
+# Box-Muller transform let's us get around that
+function gaussian_random(::CuDeviceArray, sigma1, sigma2)
   s, c = sincospi(2 * rand())
   t = sqrt(-2 * log(rand()))
   z0 = c*t*sigma1
