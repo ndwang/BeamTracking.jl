@@ -59,7 +59,7 @@ end
 # Necessary for GPU compatibility if batch is a GPU array
 function Adapt.adapt_structure(to, lbp::_LoweredBatchParam{N}) where {N}
     batch = Adapt.adapt_structure(to, lbp.batch)
-    return _LoweredBatchParam{N,typeof(batch)}(batch)
+    return _LoweredBatchParam{N}(batch)
 end
 
 # BatchParam will act like a number
