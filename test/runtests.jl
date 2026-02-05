@@ -15,6 +15,8 @@ using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST,
       quat_mul, quat_rotate, gaussian_random
 using Beamlines: isactive
 
+@show BeamTracking.REGISTER_SIZE
+
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
 

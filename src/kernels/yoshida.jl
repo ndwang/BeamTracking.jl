@@ -3,7 +3,7 @@
 #
 
 @inline function order_two_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, ::Val{fringe_in}, ::Val{fringe_out}, L) where {fringe_in,fringe_out}
-  #@inbounds begin
+  @inbounds begin
     if !isnothing(edge_params) && fringe_in
       a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
       linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e1, 1)
@@ -24,12 +24,12 @@
       a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
       linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e2, -1)
     end
-  #end
+  end
 end
 
 
 @inline function order_four_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, ::Val{fringe_in}, ::Val{fringe_out}, L) where {fringe_in,fringe_out}
-  #@inbounds begin
+  @inbounds begin
     w0 = -1.7024143839193153215916254339390434324741363525390625*ds_step
     w1 =  1.3512071919596577718181151794851757586002349853515625*ds_step
     if !isnothing(edge_params) && fringe_in
@@ -54,12 +54,12 @@ end
       a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
       linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e2, -1)
     end
-  #end
+  end
 end
 
 
 @inline function order_six_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, ::Val{fringe_in}, ::Val{fringe_out}, L) where {fringe_in,fringe_out}
-  #@inbounds begin
+  @inbounds begin
     w0 =  1.315186320683911169737712043570355*ds_step
     w1 = -1.17767998417887100694641568096432*ds_step
     w2 =  0.235573213359358133684793182978535*ds_step
@@ -90,12 +90,12 @@ end
       a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
       linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e2, -1)
     end
-  #end
+  end
 end
 
 
 @inline function order_eight_integrator!(i, coords::Coords, ker, params, photon_params, ds_step, num_steps, edge_params, ::Val{fringe_in}, ::Val{fringe_out}, L) where {fringe_in,fringe_out}
-  #@inbounds begin
+  @inbounds begin
     w0 =  1.7084530707869978*ds_step
     w1 =  0.102799849391985*ds_step
     w2 = -1.96061023297549*ds_step
@@ -138,5 +138,5 @@ end
       a, tilde_m, Ksol, Kn0, e1, e2 = edge_params
       linear_bend_fringe!(i, coords, a, tilde_m, Ksol, Kn0, e2, -1)
     end
-  #end
+  end
 end
