@@ -66,7 +66,7 @@ function test_batch(
   track!(b0_4, bl_4)
 
   # Ensure branchlessness of parameters with explicit SIMD
-  track!(b0_batch, bl_batch; use_explicit_SIMD=true, use_KA=false) 
+  track!(b0_batch, bl_batch; use_explicit_SIMD=false, use_KA=true) 
   
   @test b0_batch.coords.v[1,:]' ≈ b0_1.coords.v
   @test b0_batch.coords.v[2,:]' ≈ b0_2.coords.v
