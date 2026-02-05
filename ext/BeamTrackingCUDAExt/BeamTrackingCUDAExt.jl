@@ -8,9 +8,7 @@ mean 0 and standard deviations sigma1, sigma2 using a
 Box-Muller transform.
 
 This was implemented because CUDA.randn has some horrible 
-compiler bug, but CUDA.rand seems to be ok. Nonetheless 
-this may also give CPU performance benefits with radiation 
-because we already need to compute two randn's anyways.
+compiler bug, but CUDA.rand seems to be ok.
 """
 function gaussian_random(::CuDeviceArray, sigma1, sigma2)
   s, c = sincospi(2 * rand())

@@ -74,49 +74,148 @@ Base.zero(b::BatchParam) = BatchParam(zero(first(b.batch)))
 Base.one(b::BatchParam)  = BatchParam(one(first(b.batch))) 
 
 # Now define the math operations:
-for op in (:+,:-,:*,:/,:^)
-  @eval begin
-    Base.$op(ba::BatchParam, b::Number)   = (let b = b; return BatchParam(map(x->$op(x, b), ba.batch)); end)
-    Base.$op(a::Number,   bb::BatchParam) = (let a = a; return BatchParam(map(x->$op(a, x), bb.batch)); end)
-    
-    function Base.$op(ba::BatchParam, bb::BatchParam)
-      if ba.batch isa Number
-        if bb.batch isa Number
-          return BatchParam($op(ba.batch, bb.batch))
-        else
-          let a = ba.batch
-            # WE HAVE TO WRITE THIS BY HAND FOR EACH OP!!!
-            if a ≈ 0 # So that e.g. big arrays aren't made for skew strengths when only normal is batch
-              return BatchParam(0f0)
-            else
-              return BatchParam(map((bbi)->$op(a, bbi), bb.batch))
-            end
-          end
-        end
-      elseif bb.batch isa Number
-        let b = bb.batch
-          if b ≈ 0
-            return BatchParam(0f0)
-          else
-            return BatchParam(map((bai)->$op(bai, b), ba.batch))
-          end
-        end
-      elseif length(ba.batch) == length(bb.batch)
-        return BatchParam(map((bai,bbi)->$op(bai, bbi), ba.batch, bb.batch))
+# The operations are individually-specialized for each operator, assuming that the 
+# most expensive step is creating temporary arrays, not type instability. As such, 
+# each are defined in a way as to minimize number of temporary arrays during unpacking,
+# checking for e.g. 0's and 1's.
+function _batch_addsub(batch_a, batch_b, op::T) where {T<:Union{typeof(+),typeof(-)}}
+  if batch_a isa Number
+    if batch_b isa Number
+      return BatchParam(op(batch_a, batch_b))
+    else
+      if batch_a ≈ 0 # add/sub by zero gives identity
+        return BatchParam(batch_b)
       else
-        error("Cannot perform operation $($op) with two non-scalar BatchParams of differing 
-               lengths (received lengths $(length(ba.batch)) and $(length(bb.batch))).")
+        let a = batch_a
+          return BatchParam(map((bi)->op(a, bi), batch_b))
+        end
       end
     end
-
+  elseif batch_b isa Number
+    if batch_b ≈ 0 # add/sub by zero gives identity
+      return BatchParam(batch_a)
+    else
+      let b = batch_b
+        return BatchParam(map((ai)->op(ai, b), batch_a))
+      end
+    end
+  elseif length(batch_a) == length(batch_b)
+    return BatchParam(map((ai,bi)->op(ai, bi), batch_a, batch_b))
+  else
+    error("Cannot perform operation $(op) with two non-scalar BatchParams of differing 
+            lengths (received lengths $(length(batch_a)) and $(length(batch_b))).")
   end
 end
+
+Base.:+(ba::BatchParam, n::Number)      = _batch_addsub(ba.batch, n, +)
+Base.:+(n::Number, bb::BatchParam)      = _batch_addsub(n, bb.batch, +)
+Base.:+(ba::BatchParam, bb::BatchParam) = _batch_addsub(ba.batch, bb.batch, +)
+
+Base.:-(ba::BatchParam, n::Number)      = _batch_addsub(ba.batch, n, -)
+Base.:-(n::Number, bb::BatchParam)      = _batch_addsub(n, bb.batch, -)
+Base.:-(ba::BatchParam, bb::BatchParam) = _batch_addsub(ba.batch, bb.batch, -)
+
+function _batch_mul(batch_a, batch_b)
+  if batch_a isa Number
+    if batch_b isa Number
+      return BatchParam(*(batch_a, batch_b))
+    else
+      if batch_a ≈ 0 # mul by 0 gives 0 -> make scalar
+        return BatchParam(0f0)
+      elseif batch_a ≈ 1 # mul by 1 gives identity
+        return BatchParam(batch_b)
+      else
+        let a = batch_a
+          return BatchParam(map((bi)->*(a, bi), batch_b))
+        end
+      end
+    end
+  elseif batch_b isa Number
+    if batch_b ≈ 0 # mul by 0 gives 0 -> make scalar
+      return BatchParam(0f0)
+    elseif batch_b ≈ 1 # mul by 1 gives identity
+        return BatchParam(batch_a)
+    else
+      let b = batch_b
+        return BatchParam(map((ai)->*(ai, b), batch_a))
+      end
+    end
+  elseif length(batch_a) == length(batch_b)
+    return BatchParam(map((ai,bi)->*(ai, bi), batch_a, batch_b))
+  else
+    error("Cannot perform operation * with two non-scalar BatchParams of differing 
+            lengths (received lengths $(length(batch_a)) and $(length(batch_b))).")
+  end
+end
+
+Base.:*(ba::BatchParam, n::Number)      = _batch_mul(ba.batch, n)
+Base.:*(n::Number, bb::BatchParam)      = _batch_mul(n, bb.batch)
+Base.:*(ba::BatchParam, bb::BatchParam) = _batch_mul(ba.batch, bb.batch)
+
+function _batch_div(batch_a, batch_b)
+  if batch_a isa Number
+    if batch_b isa Number
+      return BatchParam(/(batch_a, batch_b))
+    else
+      let a = batch_a
+        return BatchParam(map((bi)->/(a, bi), batch_b))
+      end
+    end
+  elseif batch_b isa Number
+    if batch_b ≈ 0 # div by 0 gives Inf -> make scalar
+      return BatchParam(Inf32)
+    elseif batch_b ≈ 1 # div by 1 gives identity
+        return BatchParam(batch_a)
+    else
+      let b = batch_b
+        return BatchParam(map((ai)->/(ai, b), batch_a))
+      end
+    end
+  elseif length(batch_a) == length(batch_b)
+    return BatchParam(map((ai,bi)->/(ai, bi), batch_a, batch_b))
+  else
+    error("Cannot perform operation / with two non-scalar BatchParams of differing 
+            lengths (received lengths $(length(batch_a)) and $(length(batch_b))).")
+  end
+end
+
+Base.:/(ba::BatchParam, n::Number)      = _batch_div(ba.batch, n)
+Base.:/(n::Number, bb::BatchParam)      = _batch_div(n, bb.batch)
+Base.:/(ba::BatchParam, bb::BatchParam) = _batch_div(ba.batch, bb.batch)
+
+# for now no special things for pow, unsure if called anywhere.
+function _batch_pow(batch_a, batch_b)
+  if batch_a isa Number
+    if batch_b isa Number
+      return BatchParam(^(batch_a, batch_b))
+    else
+      let a = batch_a
+        return BatchParam(map((bi)->^(a, bi), batch_b))
+      end
+    end
+  elseif batch_b isa Number
+    let b = batch_b
+      return BatchParam(map((ai)->^(ai, b), batch_a))
+    end
+  elseif length(batch_a) == length(batch_b)
+    return BatchParam(map((ai,bi)->^(ai, bi), batch_a, batch_b))
+  else
+    error("Cannot perform operation ^ with two non-scalar BatchParams of differing 
+            lengths (received lengths $(length(batch_a)) and $(length(batch_b))).")
+  end
+end
+
+Base.:^(ba::BatchParam, n::Number)      = _batch_pow(ba.batch, n)
+Base.:^(n::Number, bb::BatchParam)      = _batch_pow(n, bb.batch)
+Base.:^(ba::BatchParam, bb::BatchParam) = _batch_pow(ba.batch, bb.batch)
 
 function Base.literal_pow(::typeof(^), ba::BatchParam, ::Val{N}) where {N}
   return BatchParam(map(x->Base.literal_pow(^, x, Val{N}()), ba.batch))
 end
 
-for t = (:+, :-, :sqrt, :exp, :log, :sin, :cos, :tan, :cot, :sinh, :cosh, :tanh, :inv,
+Base.:+(b::BatchParam) = b # identity
+
+for t = (:-, :sqrt, :exp, :log, :sin, :cos, :tan, :cot, :sinh, :cosh, :tanh, :inv,
   :coth, :asin, :acos, :atan, :acot, :asinh, :acosh, :atanh, :acoth, :sinc, :csc, :float,
   :csch, :acsc, :acsch, :sec, :sech, :asec, :asech, :conj, :log10, :isnan, :sign, :abs)
   @eval begin

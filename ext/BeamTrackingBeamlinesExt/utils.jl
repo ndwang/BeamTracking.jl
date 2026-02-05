@@ -77,31 +77,34 @@ This works for both BMultipole and BMultipoleParams. Branchless bc SIMD -> basic
 no loss in computing both but benefit of branchless.
 """
 @inline function get_strengths(bm, L, p_over_q_ref)
-  if isconcretetype(eltype(bm.n))
-    T = promote_type(eltype(bm.n),
+  bmn = getfield(bm, :n)
+  bms = getfield(bm, :s)
+  bmtilt = getfield(bm, :tilt)
+  if isconcretetype(eltype(bmn))
+    T = promote_type(eltype(bmn),
                     typeof(L), typeof(p_over_q_ref)
     )
   else
-    if bm.n isa AbstractArray
-      T = promote_type(reduce(promote_type, typeof.(bm.n)), 
-                      reduce(promote_type, typeof.(bm.s)),
-                      reduce(promote_type, typeof.(bm.tilt)),
+    if bmn isa AbstractArray
+      T = promote_type(reduce(promote_type, typeof.(bmn)), 
+                      reduce(promote_type, typeof.(bms)),
+                      reduce(promote_type, typeof.(bmtilt)),
                       typeof(L), typeof(p_over_q_ref)
       )
     else
-      T = promote_type(typeof(bm.n), 
-                      typeof(bm.s),
-                      typeof(bm.tilt),
+      T = promote_type(typeof(bmn), 
+                      typeof(bms),
+                      typeof(bmtilt),
                       typeof(L), typeof(p_over_q_ref)
       )
     end
   end
-  n = T.(make_static(bm.n))
-  s = T.(make_static(bm.s))
-  tilt = T.(make_static(bm.tilt))
-  order = bm.order
-  normalized = bm.normalized
-  integrated = bm.integrated
+  n = T.(make_static(bmn))
+  s = T.(make_static(bms))
+  tilt = T.(make_static(bmtilt))
+  order = getfield(bm, :order)
+  normalized = getfield(bm, :normalized)
+  integrated = getfield(bm, :integrated)
   np = @. n*cos(order*tilt) + s*sin(order*tilt)
   sp = @. -n*sin(order*tilt) + s*cos(order*tilt)
   np = @. ifelse(!normalized, np/p_over_q_ref, np) 
@@ -112,31 +115,34 @@ no loss in computing both but benefit of branchless.
 end
 
 @inline function get_integrated_strengths(bm, L, p_over_q_ref)
-  if isconcretetype(eltype(bm.n))
-    T = promote_type(eltype(bm.n),
+  bmn = getfield(bm, :n)
+  bms = getfield(bm, :s)
+  bmtilt = getfield(bm, :tilt)
+  if isconcretetype(eltype(bmn))
+    T = promote_type(eltype(bmn),
                     typeof(L), typeof(p_over_q_ref)
     )
   else
-    if bm.n isa AbstractArray
-      T = promote_type(reduce(promote_type, typeof.(bm.n)), 
-                      reduce(promote_type, typeof.(bm.s)),
-                      reduce(promote_type, typeof.(bm.tilt)),
+    if bmn isa AbstractArray
+      T = promote_type(reduce(promote_type, typeof.(bmn)), 
+                      reduce(promote_type, typeof.(bms)),
+                      reduce(promote_type, typeof.(bmtilt)),
                       typeof(L), typeof(p_over_q_ref)
       )
     else
-      T = promote_type(typeof(bm.n), 
-                      typeof(bm.s),
-                      typeof(bm.tilt),
+      T = promote_type(typeof(bmn), 
+                      typeof(bms),
+                      typeof(bmtilt),
                       typeof(L), typeof(p_over_q_ref)
       )
     end
   end
-  n = T.(make_static(bm.n))
-  s = T.(make_static(bm.s))
-  tilt = T.(make_static(bm.tilt))
-  order = bm.order
-  normalized = bm.normalized
-  integrated = bm.integrated
+  n = T.(make_static(bmn))
+  s = T.(make_static(bms))
+  tilt = T.(make_static(bmtilt))
+  order = getfield(bm, :order)
+  normalized = getfield(bm, :normalized)
+  integrated = getfield(bm, :integrated)
   np = @. n*cos(order*tilt) + s*sin(order*tilt)
   sp = @. -n*sin(order*tilt) + s*cos(order*tilt)
   np = @. ifelse(!normalized, np/p_over_q_ref, np) 

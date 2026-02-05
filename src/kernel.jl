@@ -9,11 +9,14 @@ blank_kernel!(args...) = nothing
   kernel::K = blank_kernel!
   args::A   = ()
   function KernelCall(kernel, args)
+    
     #=if args != ()
       @show args
       @show batch_lower(args)
+      @show typeof(batch_lower(args))
       error("")
     end=#
+    return new{typeof(kernel),typeof(map(t->time_lower(t), args))}(kernel, map(t->time_lower(t), args))
     _args = map(t->time_lower(batch_lower(t)), args)
     new{typeof(kernel),typeof(_args)}(kernel, _args)
   end 
