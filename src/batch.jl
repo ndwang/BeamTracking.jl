@@ -48,6 +48,13 @@ struct BatchParam
     separate processes where each process has its own lattice with its 
     own TimeDependentParams.
   =#
+  function BatchParam(batch::AbstractArray)
+    if length(batch) == 1
+      error("Cannot make BatchParam with array of length 1")
+    end
+    return new(batch)
+  end
+  BatchParam(n::Number) = new(n)
 end
 
 struct _LoweredBatchParam{N,V<:AbstractArray}
@@ -213,6 +220,29 @@ function Base.literal_pow(::typeof(^), ba::BatchParam, ::Val{N}) where {N}
   return BatchParam(map(x->Base.literal_pow(^, x, Val{N}()), ba.batch))
 end
 
+atan2(bpa::BatchParam, bpb::BatchParam) = _batch_atan2(bpa.batch, bpb.batch)
+
+function _batch_atan2(batch_a, batch_b)
+  if batch_a isa Number
+    if batch_b isa Number
+      return BatchParam(atan2(batch_a, batch_b))
+    else
+      let a = batch_a
+        return BatchParam(map((bi)->atan2(a, bi), batch_b))
+      end
+    end
+  elseif batch_b isa Number
+    let b = batch_b
+      return BatchParam(map((ai)->atan2(ai, b), batch_a))
+    end
+  elseif length(batch_a) == length(batch_b)
+    return BatchParam(map((ai,bi)->atan2(ai, bi), batch_a, batch_b))
+  else
+    error("Cannot perform operation ^ with two non-scalar BatchParams of differing 
+            lengths (received lengths $(length(batch_a)) and $(length(batch_b))).")
+  end
+end
+
 Base.:+(b::BatchParam) = b # identity
 
 for t = (:-, :sqrt, :exp, :log, :sin, :cos, :tan, :cot, :sinh, :cosh, :tanh, :inv,
@@ -222,8 +252,6 @@ for t = (:-, :sqrt, :exp, :log, :sin, :cos, :tan, :cot, :sinh, :cosh, :tanh, :in
     Base.$t(b::BatchParam) = BatchParam(map(x->($t)(x), b.batch))
   end
 end
-
-atan2(b1::BatchParam, b2::BatchParam) = BatchParam(map((x,y)->atan2(x,y), b1.batch, b2.batch))
 
 for t = (:unit, :sincu, :sinhc, :sinhcu, :asinc, :asincu, :asinhc, :asinhcu, :erf, 
          :erfc, :erfcx, :erfi, :wf, :rect)
@@ -271,26 +299,6 @@ static_batchcheck(::_LoweredBatchParam) = true
   end
   return false
 end
-
-#=
-"""
-    lane2vec(lane::SIMD.VecRange{N}) 
-    
-Given a SIMD.VecRange, will return an equivalent SIMD.Vec that
-can be used in arithmetic operations for mapping integer indices
-of particles to a given element in a batch.
-"""
-function lane2vec(lane::SIMD.VecRange{N}) where {N}
-  # Try to match with vector register size, but 
-  # only up to UInt32 -> ~4.3 billion particles, 
-  # probably max on CPU...
-  if Int(pick_vector_width(UInt32)) == N
-    return SIMD.Vec{N,UInt32}(ntuple(i->lane.i+i-1, Val{N}()))
-  else
-    return SIMD.Vec{N,UInt64}(ntuple(i->lane.i+i-1, Val{N}()))
-  end
-end
-=#
 
 @inline beval(b::_LoweredBatchParam{B}, i) where {B} = b.batch[mod1(i, B)]
 
