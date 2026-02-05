@@ -303,8 +303,26 @@ end
 @inline beval(b::_LoweredBatchParam{B}, i) where {B} = b.batch[mod1(i, B)]
 
 @inline function beval(b::_LoweredBatchParam{B}, lane::SIMD.VecRange{N}) where {B,N}
-  modlane = SIMD.VecRange{N}(mod1(lane.i, B)) # mod start around batch
-  return b.batch[modlane]
+  m = rem(lane2vec(lane), B)
+  return b.batch[vifelse(m == 0, B, m)]
+end
+
+"""
+    lane2vec(lane::SIMD.VecRange{N}) 
+    
+Given a SIMD.VecRange, will return an equivalent SIMD.Vec that
+can be used in arithmetic operations for mapping integer indices
+of particles to a given element in a batch.
+"""
+function lane2vec(lane::SIMD.VecRange{N}) where {N}
+  # Try to match with vector register size, but 
+  # only up to UInt32 -> ~4.3 billion particles, 
+  # probably max on CPU...
+  if Int(pick_vector_width(UInt32)) == N
+    return SIMD.Vec{N,UInt32}(ntuple(i->lane.i+i-1, Val{N}()))
+  else
+    return SIMD.Vec{N,UInt64}(ntuple(i->lane.i+i-1, Val{N}()))
+  end
 end
 
 @inline beval(b, i) = b
