@@ -16,6 +16,7 @@ using BeamTracking: Coords, KernelCall, Q0, QX, QY, QZ, STATE_ALIVE, STATE_LOST,
 using Beamlines: isactive
 
 @show BeamTracking.REGISTER_SIZE
+@show Sys.ARCH
 
 BenchmarkTools.DEFAULT_PARAMETERS.gctrial = false
 BenchmarkTools.DEFAULT_PARAMETERS.evals = 2
