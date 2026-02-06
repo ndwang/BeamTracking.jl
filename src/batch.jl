@@ -303,15 +303,14 @@ end
 @inline beval(b::_LoweredBatchParam{B}, i) where {B} = b.batch[mod1(i, B)]
 
 @inline function beval(b::_LoweredBatchParam{B}, lane::SIMD.VecRange{N}) where {B,N}
-  #=@static if (VERSION < v"1.11" && (Sys.iswindows() || Sys.islinux()))
-    error("LLVM has a compiler bug with batch parameter explicit SIMD on Julia 
-           versions < 1.11 AND a Windows or Linux operating system. To get around 
-           this, specify the `track!` keyword argument: `use_explicit_SIMD=false`")
-  end=#
+  @static if (VERSION < v"1.11" && Sys.ARCH == :x64)
+    error("Julia's explicit SIMD.jl has a compiler bug that appears with batch 
+           parameters on versions < 1.11 AND an x64 bit architecture, which we 
+           detected that you have. To get around this, specify the `track!` 
+           keyword argument `use_explicit_SIMD=false`")
+  end
   m = rem(lane2vec(lane), B)
   i = vifelse(m == 0, B, m)
-  #@show i
-  #@show b.batch[i]
   return b.batch[i]
 end
 
