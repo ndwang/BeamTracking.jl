@@ -66,7 +66,14 @@ function test_batch(
   track!(b0_4, bl_4)
 
   # Ensure branchlessness of parameters with explicit SIMD
-  track!(b0_batch, bl_batch; use_explicit_SIMD=true, use_KA=false) 
+  if (VERSION < v"1.11" && (Sys.iswindows() || Sys.islinux()))
+    use_explicit_SIMD=false
+    use_KA=true
+  else
+    use_explicit_SIMD=true
+    use_KA=false
+  end
+  track!(b0_batch, bl_batch; use_explicit_SIMD=use_explicit_SIMD, use_KA=use_KA) 
   
   @test b0_batch.coords.v[1,:]' ≈ b0_1.coords.v
   @test b0_batch.coords.v[2,:]' ≈ b0_2.coords.v
