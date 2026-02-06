@@ -304,7 +304,10 @@ end
 
 @inline function beval(b::_LoweredBatchParam{B}, lane::SIMD.VecRange{N}) where {B,N}
   m = rem(lane2vec(lane), B)
-  return b.batch[vifelse(m == 0, B, m)]
+  i = vifelse(m == 0, B, m)
+  #@show i
+  #@show b.batch[i]
+  return b.batch[i]
 end
 
 """
