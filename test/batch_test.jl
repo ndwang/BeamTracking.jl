@@ -66,7 +66,7 @@ function test_batch(
   track!(b0_4, bl_4)
 
   # Ensure branchlessness of parameters with explicit SIMD
-  if (VERSION < v"1.11" && Sys.ARCH == :x64)
+  if (VERSION < v"1.11" && Sys.ARCH == :x86_64)
     use_explicit_SIMD=false
   else
     use_explicit_SIMD=true

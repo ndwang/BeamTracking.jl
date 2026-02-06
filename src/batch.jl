@@ -303,9 +303,9 @@ end
 @inline beval(b::_LoweredBatchParam{B}, i) where {B} = b.batch[mod1(i, B)]
 
 @inline function beval(b::_LoweredBatchParam{B}, lane::SIMD.VecRange{N}) where {B,N}
-  @static if (VERSION < v"1.11" && Sys.ARCH == :x64)
+  @static if (VERSION < v"1.11" && Sys.ARCH == :x86_64)
     error("Julia's explicit SIMD.jl has a compiler bug that appears with batch 
-           parameters on versions < 1.11 AND an x64 bit architecture, which we 
+           parameters on versions < 1.11 AND an x86_64 bit architecture, which we 
            detected that you have. To get around this, specify the `track!` 
            keyword argument `use_explicit_SIMD=false`")
   end
