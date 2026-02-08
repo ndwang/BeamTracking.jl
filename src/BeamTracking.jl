@@ -20,6 +20,7 @@ import GTPSA: sincu, sinhcu
 export Bunch, State, ParticleView, Time, TimeDependentParam
 export Yoshida, Yoshida, MatrixKick, BendKick, SolenoidKick, DriftKick, Exact, RungeKutta
 export track!
+export FieldMap, RectGrid3D, CylGrid2D
 
 
 include("utils/coord_transforms.jl")
@@ -48,6 +49,8 @@ include("kernels/solenoid_kick.jl")
 include("kernels/spin.jl")
 include("kernels/transforms.jl")
 include("kernels/yoshida.jl")
+
+include("fieldmap.jl")
 
 include("modules/RungeKuttaTracking.jl") #; TRACKING_METHOD(::RungeKuttaTracking) = RungeKutta
 

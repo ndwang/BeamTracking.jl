@@ -58,7 +58,7 @@
     s_span = (0.0, 1.0)
     ds_step = 0.01
     g_bend = 0.0
-    
+
     # Empty multipole vectors for drift
     mm = SVector{0, Int}()
     kn = SVector{0, Float64}()
@@ -68,7 +68,7 @@
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
                                    mm, kn, ks, p_over_q_ref)
 
-    # Regression test
+    # Drift: no field, so same result regardless of normalization
     solution = [0.0100005  0.01  0.0  0.0  -5.00038e-5  0.0]
     @test isapprox(bunch.coords.v, solution, rtol=1e-6)
     @test bunch.coords.state[1] == STATE_ALIVE
@@ -83,8 +83,8 @@
     s_span = (0.0, 1.0)
     ds_step = 0.01
     g_bend = 0.0
-    
-    # Solenoid field
+
+    # Solenoid field (normalized kn, ks)
     Bz_physical = 0.01  # Tesla
     Bz_normalized = Bz_physical / p_over_q_ref
     mm = SVector(0)  # Solenoid (m=0)
@@ -114,8 +114,8 @@
     s_span = (0.0, 1.0)
     ds_step = 0.01
     g_bend = 0.0
-    
-    # Dipole field
+
+    # Dipole field (normalized)
     By_physical = 0.01  # Tesla
     By_normalized = By_physical / p_over_q_ref
     mm = SVector(1)  # Dipole (m=1)
@@ -141,7 +141,7 @@
     s_span = (0.0, 1.0)
     ds_step = 0.1  # 10 cm step size
     g_bend = 0.0
-    
+
     # Empty multipole vectors for drift
     mm = SVector{0, Int}()
     kn = SVector{0, Float64}()
@@ -167,7 +167,7 @@
 
     s_span = (0.0, 1.0)
     g_bend = 0.0
-    
+
     # Empty multipole vectors for drift
     mm = SVector{0, Int}()
     kn = SVector{0, Float64}()
@@ -197,7 +197,7 @@
 
     track!(bunch, drift_ele)
 
-    # Regression test
+    # Drift: no field, same result
     solution = [0.0100005  0.01  0.0  0.0  -5.00038e-5  0.0]
     @test isapprox(bunch.coords.v, solution, rtol=1e-6)
   end
@@ -251,14 +251,14 @@
     drift_zero = Drift(L=0.0)
     drift_zero.tracking_method = RungeKutta()
     bunch_drift = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
-    
+
     @test_throws ErrorException track!(bunch_drift, drift_zero)
 
     # Test negative length should also throw an error
     drift_negative = Drift(L=-0.1)
     drift_negative.tracking_method = RungeKutta()
     bunch_negative = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
-    
+
     @test_throws ErrorException track!(bunch_negative, drift_negative)
   end
 
