@@ -66,7 +66,7 @@
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
-                                   mm, kn, ks)
+                                   mm, kn, ks, p_over_q_ref)
 
     # Regression test
     solution = [0.0100005  0.01  0.0  0.0  -5.00038e-5  0.0]
@@ -93,14 +93,14 @@
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
-                                   mm, kn, ks)
+                                   mm, kn, ks, p_over_q_ref)
 
     # In uniform B-field, particle should follow circular path
     # Total transverse momentum should be conserved
     pt2 = bunch.coords.v[1, 2]^2 + bunch.coords.v[1, 4]^2
     @test isapprox(pt2, 0.01^2, rtol=1e-4)
     # Regression test
-    solution = [0.0100005  0.01  -4.49423e-6  -8.988e-6  -5.00038e-5  0.0]
+    solution = [0.010000485056009705 0.009999955057780502 1.4991110783291216e-5 2.9980699961334158e-5 -5.000375031233078e-5 0.0]
     @test isapprox(bunch.coords.v, solution, rtol=1e-6)
     @test bunch.coords.state[1] == STATE_ALIVE
   end
@@ -124,10 +124,10 @@
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
-                                   mm, kn, ks)
+                                   mm, kn, ks, p_over_q_ref)
 
     # Regression test
-    solution = [0.00955106  0.00910124  0.0  0.0  -4.5644e-5  0.0]
+    solution = [0.011499735519796054 0.012997924579999955 0.0 0.0 -6.649432859025015e-5 0.0]
     @test isapprox(bunch.coords.v, solution, rtol=1e-6)
     @test bunch.coords.state[1] == STATE_ALIVE
   end
@@ -149,7 +149,7 @@
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
-                                   mm, kn, ks)
+                                   mm, kn, ks, p_over_q_ref)
 
     # Particle should not track
     solution = [0.0  1.5  0.0  0.0  0.0  0.0]
@@ -176,10 +176,10 @@
     # Track with different step sizes
     RungeKuttaTracking.rk4_kernel!(1, bunch1.coords, beta_0, gamsqr_0, tilde_m,
                                    charge, p0c, mc2, s_span, 0.1, g_bend,
-                                   mm, kn, ks)
+                                   mm, kn, ks, p_over_q_ref)
     RungeKuttaTracking.rk4_kernel!(1, bunch2.coords, beta_0, gamsqr_0, tilde_m,
                                    charge, p0c, mc2, s_span, 0.05, g_bend,
-                                   mm, kn, ks)
+                                   mm, kn, ks, p_over_q_ref)
 
     # Results should be identical
     @test isapprox(bunch1.coords.v, bunch2.coords.v, rtol=1e-2)
@@ -215,7 +215,7 @@
     track!(bunch, sbend_ele)
 
     # Regression test
-    solution = [0.02548426139361667 0.040928045820272416 0.0 0.0 -0.0006063129051164828 0.0]
+    solution = [0.010000150630002367 0.009995978032305387 0.0 0.0 -0.00016899908120890584 0.0]
     @test isapprox(bunch.coords.v, solution, rtol=1e-6)
   end
 

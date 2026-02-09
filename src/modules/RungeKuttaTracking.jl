@@ -11,7 +11,7 @@ using ..BeamTracking: C_LIGHT, E_CHARGE, vifelse, normalized_field
 
 
 """
-  multipole_em_field(x, y, z, s, mm, kn, ks)
+  multipole_em_field(x, y, z, s, mm, kn, ks, p_over_q_ref)
 
 Compute EM field from multipole moments for RK4 tracking.
 Handles ALL multipole orders:
@@ -19,21 +19,22 @@ Handles ALL multipole orders:
 - m=1: dipole (transverse By, Bx)
 - m≥2: higher-order multipoles (quadrupole, sextupole, etc.)
 
-Returns (Ex, Ey, Ez, Bx, By, Bz) where:
-- Bx, By: transverse field from all orders except m=0 (via normalized_field)
+Returns (Ex, Ey, Ez, Bx, By, Bz) in physical units (Tesla for B, V/m for E) where:
+- Bx, By: transverse field from all orders except m=0
 - Bz: longitudinal field from m=0 term if present
 - Ex, Ey, Ez: zero (static magnetic elements only)
 """
-@inline function multipole_em_field(x, y, z, s, mm::SVector{0}, kn, ks)
+@inline function multipole_em_field(x, y, z, s, mm::SVector{0}, kn, ks, p_over_q_ref)
   return (zero(x), zero(x), zero(x), zero(x), zero(x), zero(x))
 end
 
-@inline function multipole_em_field(x, y, z, s, mm::SVector{N}, kn, ks) where N
+@inline function multipole_em_field(x, y, z, s, mm::SVector{N}, kn, ks, p_over_q_ref) where N
   bx, by = normalized_field(mm, kn, ks, x, y, 0)
   is_solenoid = (mm[1] == 0)
   bz = vifelse(is_solenoid, kn[1], zero(x))
 
-  return (zero(x), zero(x), zero(x), bx, by, bz)
+  # Convert from normalized (field/Bρ) to physical units (Tesla)
+  return (zero(x), zero(x), zero(x), bx * p_over_q_ref, by * p_over_q_ref, bz * p_over_q_ref)
 end
 
 """
@@ -163,7 +164,7 @@ Only updates state if particle is alive.
 - `p0c`: Reference momentum × c (eV)
 - `mc2`: Rest mass energy (eV)
 """
-@inline function rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+@inline function rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2, p_over_q_ref)
   # Check if particle is alive
   alive = (coords.state[i] == STATE_ALIVE)
   
@@ -177,7 +178,7 @@ Only updates state if particle is alive.
   pz = v[i, PZI]
 
   # k1 = f(u, s)
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x, y, z, s, mm, kn, ks)
+  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x, y, z, s, mm, kn, ks, p_over_q_ref)
   k1 = kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -189,7 +190,7 @@ Only updates state if particle is alive.
   py2 = py + h2 * k1[4]
   z2 = z + h2 * k1[5]
   pz2 = pz + h2 * k1[6]
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x2, y2, z2, s + h2, mm, kn, ks)
+  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x2, y2, z2, s + h2, mm, kn, ks, p_over_q_ref)
   k2 = kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -200,7 +201,7 @@ Only updates state if particle is alive.
   py3 = py + h2 * k2[4]
   z3 = z + h2 * k2[5]
   pz3 = pz + h2 * k2[6]
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x3, y3, z3, s + h2, mm, kn, ks)
+  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x3, y3, z3, s + h2, mm, kn, ks, p_over_q_ref)
   k3 = kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -211,7 +212,7 @@ Only updates state if particle is alive.
   py4 = py + h * k3[4]
   z4 = z + h * k3[5]
   pz4 = pz + h * k3[6]
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x4, y4, z4, s + h, mm, kn, ks)
+  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x4, y4, z4, s + h, mm, kn, ks, p_over_q_ref)
   k4 = kick_vector(x4, px4, y4, py4, z4, pz4, s + h, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
 
@@ -228,7 +229,7 @@ end
 
 """
   rk4_kernel!(i, coords, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2,
-              s_span, ds_step, g_bend, mm, kn, ks)
+              s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref)
 
 Kernelized RK4 tracking through multipole fields.
 Compatible with @makekernel and the package's kernel architecture.
@@ -237,7 +238,7 @@ The electromagnetic field is computed from multipole moments (mm, kn, ks) using
 the multipole_em_field function.
 """
 @makekernel function rk4_kernel!(i, coords::Coords, beta_0, gamsqr_0, tilde_m,
-                                charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks)
+                                charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref)
   # Check if particle is alive at start
   alive_at_start = (coords.state[i] == STATE_ALIVE)
   
@@ -264,7 +265,7 @@ the multipole_em_field function.
     coords.state[i] = vifelse((vt2 >= 1.0) & alive, STATE_LOST_PZ, coords.state[i])
 
     # Perform RK4 step (check for alive status is now inside rk4_step!)
-    rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+    rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2, p_over_q_ref)
     s += h
   end
 end

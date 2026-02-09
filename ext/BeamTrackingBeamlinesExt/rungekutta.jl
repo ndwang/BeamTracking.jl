@@ -130,7 +130,7 @@ function runge_kutta_universal!(
   end
 
   # Build RK4 kernel call
-  params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks)
+  params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref)
   kc = push(kc, KernelCall(BeamTracking.RungeKuttaTracking.rk4_kernel!, params))
 
   # Exit aperture and alignment
