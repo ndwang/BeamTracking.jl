@@ -11,6 +11,54 @@ using ..BeamTracking: C_LIGHT, E_CHARGE, vifelse, normalized_field
 using ..BeamTracking: FieldMap, RectGrid3D, CylGrid2D, fieldmap_em_field
 
 
+# =====================================================================
+# Field Source Structs
+# =====================================================================
+
+"""
+    MultipoleSource{MM,KN,KS,T}
+
+Bundles multipole field-evaluation parameters for the unified RK4 stepper.
+Fully parameterized for zero-cost dispatch.
+"""
+struct MultipoleSource{MM,KN,KS,T}
+  mm::MM              # SVector of multipole orders
+  kn::KN              # SVector of normal strengths (normalized)
+  ks::KS              # SVector of skew strengths (normalized)
+  p_over_q_ref::T     # magnetic rigidity
+  g_bend::T           # curvature (1/rho or 0)
+end
+
+"""
+    FieldMapSource{FM,T}
+
+Bundles field-map evaluation parameters for the unified RK4 stepper.
+Fully parameterized for zero-cost dispatch.
+"""
+struct FieldMapSource{FM,T}
+  fieldmap::FM        # FieldMap{Grid,E_re,E_im,B_re,B_im}
+  z_offset::T         # longitudinal offset for anchor point
+  g_bend::T           # always 0 for straight elements
+end
+
+# =====================================================================
+# Common Field Evaluation Interface
+# =====================================================================
+
+@inline eval_em_field(f::MultipoleSource, x, y, z, pz, s) =
+  multipole_em_field(x, y, z, s, f.mm, f.kn, f.ks, f.p_over_q_ref)
+
+@inline eval_em_field(f::FieldMapSource, x, y, z, pz, s) =
+  fieldmap_em_field(x, y, z, pz, s, f.fieldmap, f.z_offset)
+
+@inline get_g_bend(f::MultipoleSource) = f.g_bend
+@inline get_g_bend(f::FieldMapSource) = f.g_bend
+
+
+# =====================================================================
+# Multipole EM Field
+# =====================================================================
+
 """
   multipole_em_field(x, y, z, s, mm, kn, ks, p_over_q_ref)
 
@@ -37,6 +85,10 @@ end
   # Convert from normalized (B/p_over_q_ref) to physical fields (Tesla)
   return (zero(x), zero(x), zero(x), bx * p_over_q_ref, by * p_over_q_ref, bz * p_over_q_ref)
 end
+
+# =====================================================================
+# Kick Vector
+# =====================================================================
 
 """
   kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
@@ -79,7 +131,7 @@ returns zero derivatives (caller should mark particle as lost).
   rel_p2 = rel_p^2
   inv_gamma_v = sqrt(rel_p2 + tilde_m^2)
   beta = rel_p / inv_gamma_v
-  
+
   inv_beta_c = 1.0 / (beta * C_LIGHT)
 
   # Longitudinal velocity component
@@ -142,29 +194,22 @@ returns zero derivatives (caller should mark particle as lost).
   )
 end
 
+# =====================================================================
+# Unified RK4 Step and Kernel
+# =====================================================================
+
 """
-  rk4_step!(coords, i, s, h, mm, kn, ks, tracking_params)
+    rk4_step!(coords, i, s, h, field, charge, tilde_m, beta_0, p0c, mc2)
 
 Perform a single RK4 step for particle i, updating coordinates in-place.
 Only updates state if particle is alive.
 
-# Arguments
-- `coords`: Coordinates structure
-- `i`: Particle index
-- `s`: Current arc length
-- `h`: Step size
-- `mm`: Multipole orders (StaticArray)
-- `kn`: Normal multipole strengths (StaticArray)
-- `ks`: Skew multipole strengths (StaticArray)
-- `charge`: Particle charge in units of e
-- `tilde_m`: Normalized mass mc²/(p₀c)
-- `beta_0`: Reference velocity β₀ = v₀/c
-- `g_bend`: Curvature (0 for drift, 1/ρ for bends)
-- `p0c`: Reference momentum × c (eV)
-- `mc2`: Rest mass energy (eV)
-- `p_over_q_ref`: Reference magnetic rigidity Bρ = p₀c/(c·charge)
+The `field` parameter is a field source struct (`MultipoleSource` or `FieldMapSource`)
+that encapsulates field-evaluation parameters and curvature.
 """
-@inline function rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, g_bend, p0c, mc2, p_over_q_ref)
+@inline function rk4_step!(coords, i, s, h, field, charge, tilde_m, beta_0, p0c, mc2)
+  g_bend = get_g_bend(field)
+
   # Check if particle is alive
   alive = (coords.state[i] == STATE_ALIVE)
 
@@ -178,7 +223,7 @@ Only updates state if particle is alive.
   pz = v[i, PZI]
 
   # k1 = f(u, s)
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x, y, z, s, mm, kn, ks, p_over_q_ref)
+  Ex, Ey, Ez, Bx, By, Bz = eval_em_field(field, x, y, z, pz, s)
   k1 = kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, g_bend, p0c, mc2)
 
@@ -190,7 +235,7 @@ Only updates state if particle is alive.
   py2 = py + h2 * k1[4]
   z2 = z + h2 * k1[5]
   pz2 = pz + h2 * k1[6]
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x2, y2, z2, s + h2, mm, kn, ks, p_over_q_ref)
+  Ex, Ey, Ez, Bx, By, Bz = eval_em_field(field, x2, y2, z2, pz2, s + h2)
   k2 = kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, g_bend, p0c, mc2)
 
@@ -201,7 +246,7 @@ Only updates state if particle is alive.
   py3 = py + h2 * k2[4]
   z3 = z + h2 * k2[5]
   pz3 = pz + h2 * k2[6]
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x3, y3, z3, s + h2, mm, kn, ks, p_over_q_ref)
+  Ex, Ey, Ez, Bx, By, Bz = eval_em_field(field, x3, y3, z3, pz3, s + h2)
   k3 = kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, g_bend, p0c, mc2)
 
@@ -212,7 +257,7 @@ Only updates state if particle is alive.
   py4 = py + h * k3[4]
   z4 = z + h * k3[5]
   pz4 = pz + h * k3[6]
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x4, y4, z4, s + h, mm, kn, ks, p_over_q_ref)
+  Ex, Ey, Ez, Bx, By, Bz = eval_em_field(field, x4, y4, z4, pz4, s + h)
   k4 = kick_vector(x4, px4, y4, py4, z4, pz4, s + h, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, g_bend, p0c, mc2)
 
@@ -228,17 +273,17 @@ Only updates state if particle is alive.
 end
 
 """
-  rk4_kernel!(i, coords, beta_0, tilde_m, charge, p0c, mc2,
-              s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref)
+    rk4_kernel!(i, coords, beta_0, tilde_m, charge, p0c, mc2,
+                s_span, ds_step, field)
 
-Kernelized RK4 tracking through multipole fields.
+Kernelized RK4 tracking through electromagnetic fields.
 Compatible with @makekernel and the package's kernel architecture.
 
-The electromagnetic field is computed from multipole moments (mm, kn, ks) using
-the multipole_em_field function.
+The `field` parameter is a field source struct (`MultipoleSource` or `FieldMapSource`)
+that encapsulates field-evaluation parameters and curvature.
 """
 @makekernel function rk4_kernel!(i, coords::Coords, beta_0, tilde_m,
-                                charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref)
+                                charge, p0c, mc2, s_span, ds_step, field)
   s_start = s_span[1]
   s_end = s_span[2]
   s = s_start
@@ -262,119 +307,7 @@ the multipole_em_field function.
     coords.state[i] = vifelse((vt2 >= 1.0) & alive, STATE_LOST_PZ, coords.state[i])
 
     # Perform RK4 step (check for alive status is now inside rk4_step!)
-    rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, g_bend, p0c, mc2, p_over_q_ref)
-    s += h
-  end
-end
-
-
-# =====================================================================
-# Field Map RK4 Tracking (straight elements only, g_bend = 0)
-# =====================================================================
-
-"""
-    rk4_step_fieldmap!(coords, i, s, h, fieldmap, z_offset, charge, tilde_m, beta_0, p0c, mc2)
-
-Perform a single RK4 step for particle `i` through a field map.
-Same structure as `rk4_step!` but evaluates `fieldmap_em_field` instead of
-`multipole_em_field`. Enforces `g_bend = 0` (straight elements only).
-"""
-@inline function rk4_step_fieldmap!(coords, i, s, h, fieldmap, z_offset,
-                                     charge, tilde_m, beta_0, p0c, mc2)
-  alive = (coords.state[i] == STATE_ALIVE)
-  g_bend = zero(beta_0)
-
-  v = coords.v
-  x  = v[i, XI]
-  px = v[i, PXI]
-  y  = v[i, YI]
-  py = v[i, PYI]
-  z  = v[i, ZI]
-  pz = v[i, PZI]
-
-  # k1 = f(u, s)
-  Ex, Ey, Ez, Bx, By, Bz = fieldmap_em_field(x, y, z, pz, s, fieldmap, z_offset)
-  k1 = kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
-                    charge, tilde_m, beta_0, g_bend, p0c, mc2)
-
-  # k2 = f(u + h/2 * k1, s + h/2)
-  h2 = h / 2
-  x2  = x  + h2 * k1[1]
-  px2 = px + h2 * k1[2]
-  y2  = y  + h2 * k1[3]
-  py2 = py + h2 * k1[4]
-  z2  = z  + h2 * k1[5]
-  pz2 = pz + h2 * k1[6]
-  Ex, Ey, Ez, Bx, By, Bz = fieldmap_em_field(x2, y2, z2, pz2, s + h2, fieldmap, z_offset)
-  k2 = kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, Ex, Ey, Ez, Bx, By, Bz,
-                    charge, tilde_m, beta_0, g_bend, p0c, mc2)
-
-  # k3 = f(u + h/2 * k2, s + h/2)
-  x3  = x  + h2 * k2[1]
-  px3 = px + h2 * k2[2]
-  y3  = y  + h2 * k2[3]
-  py3 = py + h2 * k2[4]
-  z3  = z  + h2 * k2[5]
-  pz3 = pz + h2 * k2[6]
-  Ex, Ey, Ez, Bx, By, Bz = fieldmap_em_field(x3, y3, z3, pz3, s + h2, fieldmap, z_offset)
-  k3 = kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, Ex, Ey, Ez, Bx, By, Bz,
-                    charge, tilde_m, beta_0, g_bend, p0c, mc2)
-
-  # k4 = f(u + h * k3, s + h)
-  x4  = x  + h * k3[1]
-  px4 = px + h * k3[2]
-  y4  = y  + h * k3[3]
-  py4 = py + h * k3[4]
-  z4  = z  + h * k3[5]
-  pz4 = pz + h * k3[6]
-  Ex, Ey, Ez, Bx, By, Bz = fieldmap_em_field(x4, y4, z4, pz4, s + h, fieldmap, z_offset)
-  k4 = kick_vector(x4, px4, y4, py4, z4, pz4, s + h, Ex, Ey, Ez, Bx, By, Bz,
-                    charge, tilde_m, beta_0, g_bend, p0c, mc2)
-
-  # Update state: u += h/6 * (k1 + 2*k2 + 2*k3 + k4)
-  h6 = h / 6
-  v[i, XI]  = vifelse(alive, x  + h6 * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1]), v[i, XI])
-  v[i, PXI] = vifelse(alive, px + h6 * (k1[2] + 2*k2[2] + 2*k3[2] + k4[2]), v[i, PXI])
-  v[i, YI]  = vifelse(alive, y  + h6 * (k1[3] + 2*k2[3] + 2*k3[3] + k4[3]), v[i, YI])
-  v[i, PYI] = vifelse(alive, py + h6 * (k1[4] + 2*k2[4] + 2*k3[4] + k4[4]), v[i, PYI])
-  v[i, ZI]  = vifelse(alive, z  + h6 * (k1[5] + 2*k2[5] + 2*k3[5] + k4[5]), v[i, ZI])
-  v[i, PZI] = vifelse(alive, pz + h6 * (k1[6] + 2*k2[6] + 2*k3[6] + k4[6]), v[i, PZI])
-end
-
-
-"""
-    rk4_fieldmap_kernel!(i, coords, beta_0, tilde_m,
-                          charge, p0c, mc2, s_span, ds_step, fieldmap, z_offset)
-
-Kernelized RK4 tracking through a field map (straight elements only).
-Compatible with `@makekernel` and the package's kernel architecture.
-"""
-@makekernel function rk4_fieldmap_kernel!(i, coords::Coords, beta_0, tilde_m,
-                                          charge, p0c, mc2, s_span, ds_step, fieldmap, z_offset)
-  alive_at_start = (coords.state[i] == STATE_ALIVE)
-
-  s_start = s_span[1]
-  s_end = s_span[2]
-  s = s_start
-
-  v = coords.v
-
-  total_distance = s_end - s_start
-  n_steps = ceil(Int, total_distance / ds_step)
-
-  for step in 1:n_steps
-    remaining = s_end - s
-    h = min(ds_step, remaining)
-
-    # Check if particle is lost
-    rel_p = 1 + v[i, PZI]
-    inv_rel_p = 1.0 / rel_p
-    vt2 = (v[i, PXI] * inv_rel_p)^2 + (v[i, PYI] * inv_rel_p)^2
-    alive = (coords.state[i] == STATE_ALIVE)
-    coords.state[i] = vifelse((vt2 >= 1.0) & alive, STATE_LOST_PZ, coords.state[i])
-
-    rk4_step_fieldmap!(coords, i, s, h, fieldmap, z_offset,
-                        charge, tilde_m, beta_0, p0c, mc2)
+    rk4_step!(coords, i, s, h, field, charge, tilde_m, beta_0, p0c, mc2)
     s += h
   end
 end

@@ -4,7 +4,8 @@
                       RungeKuttaTracking, Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE, C_LIGHT,
                       RectGrid3D, CylGrid2D, FieldMap,
                       interp_component, interp_field, fieldmap_em_field,
-                      grid_min
+                      grid_min,
+                      MultipoleSource, FieldMapSource
   using StaticArrays
 
   # Helper to set up tracking parameters
@@ -69,7 +70,7 @@
 
     # Wrong shape should error
     B_bad = ones(3, 4, 3, 3)
-    @test_throws AssertionError FieldMap(grid; B=B_bad)
+    @test_throws ArgumentError FieldMap(grid; B=B_bad)
 
     # Neither E nor B should error
     @test_throws ErrorException FieldMap(grid)
@@ -85,7 +86,7 @@
 
     # Wrong shape
     B_bad = ones(3, 4, 10)
-    @test_throws AssertionError FieldMap(grid; B=B_bad)
+    @test_throws ArgumentError FieldMap(grid; B=B_bad)
 
     # Neither
     @test_throws ErrorException FieldMap(grid)
@@ -413,8 +414,9 @@
     ds_step = 0.01
     z_offset = 0.0
 
-    RungeKuttaTracking.rk4_fieldmap_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
-                                             charge, p0c, mc2, s_span, ds_step, fm, z_offset)
+    field = FieldMapSource(fm, z_offset, 0.0)
+    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
+                                    charge, p0c, mc2, s_span, ds_step, field)
 
     # Total transverse momentum should be conserved (uniform B)
     pt2 = bunch.coords.v[1, 2]^2 + bunch.coords.v[1, 4]^2
@@ -444,8 +446,9 @@
     bunch_fm = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch_fm.coords.v[1, BeamTracking.PXI] = 0.01
 
-    RungeKuttaTracking.rk4_fieldmap_kernel!(1, bunch_fm.coords, beta_0, gamsqr_0, tilde_m,
-                                             charge, p0c, mc2, (0.0, L), 0.01, fm, 0.0)
+    field_fm = FieldMapSource(fm, 0.0, 0.0)
+    RungeKuttaTracking.rk4_kernel!(1, bunch_fm.coords, beta_0, tilde_m,
+                                    charge, p0c, mc2, (0.0, L), 0.01, field_fm)
 
     # --- Multipole version (now also uses physical fields) ---
     Bz_normalized = Bz_phys / p_over_q_ref
@@ -456,8 +459,9 @@
     bunch_mp = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch_mp.coords.v[1, BeamTracking.PXI] = 0.01
 
-    RungeKuttaTracking.rk4_kernel!(1, bunch_mp.coords, beta_0, gamsqr_0, tilde_m,
-                                    charge, p0c, mc2, (0.0, L), 0.01, 0.0, mm, kn, ks, p_over_q_ref)
+    field_mp = MultipoleSource(mm, kn, ks, p_over_q_ref, 0.0)
+    RungeKuttaTracking.rk4_kernel!(1, bunch_mp.coords, beta_0, tilde_m,
+                                    charge, p0c, mc2, (0.0, L), 0.01, field_mp)
 
     # Field map and multipole should agree closely (within interpolation error)
     @test isapprox(bunch_fm.coords.v, bunch_mp.coords.v, rtol=1e-6)
@@ -484,8 +488,9 @@
 
     bunch = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
 
-    RungeKuttaTracking.rk4_fieldmap_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
-                                             charge, p0c, mc2, (0.0, L), 0.01, fm, 0.0)
+    field = FieldMapSource(fm, 0.0, 0.0)
+    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
+                                    charge, p0c, mc2, (0.0, L), 0.01, field)
 
     # Energy change for ultra-relativistic on-axis particle: dpz ~ charge * Ez * L / p0c
     dpz = bunch.coords.v[1, BeamTracking.PZI]
@@ -523,8 +528,9 @@
     bunch_fm.coords.v[1, BeamTracking.XI] = 0.005   # 5 mm offset
     bunch_fm.coords.v[1, BeamTracking.PXI] = 0.001
 
-    RungeKuttaTracking.rk4_fieldmap_kernel!(1, bunch_fm.coords, beta_0, gamsqr_0, tilde_m,
-                                             charge, p0c, mc2, (0.0, L), 0.005, fm, 0.0)
+    field_fm = FieldMapSource(fm, 0.0, 0.0)
+    RungeKuttaTracking.rk4_kernel!(1, bunch_fm.coords, beta_0, tilde_m,
+                                    charge, p0c, mc2, (0.0, L), 0.005, field_fm)
 
     # Multipole version
     G_normalized = G / p_over_q_ref
@@ -536,8 +542,9 @@
     bunch_mp.coords.v[1, BeamTracking.XI] = 0.005
     bunch_mp.coords.v[1, BeamTracking.PXI] = 0.001
 
-    RungeKuttaTracking.rk4_kernel!(1, bunch_mp.coords, beta_0, gamsqr_0, tilde_m,
-                                    charge, p0c, mc2, (0.0, L), 0.005, 0.0, mm, kn, ks, p_over_q_ref)
+    field_mp = MultipoleSource(mm, kn, ks, p_over_q_ref, 0.0)
+    RungeKuttaTracking.rk4_kernel!(1, bunch_mp.coords, beta_0, tilde_m,
+                                    charge, p0c, mc2, (0.0, L), 0.005, field_mp)
 
     # Should agree within interpolation error
     @test isapprox(bunch_fm.coords.v, bunch_mp.coords.v, rtol=1e-3)
@@ -556,8 +563,9 @@
     bunch.coords.v[1, BeamTracking.PXI] = 1.5  # Unphysical
     v_before = copy(bunch.coords.v)
 
-    RungeKuttaTracking.rk4_fieldmap_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
-                                             charge, p0c, mc2, (0.0, 0.9), 0.1, fm, 0.0)
+    field = FieldMapSource(fm, 0.0, 0.0)
+    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
+                                    charge, p0c, mc2, (0.0, 0.9), 0.1, field)
 
     @test bunch.coords.state[1] == STATE_LOST_PZ
     @test bunch.coords.v ≈ v_before
@@ -604,8 +612,9 @@
     bunch = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch.coords.v[1, BeamTracking.PXI] = 0.01
 
-    RungeKuttaTracking.rk4_fieldmap_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
-                                             charge, p0c, mc2, (0.0, L), 0.01, fm, 0.0)
+    field = FieldMapSource(fm, 0.0, 0.0)
+    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
+                                    charge, p0c, mc2, (0.0, L), 0.01, field)
 
     # Transverse momentum should be conserved
     pt2 = bunch.coords.v[1, 2]^2 + bunch.coords.v[1, 4]^2
@@ -629,17 +638,19 @@
     B[3, :, :, :] .= 0.01
     fm = FieldMap(grid; B=B)
 
+    field = FieldMapSource(fm, 0.0, 0.0)
+
     # Coarse step
     bunch1 = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch1.coords.v[1, BeamTracking.PXI] = 0.01
-    RungeKuttaTracking.rk4_fieldmap_kernel!(1, bunch1.coords, beta_0, gamsqr_0, tilde_m,
-                                             charge, p0c, mc2, (0.0, L), 0.1, fm, 0.0)
+    RungeKuttaTracking.rk4_kernel!(1, bunch1.coords, beta_0, tilde_m,
+                                    charge, p0c, mc2, (0.0, L), 0.1, field)
 
     # Fine step
     bunch2 = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch2.coords.v[1, BeamTracking.PXI] = 0.01
-    RungeKuttaTracking.rk4_fieldmap_kernel!(1, bunch2.coords, beta_0, gamsqr_0, tilde_m,
-                                             charge, p0c, mc2, (0.0, L), 0.05, fm, 0.0)
+    RungeKuttaTracking.rk4_kernel!(1, bunch2.coords, beta_0, tilde_m,
+                                    charge, p0c, mc2, (0.0, L), 0.05, field)
 
     @test isapprox(bunch1.coords.v, bunch2.coords.v, rtol=1e-2)
   end

@@ -76,8 +76,12 @@ Arrays must have shape `(3, nx, ny, nz)`.
 function FieldMap(grid::RectGrid3D; E=nothing, B=nothing, frequency=0.0, phase=0.0,
                   eleAnchorPt::Symbol=:beginning, harmonic::Int=0)
   nx, ny, nz = grid.gridSize
-  E !== nothing && @assert size(E) == (3, nx, ny, nz) "E shape must be (3,$nx,$ny,$nz), got $(size(E))"
-  B !== nothing && @assert size(B) == (3, nx, ny, nz) "B shape must be (3,$nx,$ny,$nz), got $(size(B))"
+  if E !== nothing && size(E) != (3, nx, ny, nz)
+    throw(ArgumentError("E shape must be (3,$nx,$ny,$nz), got $(size(E))"))
+  end
+  if B !== nothing && size(B) != (3, nx, ny, nz)
+    throw(ArgumentError("B shape must be (3,$nx,$ny,$nz), got $(size(B))"))
+  end
   E === nothing && B === nothing && error("At least one of E or B must be provided")
   return FieldMap(grid, E, nothing, B, nothing, Float64(frequency), Float64(phase), eleAnchorPt, harmonic)
 end
@@ -92,8 +96,12 @@ Arrays must have shape `(3, nr, nz)`.
 function FieldMap(grid::CylGrid2D; E=nothing, B=nothing, frequency=0.0, phase=0.0,
                   eleAnchorPt::Symbol=:beginning, harmonic::Int=0)
   nr, nz = grid.gridSize
-  E !== nothing && @assert size(E) == (3, nr, nz) "E shape must be (3,$nr,$nz), got $(size(E))"
-  B !== nothing && @assert size(B) == (3, nr, nz) "B shape must be (3,$nr,$nz), got $(size(B))"
+  if E !== nothing && size(E) != (3, nr, nz)
+    throw(ArgumentError("E shape must be (3,$nr,$nz), got $(size(E))"))
+  end
+  if B !== nothing && size(B) != (3, nr, nz)
+    throw(ArgumentError("B shape must be (3,$nr,$nz), got $(size(B))"))
+  end
   E === nothing && B === nothing && error("At least one of E or B must be provided")
   return FieldMap(grid, E, nothing, B, nothing, Float64(frequency), Float64(phase), eleAnchorPt, harmonic)
 end
