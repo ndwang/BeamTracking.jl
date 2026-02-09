@@ -39,7 +39,7 @@ end
 
 """
   kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
-        charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+        charge, tilde_m, beta_0, g_bend, p0c, mc2)
 
 Calculate the derivative vector du/ds for relativistic particle tracking.
 Returns an SVector{6} containing [dx/ds, dpx/ds, dy/ds, dpy/ds, dz/ds, dpz/ds].
@@ -55,13 +55,12 @@ returns zero derivatives (caller should mark particle as lost).
 - `charge`: Particle charge in units of e
 - `tilde_m`: Normalized mass mc²/(p₀c)
 - `beta_0`: Reference velocity β₀ = v₀/c
-- `gamsqr_0`: Squared reference Lorentz factor γ₀²
 - `g_bend`: Curvature (0 for drift, 1/ρ for bends)
 - `p0c`: Reference momentum × c (eV)
 - `mc2`: Rest mass energy (eV)
 """
 @inline function kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
-                charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+                charge, tilde_m, beta_0, g_bend, p0c, mc2)
   # Relative momentum
   rel_p = 1 + pz
 
@@ -159,12 +158,12 @@ Only updates state if particle is alive.
 - `charge`: Particle charge in units of e
 - `tilde_m`: Normalized mass mc²/(p₀c)
 - `beta_0`: Reference velocity β₀ = v₀/c
-- `gamsqr_0`: Squared reference Lorentz factor γ₀²
 - `g_bend`: Curvature (0 for drift, 1/ρ for bends)
 - `p0c`: Reference momentum × c (eV)
 - `mc2`: Rest mass energy (eV)
+- `p_over_q_ref`: Reference magnetic rigidity Bρ = p₀c/(c·charge)
 """
-@inline function rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2, p_over_q_ref)
+@inline function rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, g_bend, p0c, mc2, p_over_q_ref)
   # Check if particle is alive
   alive = (coords.state[i] == STATE_ALIVE)
   
@@ -180,7 +179,7 @@ Only updates state if particle is alive.
   # k1 = f(u, s)
   Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x, y, z, s, mm, kn, ks, p_over_q_ref)
   k1 = kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
-                charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+                charge, tilde_m, beta_0, g_bend, p0c, mc2)
 
   # k2 = f(u + h/2 * k1, s + h/2)
   h2 = h / 2
@@ -192,7 +191,7 @@ Only updates state if particle is alive.
   pz2 = pz + h2 * k1[6]
   Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x2, y2, z2, s + h2, mm, kn, ks, p_over_q_ref)
   k2 = kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, Ex, Ey, Ez, Bx, By, Bz,
-                charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+                charge, tilde_m, beta_0, g_bend, p0c, mc2)
 
   # k3 = f(u + h/2 * k2, s + h/2)
   x3 = x + h2 * k2[1]
@@ -203,7 +202,7 @@ Only updates state if particle is alive.
   pz3 = pz + h2 * k2[6]
   Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x3, y3, z3, s + h2, mm, kn, ks, p_over_q_ref)
   k3 = kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, Ex, Ey, Ez, Bx, By, Bz,
-                charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+                charge, tilde_m, beta_0, g_bend, p0c, mc2)
 
   # k4 = f(u + h * k3, s + h)
   x4 = x + h * k3[1]
@@ -214,7 +213,7 @@ Only updates state if particle is alive.
   pz4 = pz + h * k3[6]
   Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x4, y4, z4, s + h, mm, kn, ks, p_over_q_ref)
   k4 = kick_vector(x4, px4, y4, py4, z4, pz4, s + h, Ex, Ey, Ez, Bx, By, Bz,
-                charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2)
+                charge, tilde_m, beta_0, g_bend, p0c, mc2)
 
   # Update state: u += h/6 * (k1 + 2*k2 + 2*k3 + k4)
   # Only update if particle is alive
@@ -228,7 +227,7 @@ Only updates state if particle is alive.
 end
 
 """
-  rk4_kernel!(i, coords, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2,
+  rk4_kernel!(i, coords, beta_0, tilde_m, charge, p0c, mc2,
               s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref)
 
 Kernelized RK4 tracking through multipole fields.
@@ -237,11 +236,8 @@ Compatible with @makekernel and the package's kernel architecture.
 The electromagnetic field is computed from multipole moments (mm, kn, ks) using
 the multipole_em_field function.
 """
-@makekernel function rk4_kernel!(i, coords::Coords, beta_0, gamsqr_0, tilde_m,
+@makekernel function rk4_kernel!(i, coords::Coords, beta_0, tilde_m,
                                 charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref)
-  # Check if particle is alive at start
-  alive_at_start = (coords.state[i] == STATE_ALIVE)
-  
   s_start = s_span[1]
   s_end = s_span[2]
   s = s_start
@@ -265,7 +261,7 @@ the multipole_em_field function.
     coords.state[i] = vifelse((vt2 >= 1.0) & alive, STATE_LOST_PZ, coords.state[i])
 
     # Perform RK4 step (check for alive status is now inside rk4_step!)
-    rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gamsqr_0, g_bend, p0c, mc2, p_over_q_ref)
+    rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, g_bend, p0c, mc2, p_over_q_ref)
     s += h
   end
 end

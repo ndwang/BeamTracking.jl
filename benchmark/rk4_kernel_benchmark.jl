@@ -36,7 +36,7 @@ function setup_solenoid_benchmark()
     kn = SVector(Bz_normalized)
     ks = SVector(0.0)
 
-    return bunch, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref
+    return bunch, beta_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref
 end
 
 function reset_bunch!(bunch)
@@ -46,7 +46,7 @@ function reset_bunch!(bunch)
 end
 
 # Setup
-bunch, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref = setup_solenoid_benchmark()
+bunch, beta_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref = setup_solenoid_benchmark()
 
 println("rk4_kernel! benchmark (1 particle)")
 println("=========================================")
@@ -56,14 +56,14 @@ println()
 
 # Warmup
 reset_bunch!(bunch)
-RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
+RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                charge, p0c, mc2, s_span, ds_step, g_bend,
                                mm, kn, ks, p_over_q_ref)
 
 # Benchmark
 reset_bunch!(bunch)
 b = @benchmark begin
-    RungeKuttaTracking.rk4_kernel!(1, $bunch.coords, $beta_0, $gamsqr_0, $tilde_m,
+    RungeKuttaTracking.rk4_kernel!(1, $bunch.coords, $beta_0, $tilde_m,
                                    $charge, $p0c, $mc2, $s_span, $ds_step, $g_bend,
                                    $mm, $kn, $ks, $p_over_q_ref)
 end setup=(reset_bunch!($bunch))
@@ -90,21 +90,21 @@ function setup_multi_particle(n_particles)
     kn = SVector(Bz_normalized)
     ks = SVector(0.0)
 
-    return bunch, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref
+    return bunch, beta_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref
 end
 
-function track_all_particles!(bunch, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2,
+function track_all_particles!(bunch, beta_0, tilde_m, charge, p0c, mc2,
                               s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref)
     n = size(bunch.coords.v, 1)
     for i in 1:n
-        RungeKuttaTracking.rk4_kernel!(i, bunch.coords, beta_0, gamsqr_0, tilde_m,
+        RungeKuttaTracking.rk4_kernel!(i, bunch.coords, beta_0, tilde_m,
                                        charge, p0c, mc2, s_span, ds_step, g_bend,
                                        mm, kn, ks, p_over_q_ref)
     end
 end
 
 n_particles = 1000
-bunch_mp, beta_0_mp, gamsqr_0_mp, tilde_m_mp, charge_mp, p0c_mp, mc2_mp,
+bunch_mp, beta_0_mp, tilde_m_mp, charge_mp, p0c_mp, mc2_mp,
     s_span_mp, ds_step_mp, g_bend_mp, mm_mp, kn_mp, ks_mp, p_over_q_ref_mp = setup_multi_particle(n_particles)
 
 # Store initial state for reset
@@ -117,12 +117,12 @@ function reset_multi!(bunch, v_init, state_init)
 end
 
 # Warmup
-track_all_particles!(bunch_mp, beta_0_mp, gamsqr_0_mp, tilde_m_mp, charge_mp, p0c_mp, mc2_mp,
+track_all_particles!(bunch_mp, beta_0_mp, tilde_m_mp, charge_mp, p0c_mp, mc2_mp,
                      s_span_mp, ds_step_mp, g_bend_mp, mm_mp, kn_mp, ks_mp, p_over_q_ref_mp)
 
 # Benchmark
 b_mp = @benchmark begin
-    track_all_particles!($bunch_mp, $beta_0_mp, $gamsqr_0_mp, $tilde_m_mp, $charge_mp,
+    track_all_particles!($bunch_mp, $beta_0_mp, $tilde_m_mp, $charge_mp,
                          $p0c_mp, $mc2_mp, $s_span_mp, $ds_step_mp, $g_bend_mp,
                          $mm_mp, $kn_mp, $ks_mp, $p_over_q_ref_mp)
 end setup=(reset_multi!($bunch_mp, $v_init, $state_init))

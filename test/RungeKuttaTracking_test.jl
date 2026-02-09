@@ -64,7 +64,7 @@
     kn = SVector{0, Float64}()
     ks = SVector{0, Float64}()
 
-    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
+    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
                                    mm, kn, ks, p_over_q_ref)
 
@@ -91,7 +91,7 @@
     kn = SVector(Bz_normalized)
     ks = SVector(0.0)
 
-    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
+    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
                                    mm, kn, ks, p_over_q_ref)
 
@@ -122,7 +122,7 @@
     kn = SVector(By_normalized)
     ks = SVector(0.0)
 
-    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
+    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
                                    mm, kn, ks, p_over_q_ref)
 
@@ -147,7 +147,7 @@
     kn = SVector{0, Float64}()
     ks = SVector{0, Float64}()
 
-    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, gamsqr_0, tilde_m,
+    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, s_span, ds_step, g_bend,
                                    mm, kn, ks, p_over_q_ref)
 
@@ -174,10 +174,10 @@
     ks = SVector{0, Float64}()
 
     # Track with different step sizes
-    RungeKuttaTracking.rk4_kernel!(1, bunch1.coords, beta_0, gamsqr_0, tilde_m,
+    RungeKuttaTracking.rk4_kernel!(1, bunch1.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, s_span, 0.1, g_bend,
                                    mm, kn, ks, p_over_q_ref)
-    RungeKuttaTracking.rk4_kernel!(1, bunch2.coords, beta_0, gamsqr_0, tilde_m,
+    RungeKuttaTracking.rk4_kernel!(1, bunch2.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, s_span, 0.05, g_bend,
                                    mm, kn, ks, p_over_q_ref)
 

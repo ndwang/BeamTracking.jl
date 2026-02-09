@@ -99,7 +99,7 @@ function runge_kutta_universal!(
 
   # Setup physics parameters
   p_over_q_ref = bunch.p_over_q_ref
-  tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(species, p_over_q_ref)
+  tilde_m, _, beta_0 = BeamTracking.drift_params(species, p_over_q_ref)
   charge = chargeof(species)
   p0c = BeamTracking.R_to_pc(species, p_over_q_ref)
   mc2 = massof(species)
@@ -130,7 +130,7 @@ function runge_kutta_universal!(
   end
 
   # Build RK4 kernel call
-  params = (beta_0, gamsqr_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref)
+  params = (beta_0, tilde_m, charge, p0c, mc2, s_span, ds_step, g_bend, mm, kn, ks, p_over_q_ref)
   kc = push(kc, KernelCall(BeamTracking.RungeKuttaTracking.rk4_kernel!, params))
 
   # Exit aperture and alignment
