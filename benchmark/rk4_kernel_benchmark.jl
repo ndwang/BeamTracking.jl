@@ -7,22 +7,22 @@ using BenchmarkTools
 function setup_particle(pc=1e9)
     species = Species("electron")
     mc2 = massof(species)
-    R_ref = pc_to_R(species, pc)
+    p_over_q_ref = pc_to_R(species, pc)
 
-    beta_gamma_0 = R_to_beta_gamma(species, R_ref)
+    beta_gamma_0 = R_to_beta_gamma(species, p_over_q_ref)
     tilde_m = 1 / beta_gamma_0
     gamsqr_0 = 1 + beta_gamma_0^2
     beta_0 = beta_gamma_0 / sqrt(gamsqr_0)
     charge = chargeof(species)
-    p0c = R_to_pc(species, R_ref)
+    p0c = R_to_pc(species, p_over_q_ref)
 
-    return species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2
+    return species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2
 end
 
 function setup_solenoid_benchmark()
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
+    species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
-    bunch = Bunch(zeros(1, 6), R_ref=R_ref, species=species)
+    bunch = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
     bunch.coords.v[1, BeamTracking.PXI] = 0.01
 
     s_span = (0.0, 1.0)
@@ -31,7 +31,7 @@ function setup_solenoid_benchmark()
 
     # Solenoid field
     Bz_physical = 0.01  # Tesla
-    Bz_normalized = Bz_physical / R_ref
+    Bz_normalized = Bz_physical / p_over_q_ref
     mm = SVector(0)
     kn = SVector(Bz_normalized)
     ks = SVector(0.0)
@@ -76,16 +76,16 @@ println("rk4_kernel! benchmark (1000 particles)")
 println("=========================================")
 
 function setup_multi_particle(n_particles)
-    species, R_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
+    species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
-    bunch = Bunch(randn(n_particles, 6) * 0.001, R_ref=R_ref, species=species)
+    bunch = Bunch(randn(n_particles, 6) * 0.001, p_over_q_ref=p_over_q_ref, species=species)
 
     s_span = (0.0, 1.0)
     ds_step = 0.01
     g_bend = 0.0
 
     Bz_physical = 0.01
-    Bz_normalized = Bz_physical / R_ref
+    Bz_normalized = Bz_physical / p_over_q_ref
     mm = SVector(0)
     kn = SVector(Bz_normalized)
     ks = SVector(0.0)
