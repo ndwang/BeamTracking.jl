@@ -79,7 +79,7 @@ returns zero derivatives (caller should mark particle as lost).
   inv_gamma_v = sqrt(rel_p2 + tilde_m^2)
   beta = rel_p / inv_gamma_v
   
-  inv_beta_c = 1.0 / (beta * C_LIGHT)
+  inv_beta_c = 1 / (beta * C_LIGHT)
 
   # Longitudinal velocity component
   rel_dir = 1  # +1 for forward tracking
@@ -254,11 +254,11 @@ the multipole_em_field function.
 
     # Chck if particle is lost
     rel_p = 1 + v[i, PZI]
-    inv_rel_p = 1.0 / rel_p
+    inv_rel_p = 1 / rel_p
     vt2 = (v[i, PXI] * inv_rel_p)^2 + (v[i, PYI] * inv_rel_p)^2
     alive = (coords.state[i] == STATE_ALIVE)
     # Mark particle as lost
-    coords.state[i] = vifelse((vt2 >= 1.0) & alive, STATE_LOST_PZ, coords.state[i])
+    coords.state[i] = vifelse((vt2 >= 1) & alive, STATE_LOST_PZ, coords.state[i])
 
     # Perform RK4 step (check for alive status is now inside rk4_step!)
     rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, g_bend, p0c, mc2, p_over_q_ref)
