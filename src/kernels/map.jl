@@ -13,8 +13,11 @@ struct Map end
   else
     q_in = nothing
   end
-
-  v_out, q_out = transport_map(v_in, q_in, transport_map_params)
+  if isnothing(transport_map_params) # For non-breaking
+    v_out, q_out = transport_map(v_in, q_in)
+  else
+    v_out, q_out = transport_map(v_in, q_in, transport_map_params)
+  end
   v[i,XI]  = vifelse(alive, v_out[XI],  v[i,XI])
   v[i,PXI] = vifelse(alive, v_out[PXI], v[i,PXI])
   v[i,YI]  = vifelse(alive, v_out[YI],  v[i,YI])
