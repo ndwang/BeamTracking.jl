@@ -298,12 +298,14 @@ function _batch_lower_struct(bp::T) where {T}
     return bp
   end
   ctor_args = map(j -> batch_lower(getfield(bp, field_names[j])), 1:N)
+  # If nothing changed, return original. This avoids reconstruction issues with types
+  # whose parameters encode non-field info (SArray size, closures, etc.)
+  if all(j -> ctor_args[j] === getfield(bp, field_names[j]), 1:N)
+    return bp
+  end
   # We use T.name.wrapper (the unparameterized type) instead of T so that Julia re-infers
   # type parameters from the new field values. This is necessary when lowering changes a
   # field type (e.g. BatchParam -> _LoweredBatchParam), which would mismatch T's parameters.
-  #
-  # Limitation: this fails for types whose type parameters encode non-field information
-  # (e.g. SArray{S,T} where S is the array shape). Such types need their own batch_lower
   #
   # For types with inner constructors, use ConstructionBase.constructorof(T) instead.
   # So far, we don't have any such types that need to be handled.
@@ -312,10 +314,6 @@ end
 
 # Arrays MUST be converted into tuples, for SIMD
 batch_lower(bp::SArray{N,BatchParam}) where {N} = batch_lower(Tuple(bp))
-# Non-BatchParam SArrays pass through unchanged. Note: SArrays containing structs
-# with BatchParam fields (e.g. SVector{2, MyStruct{BatchParam}}) are NOT lowered
-# by this and would need their own specialization.
-batch_lower(bp::SArray{N,T}) where {N,T} = bp
 
 static_batchcheck(::_LoweredBatchParam) = true
 @unroll function static_batchcheck(t::Tuple)
