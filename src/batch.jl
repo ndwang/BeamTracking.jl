@@ -289,7 +289,7 @@ batch_lower(bp::T) where {T<:Tuple} = map(bi->batch_lower(bi), bp)
 batch_lower(bp::T) where {T} = _batch_lower_struct(bp)
 
 function _batch_lower_struct(bp::T) where {T}
-  if !Base.isstructtype(T) || T <: Tuple
+  if !Base.isstructtype(T)
     return bp
   end
   field_names = fieldnames(T)
@@ -301,11 +301,15 @@ function _batch_lower_struct(bp::T) where {T}
   # Structs with batch params must use the default constructor. For types with inner constructors,
   # use ConstructionBase.constructorof(T)(ctor_args...) instead of T(ctor_args...).
   # So far, we don't have any types with inner constructors that need to be handled.
-  return T(ctor_args...)
+  return T.name.wrapper(ctor_args...)
 end
 
 # Arrays MUST be converted into tuples, for SIMD
 batch_lower(bp::SArray{N,BatchParam}) where {N} = batch_lower(Tuple(bp))
+# Non-BatchParam SArrays pass through unchanged. Note: SArrays containing structs
+# with BatchParam fields (e.g. SVector{2, MyStruct{BatchParam}}) are NOT lowered
+# by this and would need their own specialization.
+batch_lower(bp::SArray{N,T}) where {N,T} = bp
 
 static_batchcheck(::_LoweredBatchParam) = true
 @unroll function static_batchcheck(t::Tuple)
@@ -318,7 +322,7 @@ static_batchcheck(::_LoweredBatchParam) = true
 end
 # Recursively check for batch params inside structs.
 function static_batchcheck(s::T) where {T}
-  if !Base.isstructtype(T) || T <: Tuple
+  if !Base.isstructtype(T)
     return false
   end
   for name in fieldnames(T)
@@ -374,6 +378,9 @@ end
 end
 # === END CLAUDE ===
 
+# Non-BatchParam SArrays pass through (BatchParam SArrays were converted to tuples during lowering)
+beval(f::SArray, t) = f
+
 # Generated function for structs: recursively evaluate batch params per particle.
 # Structs are reconstructed with evaluated fields.
 @generated function beval(f::T, t) where {T}
@@ -384,8 +391,8 @@ end
       return :(f)
     end
     exprs = [:(beval(Base.getfield(f, $(QuoteNode(field_names[j]))), t)) for j in 1:N]
-    # Same as _batch_lower_struct: default constructor; use constructorof(T) for inner-constructor types.
-    return :(T($(exprs...)))
+    # Same as _batch_lower_struct: use unparameterized type so Julia re-infers type params.
+    return :($(T.name.wrapper)($(exprs...)))
   else
     return :(f)
   end
