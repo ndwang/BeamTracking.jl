@@ -281,19 +281,48 @@ function batch_lower(b::BatchParam)
   end
 end
 
-batch_lower(bp) = bp
 # We can use map on the CPU, but not the GPU. This step of batch_lower-ing is on 
 # the CPU and we are already type unstable here anyways, so we should do this.
 batch_lower(bp::T) where {T<:Tuple} = map(bi->batch_lower(bi), bp)
 
+# Recursively lower BatchParam fields in structs.
+batch_lower(bp::T) where {T} = _batch_lower_struct(bp)
+
+function _batch_lower_struct(bp::T) where {T}
+  if !Base.isstructtype(T) || T <: Tuple
+    return bp
+  end
+  field_names = fieldnames(T)
+  N = length(field_names)
+  if N == 0
+    return bp
+  end
+  ctor_args = map(j -> batch_lower(getfield(bp, field_names[j])), 1:N)
+  # Structs with batch params must use the default constructor. For types with inner constructors,
+  # use ConstructionBase.constructorof(T)(ctor_args...) instead of T(ctor_args...).
+  # So far, we don't have any types with inner constructors that need to be handled.
+  return T(ctor_args...)
+end
+
 # Arrays MUST be converted into tuples, for SIMD
 batch_lower(bp::SArray{N,BatchParam}) where {N} = batch_lower(Tuple(bp))
 
-static_batchcheck(bp) = false
 static_batchcheck(::_LoweredBatchParam) = true
 @unroll function static_batchcheck(t::Tuple)
   @unroll for ti in t
     if static_batchcheck(ti)
+      return true
+    end
+  end
+  return false
+end
+# Recursively check for batch params inside structs.
+function static_batchcheck(s::T) where {T}
+  if !Base.isstructtype(T) || T <: Tuple
+    return false
+  end
+  for name in fieldnames(T)
+    if static_batchcheck(getfield(s, name))
       return true
     end
   end
@@ -332,17 +361,32 @@ function lane2vec(lane::SIMD.VecRange{N}) where {N}
   end
 end
 
-@inline beval(b, i) = b
-
 # === THIS BLOCK WAS WRITTEN BY CLAUDE ===
 # Generated function for arbitrary-length tuples
 @generated function beval(f::T, t) where {T<:Tuple}
-    N = length(T.parameters)
-    if N == 0
-        return :(())
-    end
-    # Use getfield with literal integer arguments
-    exprs = [:(beval(Base.getfield(f, $i), t)) for i in 1:N]
-    return :(tuple($(exprs...)))
+  N = length(T.parameters)
+  if N == 0
+      return :(())
+  end
+  # Use getfield with literal integer arguments
+  exprs = [:(beval(Base.getfield(f, $i), t)) for i in 1:N]
+  return :(tuple($(exprs...)))
 end
 # === END CLAUDE ===
+
+# Generated function for structs: recursively evaluate batch params per particle.
+# Structs are reconstructed with evaluated fields.
+@generated function beval(f::T, t) where {T}
+  if Base.isstructtype(T)
+    field_names = fieldnames(T)
+    N = length(field_names)
+    if N == 0
+      return :(f)
+    end
+    exprs = [:(beval(Base.getfield(f, $(QuoteNode(field_names[j]))), t)) for j in 1:N]
+    # Same as _batch_lower_struct: default constructor; use constructorof(T) for inner-constructor types.
+    return :(T($(exprs...)))
+  else
+    return :(f)
+  end
+end
