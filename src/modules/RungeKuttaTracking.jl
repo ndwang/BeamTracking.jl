@@ -16,17 +16,21 @@ using ..BeamTracking: FieldMap, RectGrid3D, CylGrid2D, fieldmap_em_field
 # =====================================================================
 
 """
-    MultipoleSource{MM,KN,KS,T}
+    MultipoleSource{N,T}
 
 Bundles multipole field-evaluation parameters for the unified RK4 stepper.
 Fully parameterized for zero-cost dispatch.
+
+# Type Parameters
+- `N`: Length of multipole vectors (statically known for optimal dispatch)
+- `T`: Numeric type for strengths and reference parameters
 """
-struct MultipoleSource{MM,KN,KS,T}
-  mm::MM              # SVector of multipole orders
-  kn::KN              # SVector of normal strengths (normalized)
-  ks::KS              # SVector of skew strengths (normalized)
-  p_over_q_ref::T     # magnetic rigidity
-  g_bend::T           # curvature (1/rho or 0)
+struct MultipoleSource{N,T}
+  mm::SVector{N, Int}     # SVector of multipole orders
+  kn::SVector{N, T}       # SVector of normal strengths (normalized)
+  ks::SVector{N, T}       # SVector of skew strengths (normalized)
+  p_over_q_ref::T         # magnetic rigidity
+  g_bend::T               # curvature (1/rho or 0)
 end
 
 """
