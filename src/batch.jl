@@ -285,6 +285,12 @@ end
 # the CPU and we are already type unstable here anyways, so we should do this.
 batch_lower(bp::T) where {T<:Tuple} = map(bi->batch_lower(bi), bp)
 
+# Passthrough methods for types that never contain BatchParam.
+# These short-circuit before entering _batch_lower_struct for performance.
+batch_lower(bp::TimeDependentParam) = bp
+batch_lower(bp::Function) = bp
+batch_lower(bp::SArray{N,T}) where {N,T} = bp
+
 # Recursively lower BatchParam fields in structs.
 batch_lower(bp::T) where {T} = _batch_lower_struct(bp)
 
