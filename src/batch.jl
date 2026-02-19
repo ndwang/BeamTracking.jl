@@ -298,9 +298,15 @@ function _batch_lower_struct(bp::T) where {T}
     return bp
   end
   ctor_args = map(j -> batch_lower(getfield(bp, field_names[j])), 1:N)
-  # Structs with batch params must use the default constructor. For types with inner constructors,
-  # use ConstructionBase.constructorof(T)(ctor_args...) instead of T(ctor_args...).
-  # So far, we don't have any types with inner constructors that need to be handled.
+  # We use T.name.wrapper (the unparameterized type) instead of T so that Julia re-infers
+  # type parameters from the new field values. This is necessary when lowering changes a
+  # field type (e.g. BatchParam -> _LoweredBatchParam), which would mismatch T's parameters.
+  #
+  # Limitation: this fails for types whose type parameters encode non-field information
+  # (e.g. SArray{S,T} where S is the array shape). Such types need their own batch_lower
+  #
+  # For types with inner constructors, use ConstructionBase.constructorof(T) instead.
+  # So far, we don't have any such types that need to be handled.
   return T.name.wrapper(ctor_args...)
 end
 
