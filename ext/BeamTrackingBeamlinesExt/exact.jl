@@ -76,15 +76,23 @@ end
 @inline function thick_bend_pure_bdipole(tm::Exact, bunch, bendparams, bm1, L)
   g = bendparams.g_ref
   tilt = bendparams.tilt_ref
-  e1 = bendparams.e1
-  e2 = bendparams.e2
+  if tm.fringe_at == Fringe.BothEnds || tm.fringe_at == Fringe.EntranceEnd
+    e1 = bendparams.e1
+  else
+    e1 = 0
+  end
+  if tm.fringe_at == Fringe.BothEnds || tm.fringe_at == Fringe.ExitEnd
+    e2 = bendparams.e2
+  else
+    e2 = 0
+  end
   w = rot_quaternion(0,0,-tilt)
   w_inv = inv_rot_quaternion(0,0,-tilt)
   theta = g * L
   Kn0, Ks0 = get_strengths(bm1, L, bunch.p_over_q_ref)
   Ks0 ≈ 0 || error("A skew dipole field cannot be used in an exact bend")
   tilde_m, _, beta_0 = BeamTracking.drift_params(bunch.species, bunch.p_over_q_ref)
-  return KernelCall(BeamTracking.exact_bend_with_rotation!, (e1, e2, theta, g, Kn0, w, w_inv, tilde_m, beta_0, L))
+  return KernelCall(BeamTracking.exact_bend_with_rotation!, (e1, e2, theta, 0, g, Kn0, w, w_inv, tilde_m, beta_0, L))
 end
 
 @inline function thick_pure_bdipole(tm::Exact, bunch, bm1, L)
@@ -94,7 +102,7 @@ end
   w = rot_quaternion(0,0,tilt)
   w_inv = inv_rot_quaternion(0,0,tilt)
   tilde_m, _, beta_0 = BeamTracking.drift_params(bunch.species, bunch.p_over_q_ref)
-  return KernelCall(BeamTracking.exact_bend_with_rotation!, (0, 0, 0, 0, Kn, w, w_inv, tilde_m, beta_0, L))
+  return KernelCall(BeamTracking.exact_bend_with_rotation!, (0, 0, 0, 0, 0, Kn, w, w_inv, tilde_m, beta_0, L))
 end
 
 @inline function thick_bend_no_field(tm::Exact, bunch, bendparams, L)
