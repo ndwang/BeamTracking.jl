@@ -285,37 +285,17 @@ end
 # the CPU and we are already type unstable here anyways, so we should do this.
 batch_lower(bp::T) where {T<:Tuple} = map(bi->batch_lower(bi), bp)
 
-# Passthrough methods for types that never contain BatchParam.
-# These short-circuit before entering _batch_lower_struct for performance.
-batch_lower(bp::TimeDependentParam) = bp
-batch_lower(bp::Function) = bp
-batch_lower(bp::SArray{N,T}) where {N,T} = bp
-
 # Recursively lower BatchParam fields in structs.
-batch_lower(bp::T) where {T} = _batch_lower_struct(bp)
-
-function _batch_lower_struct(bp::T) where {T}
-  if !Base.isstructtype(T)
-    return bp
+@generated function batch_lower(bp::T) where {T}
+  if !Base.isstructtype(T) || fieldcount(T) == 0
+    return :(bp)
   end
-  field_names = fieldnames(T)
-  N = length(field_names)
-  if N == 0
-    return bp
-  end
-  ctor_args = map(j -> batch_lower(getfield(bp, field_names[j])), 1:N)
-  # If nothing changed, return original. This avoids reconstruction issues with types
-  # whose parameters encode non-field info (SArray size, closures, etc.)
-  if all(j -> ctor_args[j] === getfield(bp, field_names[j]), 1:N)
-    return bp
-  end
-  # We use T.name.wrapper (the unparameterized type) instead of T so that Julia re-infers
-  # type parameters from the new field values. This is necessary when lowering changes a
-  # field type (e.g. BatchParam -> _LoweredBatchParam), which would mismatch T's parameters.
-  #
-  # For types with inner constructors, use ConstructionBase.constructorof(T) instead.
-  # So far, we don't have any such types that need to be handled.
-  return T.name.wrapper(ctor_args...)
+  names = fieldnames(T)
+  vars = [Symbol(:lowered_, i) for i in 1:length(names)]
+  assigns = [:($(vars[i]) = batch_lower(getfield(bp, $(QuoteNode(names[i]))))) for i in 1:length(names)]
+  unchanged = [:($(vars[i]) === getfield(bp, $(QuoteNode(names[i])))) for i in 1:length(names)]
+  construct = :($(T.name.wrapper)($(vars...)))
+  return Expr(:block, assigns..., Expr(:if, Expr(:&&, unchanged...), :(return bp)), construct)
 end
 
 # Arrays MUST be converted into tuples, for SIMD
@@ -331,16 +311,15 @@ static_batchcheck(::_LoweredBatchParam) = true
   return false
 end
 # Recursively check for batch params inside structs.
-function static_batchcheck(s::T) where {T}
+@generated function static_batchcheck(s::T) where {T}
   if !Base.isstructtype(T)
-    return false
+    return :(false)
   end
-  for name in fieldnames(T)
-    if static_batchcheck(getfield(s, name))
-      return true
-    end
+  checks = [:(static_batchcheck(getfield(s, $(QuoteNode(name))))) for name in fieldnames(T)]
+  if isempty(checks)
+    return :(false)
   end
-  return false
+  return Expr(:||, checks...)
 end
 
 @inline beval(b::_LoweredBatchParam{B}, i) where {B} = b.batch[mod1(i, B)]
