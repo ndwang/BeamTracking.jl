@@ -55,7 +55,7 @@
     @test fm.B_im === nothing
     @test fm.frequency == 0.0
     @test fm.harmonic == 0
-    @test fm.eleAnchorPt == :beginning
+    @test fm.eleAnchorPt == ANCHOR_BEGINNING
 
     # E-only map
     E = ones(3, 3, 3, 3)
@@ -577,13 +577,13 @@
     grid = RectGrid3D((0.0, 0.0, 0.0), (0.01, 0.01, 0.1), (0, 0, 0), (3, 3, 25))
     B = ones(3, 3, 3, 25)
 
-    fm_begin = FieldMap(grid; B=B, eleAnchorPt=:beginning)
-    fm_center = FieldMap(grid; B=B, eleAnchorPt=:center)
-    fm_end = FieldMap(grid; B=B, eleAnchorPt=:end)
+    fm_begin = FieldMap(grid; B=B, eleAnchorPt=ANCHOR_BEGINNING)
+    fm_center = FieldMap(grid; B=B, eleAnchorPt=ANCHOR_CENTER)
+    fm_end = FieldMap(grid; B=B, eleAnchorPt=ANCHOR_END)
 
-    @test fm_begin.eleAnchorPt == :beginning
-    @test fm_center.eleAnchorPt == :center
-    @test fm_end.eleAnchorPt == :end
+    @test fm_begin.eleAnchorPt == ANCHOR_BEGINNING
+    @test fm_center.eleAnchorPt == ANCHOR_CENTER
+    @test fm_end.eleAnchorPt == ANCHOR_END
 
     # z_offset computation (done at tracking time, not in FieldMap)
     z_off_begin = 0.0

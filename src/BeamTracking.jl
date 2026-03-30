@@ -20,7 +20,8 @@ import GTPSA: sincu, sinhcu
 export Bunch, State, ParticleView, Time, TimeDependentParam
 export Yoshida, Yoshida, MatrixKick, BendKick, SolenoidKick, DriftKick, Exact, RungeKutta
 export track!
-export FieldMap, RectGrid3D, CylGrid2D, MultipoleSource, FieldMapSource
+export FieldMap, RectGrid3D, CylGrid2D, MultipoleSource, FieldMapSource,
+       AnchorPt, ANCHOR_BEGINNING, ANCHOR_CENTER, ANCHOR_END
 
 
 include("utils/coord_transforms.jl")

@@ -37,6 +37,20 @@ Compute the minimum physical coordinate along dimension `i` for grid `g`.
 """
 @inline grid_min(g, i) = g.gridOriginOffset[i] + g.gridLowerBound[i] * g.gridSpacing[i]
 
+# ---- Anchor Point (GPU-compatible replacement for Symbol) ----
+
+"""
+    AnchorPt
+
+GPU-compatible enum for field map anchor point (replaces Symbol).
+Values: `ANCHOR_BEGINNING`, `ANCHOR_CENTER`, `ANCHOR_END`.
+"""
+@enum AnchorPt::UInt8 begin
+  ANCHOR_BEGINNING = 0
+  ANCHOR_CENTER    = 1
+  ANCHOR_END       = 2
+end
+
 # ---- FieldMap Struct ----
 
 """
@@ -58,7 +72,7 @@ struct FieldMap{Grid, E_re, E_im, B_re, B_im}
   B_im::B_im           # Nothing or AbstractArray
   frequency::Float64   # ω (rad/s), 0 for static
   phase::Float64       # RF phase (rad)
-  eleAnchorPt::Symbol  # :beginning, :center, :end (openPMD attribute)
+  eleAnchorPt::AnchorPt  # ANCHOR_BEGINNING, ANCHOR_CENTER, ANCHOR_END (openPMD attribute)
   harmonic::Int        # 0 for static, >0 for RF (openPMD attribute)
 end
 
@@ -74,7 +88,7 @@ Construct a static rectangular field map. At least one of `E` or `B` must be pro
 Arrays must have shape `(3, nx, ny, nz)`.
 """
 function FieldMap(grid::RectGrid3D; E=nothing, B=nothing, frequency=0.0, phase=0.0,
-                  eleAnchorPt::Symbol=:beginning, harmonic::Int=0)
+                  eleAnchorPt::AnchorPt=ANCHOR_BEGINNING, harmonic::Int=0)
   nx, ny, nz = grid.gridSize
   if E !== nothing && size(E) != (3, nx, ny, nz)
     throw(ArgumentError("E shape must be (3,$nx,$ny,$nz), got $(size(E))"))
@@ -94,7 +108,7 @@ Construct a static cylindrical field map. At least one of `E` or `B` must be pro
 Arrays must have shape `(3, nr, nz)`.
 """
 function FieldMap(grid::CylGrid2D; E=nothing, B=nothing, frequency=0.0, phase=0.0,
-                  eleAnchorPt::Symbol=:beginning, harmonic::Int=0)
+                  eleAnchorPt::AnchorPt=ANCHOR_BEGINNING, harmonic::Int=0)
   nr, nz = grid.gridSize
   if E !== nothing && size(E) != (3, nr, nz)
     throw(ArgumentError("E shape must be (3,$nr,$nz), got $(size(E))"))
