@@ -8,7 +8,7 @@ using ..BeamTracking, ..StaticArrays
 using ..BeamTracking: @makekernel, Coords
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, STATE_ALIVE, STATE_LOST_PZ
 using ..BeamTracking: C_LIGHT, E_CHARGE, vifelse, normalized_field
-using ..BeamTracking: FieldMap, RectGrid3D, CylGrid2D, fieldmap_em_field
+using ..BeamTracking: Adapt, FieldMap, RectGrid3D, CylGrid2D, fieldmap_em_field
 
 
 # =====================================================================
@@ -44,6 +44,8 @@ struct FieldMapSource{FM,T}
   z_offset::T         # longitudinal offset for anchor point
   g_bend::T           # always 0 for straight elements
 end
+
+Adapt.@adapt_structure FieldMapSource
 
 # =====================================================================
 # Common Field Evaluation Interface

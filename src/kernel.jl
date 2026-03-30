@@ -11,8 +11,10 @@ blank_kernel!(args...) = nothing
   function KernelCall(kernel, args)
     _args = map(t->time_lower(t), args)
     new{typeof(kernel),typeof(_args)}(kernel, _args)
-  end 
+  end
 end
+
+Adapt.@adapt_structure KernelCall
 
 # Store the state of the reference coordinate system
 # Needed for time-dependent parameters
@@ -29,6 +31,8 @@ struct KernelChain{C<:Tuple{Vararg{<:KernelCall}}, S<:Union{Nothing,RefState}}
 end
 
 KernelChain(::Val{N}, ref=nothing) where {N} = KernelChain(ntuple(t->KernelCall(), Val{N}()), ref)
+
+Adapt.@adapt_structure KernelChain
 
 push(kc::KernelChain, kcall::Nothing) = kc
 
