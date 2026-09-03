@@ -9,6 +9,133 @@ using ..BeamTracking, ..StaticArrays
 using ..BeamTracking: @makekernel, Coords
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, STATE_ALIVE, STATE_LOST_PZ
 using ..BeamTracking: C_LIGHT, E_CHARGE, vifelse, normalized_field
+using ..BeamTracking: Adapt, FieldMap, fieldmap_em_field
+
+
+# =====================================================================
+# Field Source Structs
+# =====================================================================
+
+"""
+    MultipoleSource{M,KN,KS,R,GX,GY}
+
+Bundles multipole field-evaluation parameters and reference curvature for the
+unified RK4 stepper.
+"""
+struct MultipoleSource{M,KN,KS,R,GX,GY}
+  mm::M
+  kn::KN
+  ks::KS
+  p_over_q_ref::R
+  gx::GX
+  gy::GY
+end
+
+# Keep the original fieldmap-branch constructor for horizontal curvature.
+MultipoleSource(mm, kn, ks, p_over_q_ref, gx) =
+  MultipoleSource(mm, kn, ks, p_over_q_ref, gx, zero(gx))
+
+"""
+    FieldMapSource{FM,T,GX,GY}
+
+Bundles a field map, its longitudinal offset, and reference curvature for the
+unified RK4 stepper.
+"""
+struct FieldMapSource{FM,T,GX,GY}
+  fieldmap::FM
+  z_offset::T
+  gx::GX
+  gy::GY
+end
+
+# Field maps are normally attached to straight elements. This constructor
+# preserves the original three-argument API while allowing tilted curvature in
+# the full constructor.
+FieldMapSource(fieldmap, z_offset, gx) =
+  FieldMapSource(fieldmap, z_offset, gx, zero(gx))
+
+Adapt.@adapt_structure MultipoleSource
+Adapt.@adapt_structure FieldMapSource
+
+# Kernel arguments are lowered before launch and evaluated for each batch or
+# particle time. Preserve that behavior when parameters are wrapped in a field
+# source instead of passed as separate tuple entries.
+BeamTracking.batch_lower(f::MultipoleSource) = MultipoleSource(
+  BeamTracking.batch_lower(f.mm),
+  BeamTracking.batch_lower(f.kn),
+  BeamTracking.batch_lower(f.ks),
+  BeamTracking.batch_lower(f.p_over_q_ref),
+  BeamTracking.batch_lower(f.gx),
+  BeamTracking.batch_lower(f.gy),
+)
+BeamTracking.static_batchcheck(f::MultipoleSource) =
+  BeamTracking.static_batchcheck((f.mm, f.kn, f.ks, f.p_over_q_ref, f.gx, f.gy))
+BeamTracking.beval(f::MultipoleSource, i) = MultipoleSource(
+  BeamTracking.beval(f.mm, i),
+  BeamTracking.beval(f.kn, i),
+  BeamTracking.beval(f.ks, i),
+  BeamTracking.beval(f.p_over_q_ref, i),
+  BeamTracking.beval(f.gx, i),
+  BeamTracking.beval(f.gy, i),
+)
+
+BeamTracking.time_lower(f::MultipoleSource) = MultipoleSource(
+  BeamTracking.time_lower(f.mm),
+  BeamTracking.time_lower(f.kn),
+  BeamTracking.time_lower(f.ks),
+  BeamTracking.time_lower(f.p_over_q_ref),
+  BeamTracking.time_lower(f.gx),
+  BeamTracking.time_lower(f.gy),
+)
+BeamTracking.static_timecheck(f::MultipoleSource) =
+  BeamTracking.static_timecheck((f.mm, f.kn, f.ks, f.p_over_q_ref, f.gx, f.gy))
+BeamTracking.teval(f::MultipoleSource, t) = MultipoleSource(
+  BeamTracking.teval(f.mm, t),
+  BeamTracking.teval(f.kn, t),
+  BeamTracking.teval(f.ks, t),
+  BeamTracking.teval(f.p_over_q_ref, t),
+  BeamTracking.teval(f.gx, t),
+  BeamTracking.teval(f.gy, t),
+)
+
+BeamTracking.batch_lower(f::FieldMapSource) = FieldMapSource(
+  BeamTracking.batch_lower(f.fieldmap),
+  BeamTracking.batch_lower(f.z_offset),
+  BeamTracking.batch_lower(f.gx),
+  BeamTracking.batch_lower(f.gy),
+)
+BeamTracking.static_batchcheck(f::FieldMapSource) =
+  BeamTracking.static_batchcheck((f.fieldmap, f.z_offset, f.gx, f.gy))
+BeamTracking.beval(f::FieldMapSource, i) = FieldMapSource(
+  BeamTracking.beval(f.fieldmap, i),
+  BeamTracking.beval(f.z_offset, i),
+  BeamTracking.beval(f.gx, i),
+  BeamTracking.beval(f.gy, i),
+)
+
+BeamTracking.time_lower(f::FieldMapSource) = FieldMapSource(
+  BeamTracking.time_lower(f.fieldmap),
+  BeamTracking.time_lower(f.z_offset),
+  BeamTracking.time_lower(f.gx),
+  BeamTracking.time_lower(f.gy),
+)
+BeamTracking.static_timecheck(f::FieldMapSource) =
+  BeamTracking.static_timecheck((f.fieldmap, f.z_offset, f.gx, f.gy))
+BeamTracking.teval(f::FieldMapSource, t) = FieldMapSource(
+  BeamTracking.teval(f.fieldmap, t),
+  BeamTracking.teval(f.z_offset, t),
+  BeamTracking.teval(f.gx, t),
+  BeamTracking.teval(f.gy, t),
+)
+
+@inline eval_em_field(f::MultipoleSource, x, y, z, pz, s) =
+  multipole_em_field(x, y, z, s, f.mm, f.kn, f.ks, f.p_over_q_ref)
+
+@inline eval_em_field(f::FieldMapSource, x, y, z, pz, s) =
+  fieldmap_em_field(x, y, z, pz, s, f.fieldmap, f.z_offset)
+
+@inline get_curvature(f) = (f.gx, f.gy)
+@inline get_g_bend(f) = f.gx
 
 
 """
@@ -89,13 +216,10 @@ returns zero derivatives (caller should mark particle as lost).
   vy = beta * C_LIGHT * vt_y
   vz = beta * C_LIGHT * vz_norm
 
-  # Lorentz force: F = q*(E + v×B)
-  E_force_x = charge * Ex
-  E_force_y = charge * Ey
-  E_force_z = charge * Ez
-  B_force_x = charge * (vy*Bz - vz*By)
-  B_force_y = charge * (vz*Bx - vx*Bz)
-  B_force_z = charge * (vx*By - vy*Bx)
+  # Combine charge and reference momentum once, then apply the Lorentz force.
+  qp0 = charge * C_LIGHT / p0c
+  Fx = Ex + (vy*Bz - vz*By)
+  Fy = Ey + (vz*Bx - vx*Bz)
 
   # Time derivative w.r.t. arc length
   dh_bend = x * gx + y * gy  # Longitudinal distance deviation
@@ -106,29 +230,25 @@ returns zero derivatives (caller should mark particle as lost).
   # Longitudinal momentum (normalized)
   pz_p0 = rel_p * rel_dir * abs_vz * inv_beta_c
 
-  # Energy derivative: dp/ds = (F · v) * dt/ds * inv_beta_c
-  F_dot_v = E_force_x*vx + E_force_y*vy + E_force_z*vz
-  dp_ds = F_dot_v * dt_ds * inv_beta_c
+  # Magnetic fields do no work, so only the electric field changes energy.
+  E_dot_v = Ex*vx + Ey*vy + Ez*vz
+  dpz_ds = qp0 * E_dot_v * dt_ds * inv_beta_c
 
   # Total energy for dbeta_ds calculation
   e_tot = p0c * rel_p / beta
-  dbeta_ds = mc2^2 * dp_ds * C_LIGHT / e_tot^3
+  dbeta_ds = mc2^2 * dpz_ds * p0c / e_tot^3
 
   # Position derivatives: dr/ds = v * dt/ds
   dx_ds = vx * dt_ds
   dy_ds = vy * dt_ds
 
-  # Momentum derivatives: dp_i/ds = F_i * dt/ds / p0c + corrections
-  p0 = p0c / C_LIGHT
-  dpx_ds = (E_force_x + B_force_x) * dt_ds / p0 + gx * pz_p0
-  dpy_ds = (E_force_y + B_force_y) * dt_ds / p0 + gy * pz_p0
+  # Momentum derivatives, including both components of reference curvature.
+  dpx_ds = qp0 * Fx * dt_ds + gx * pz_p0
+  dpy_ds = qp0 * Fy * dt_ds + gy * pz_p0
 
   # Longitudinal coordinate z derivative
   sqrt_1mvt2 = sqrt(1 - vt2_safe)
   dz_ds = rel_dir * (beta / beta_0 - 1) + rel_dir * (sqrt_1mvt2 - 1 - dh_bend) / sqrt_1mvt2 + dbeta_ds * z / beta
-
-  # Energy deviation derivative
-  dpz_ds = dp_ds / p0
 
   # Return zero derivatives if momenta are unphysical (branchless)
   zero_deriv = zero(dx_ds)
@@ -143,29 +263,17 @@ returns zero derivatives (caller should mark particle as lost).
 end
 
 """
-  rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0,
-            gx, gy, p0c, mc2, p_over_q_ref)
+  rk4_step!(coords, i, s, h, field, charge, tilde_m, beta_0, p0c, mc2)
 
 Perform a single RK4 step for particle i, updating coordinates in-place.
 Only updates state if particle is alive.
 
-# Arguments
-- `coords`: Coordinates structure
-- `i`: Particle index
-- `s`: Current arc length
-- `h`: Step size
-- `mm`: Multipole orders (StaticArray)
-- `kn`: Normal multipole strengths (StaticArray)
-- `ks`: Skew multipole strengths (StaticArray)
-- `charge`: Particle charge in units of e
-- `tilde_m`: Normalized mass mc²/(p₀c)
-- `beta_0`: Reference velocity β₀ = v₀/c
-- `gx`, `gy`: Horizontal and vertical reference curvature components
-- `p0c`: Reference momentum × c (eV)
-- `mc2`: Rest mass energy (eV)
-- `p_over_q_ref`: Reference magnetic rigidity Bρ = p₀c/(c·charge)
+The `field` argument is a `MultipoleSource` or `FieldMapSource` and carries
+both the field-evaluation data and reference curvature.
 """
-@inline function rk4_step!(coords, i, s, h, mm, kn, ks, charge, tilde_m, beta_0, gx, gy, p0c, mc2, p_over_q_ref)
+@inline function rk4_step!(coords, i, s, h, field, charge, tilde_m, beta_0, p0c, mc2)
+  gx, gy = get_curvature(field)
+
   # Check if particle is alive
   alive = (coords.state[i] == STATE_ALIVE)
   
@@ -179,7 +287,7 @@ Only updates state if particle is alive.
   pz = v[i, PZI]
 
   # k1 = f(u, s)
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x, y, z, s, mm, kn, ks, p_over_q_ref)
+  Ex, Ey, Ez, Bx, By, Bz = eval_em_field(field, x, y, z, pz, s)
   k1 = kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, gx, gy, p0c, mc2)
 
@@ -191,7 +299,7 @@ Only updates state if particle is alive.
   py2 = py + h2 * k1[4]
   z2 = z + h2 * k1[5]
   pz2 = pz + h2 * k1[6]
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x2, y2, z2, s + h2, mm, kn, ks, p_over_q_ref)
+  Ex, Ey, Ez, Bx, By, Bz = eval_em_field(field, x2, y2, z2, pz2, s + h2)
   k2 = kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, gx, gy, p0c, mc2)
 
@@ -202,7 +310,7 @@ Only updates state if particle is alive.
   py3 = py + h2 * k2[4]
   z3 = z + h2 * k2[5]
   pz3 = pz + h2 * k2[6]
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x3, y3, z3, s + h2, mm, kn, ks, p_over_q_ref)
+  Ex, Ey, Ez, Bx, By, Bz = eval_em_field(field, x3, y3, z3, pz3, s + h2)
   k3 = kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, gx, gy, p0c, mc2)
 
@@ -213,7 +321,7 @@ Only updates state if particle is alive.
   py4 = py + h * k3[4]
   z4 = z + h * k3[5]
   pz4 = pz + h * k3[6]
-  Ex, Ey, Ez, Bx, By, Bz = multipole_em_field(x4, y4, z4, s + h, mm, kn, ks, p_over_q_ref)
+  Ex, Ey, Ez, Bx, By, Bz = eval_em_field(field, x4, y4, z4, pz4, s + h)
   k4 = kick_vector(x4, px4, y4, py4, z4, pz4, s + h, Ex, Ey, Ez, Bx, By, Bz,
                 charge, tilde_m, beta_0, gx, gy, p0c, mc2)
 
@@ -230,22 +338,24 @@ end
 
 """
   rk4_kernel!(i, coords, beta_0, tilde_m, charge, p0c, mc2,
-              L, ds_step, n_steps, gx, gy, mm, kn, ks, p_over_q_ref)
+              L, ds_step, n_steps, field)
 
-Kernelized RK4 tracking through multipole fields.
+Kernelized RK4 tracking through electromagnetic fields.
 Compatible with @makekernel and the package's kernel architecture.
 
-The electromagnetic field is computed from multipole moments (mm, kn, ks) using
-the multipole_em_field function.
+The `field` argument selects analytical multipole or gridded field-map
+evaluation through dispatch.
 """
 @makekernel function rk4_kernel!(i, coords::Coords, beta_0, tilde_m,
-                                charge, p0c, mc2, L, ds_step, n_steps,
-                                gx, gy, mm, kn, ks, p_over_q_ref)
-  s = zero(L)
-
+                                charge, p0c, mc2, L, ds_step, n_steps, field)
   v = coords.v
   
   for step in 1:n_steps
+    # Derive the position from the step index instead of accumulating it.
+    # Accumulation can place the final RK evaluation just beyond a field-map
+    # boundary because of floating-point roundoff.
+    s = (step - 1) * ds_step
+
     # Check if particle is lost
     rel_p = 1 + v[i, PZI]
     inv_rel_p = 1 / rel_p
@@ -255,12 +365,12 @@ the multipole_em_field function.
     coords.state[i] = vifelse((vt2 >= 1) & alive, STATE_LOST_PZ, coords.state[i])
 
     # Perform RK4 step (check for alive status is now inside rk4_step!)
-    rk4_step!(coords, i, s, ds_step, mm, kn, ks, charge, tilde_m, beta_0, gx, gy, p0c, mc2, p_over_q_ref)
-    s += ds_step
+    rk4_step!(coords, i, s, ds_step, field, charge, tilde_m, beta_0, p0c, mc2)
 
     # The common path performs the final callback after exit processing.
     if step != n_steps
-      BeamTracking.execute_callbacks(i, coords, s, s / (beta_0 * C_LIGHT))
+      next_s = step * ds_step
+      BeamTracking.execute_callbacks(i, coords, next_s, next_s / (beta_0 * C_LIGHT))
     end
   end
 end

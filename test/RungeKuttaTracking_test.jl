@@ -1,7 +1,8 @@
 @testset "RungeKuttaTracking" begin
   using BeamTracking
   using BeamTracking: Species, massof, chargeof, R_to_beta_gamma, R_to_pc, pc_to_R,
-                      RungeKuttaTracking, Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE, C_LIGHT
+                      RungeKuttaTracking, Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE, C_LIGHT,
+                      MultipoleSource
   using StaticArrays
 
   # Helper function to setup tracking parameters
@@ -65,10 +66,10 @@
     mm = SVector{0, Int}()
     kn = SVector{0, Float64}()
     ks = SVector{0, Float64}()
+    field = MultipoleSource(mm, kn, ks, p_over_q_ref, gx, gy)
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
-                                   charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
-                                   mm, kn, ks, p_over_q_ref)
+                                   charge, p0c, mc2, L, ds_step, n_steps, field)
 
     # Regression test
     solution = [0.0100005  0.01  0.0  0.0  -5.00038e-5  0.0]
@@ -94,10 +95,10 @@
     mm = SVector(0)  # Solenoid (m=0)
     kn = SVector(Bz_normalized)
     ks = SVector(0.0)
+    field = MultipoleSource(mm, kn, ks, p_over_q_ref, gx, gy)
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
-                                   charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
-                                   mm, kn, ks, p_over_q_ref)
+                                   charge, p0c, mc2, L, ds_step, n_steps, field)
 
     # In uniform B-field, particle should follow circular path
     # Total transverse momentum should be conserved
@@ -127,10 +128,10 @@
     mm = SVector(1)  # Dipole (m=1)
     kn = SVector(By_normalized)
     ks = SVector(0.0)
+    field = MultipoleSource(mm, kn, ks, p_over_q_ref, gx, gy)
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
-                                   charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
-                                   mm, kn, ks, p_over_q_ref)
+                                   charge, p0c, mc2, L, ds_step, n_steps, field)
 
     # Regression test
     solution = [0.011499735519796054 0.012997924579999955 0.0 0.0 -6.649432859025015e-5 0.0]
@@ -154,10 +155,10 @@
     mm = SVector{0, Int}()
     kn = SVector{0, Float64}()
     ks = SVector{0, Float64}()
+    field = MultipoleSource(mm, kn, ks, p_over_q_ref, gx, gy)
 
     RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
-                                   charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
-                                   mm, kn, ks, p_over_q_ref)
+                                   charge, p0c, mc2, L, ds_step, n_steps, field)
 
     # Particle should not track
     solution = [0.0  1.5  0.0  0.0  0.0  0.0]
@@ -181,14 +182,13 @@
     mm = SVector{0, Int}()
     kn = SVector{0, Float64}()
     ks = SVector{0, Float64}()
+    field = MultipoleSource(mm, kn, ks, p_over_q_ref, gx, gy)
 
     # Track with different step sizes
     RungeKuttaTracking.rk4_kernel!(1, bunch1.coords, beta_0, tilde_m,
-                                   charge, p0c, mc2, L, 0.1, 10, gx, gy,
-                                   mm, kn, ks, p_over_q_ref)
+                                   charge, p0c, mc2, L, 0.1, 10, field)
     RungeKuttaTracking.rk4_kernel!(1, bunch2.coords, beta_0, tilde_m,
-                                   charge, p0c, mc2, L, 0.05, 20, gx, gy,
-                                   mm, kn, ks, p_over_q_ref)
+                                   charge, p0c, mc2, L, 0.05, 20, field)
 
     # Results should be identical
     @test isapprox(bunch1.coords.v, bunch2.coords.v, rtol=1e-2)

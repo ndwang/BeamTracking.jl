@@ -26,6 +26,8 @@ export Species
 export Bunch, State, ParticleView, Time, TimeDependentParam, BatchParam
 export Symplectic, MatrixKick, BendKick, SolenoidKick, DriftKick, Exact, RungeKutta
 export Fringe, SaganCavity, track!
+export FieldMap, RectGrid3D, CylGrid2D, MultipoleSource, FieldMapSource,
+       AnchorPt, ANCHOR_BEGINNING, ANCHOR_CENTER, ANCHOR_END
 
 
 include("utils/coord_transforms.jl")
@@ -68,7 +70,9 @@ include("kernels/fringe.jl")
 include("kernels/elsep.jl")
 
 include("utils/find_stuff.jl")
+include("fieldmap.jl")
 include("modules/RungeKuttaTracking.jl")
+using .RungeKuttaTracking: MultipoleSource, FieldMapSource
 
 # Empty tracking method to be imported+implemented by package extensions
 function track! end

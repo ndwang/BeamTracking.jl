@@ -60,7 +60,9 @@ end
   # Time-dependent values in params are evaluated once, at the particle's
   # element-entrance time, by the common kernel path. They stay fixed during
   # all RK substeps.
-  params = (beta_0, tilde_m, charge, p0c, mc2, L, ds_step, n_steps,
-            gx, gy, mm, kn, ks, p_over_q_ref)
+  field = BeamTracking.RungeKuttaTracking.MultipoleSource(
+    mm, kn, ks, p_over_q_ref, gx, gy,
+  )
+  params = (beta_0, tilde_m, charge, p0c, mc2, L, ds_step, n_steps, field)
   return push(kc, make_kernel_call(BeamTracking.RungeKuttaTracking.rk4_kernel!, params))
 end
