@@ -55,7 +55,8 @@ returns zero derivatives (caller should mark particle as lost).
   # computed once per particle, outside the RK stages.
   uz = sqrt(1 - vt2_safe)
   dh_bend = x * gx + y * gy
-  path_factor = (1 + dh_bend) / uz
+  inv_uz = inv(uz)
+  path_factor = (1 + dh_bend) * inv_uz
   inv_beta = inv_gamma_v * inv_rel_p
 
   dx_ds = vt_x * path_factor
@@ -66,7 +67,7 @@ returns zero derivatives (caller should mark particle as lost).
   # Only E changes |p|. dβ/ds = (m c/p₀)² / (E/(p₀ c))³ * d(|p|/p₀)/ds.
   dpz_ds = (Ex * vt_x + Ey * vt_y + Ez * uz) * electric_scale * path_factor * inv_beta
   dbeta_ds = tilde_m^2 * dpz_ds / inv_gamma_v^3
-  dz_ds = beta / beta_0 - 1 + (uz - 1 - dh_bend) / uz + dbeta_ds * z * inv_beta
+  dz_ds = beta / beta_0 - 1 + (uz - 1 - dh_bend) * inv_uz + dbeta_ds * z * inv_beta
 
   # Return zero derivatives if momenta are unphysical (branchless)
   zero_deriv = zero(dx_ds)
