@@ -8,11 +8,11 @@ module RungeKuttaTracking
 using ..BeamTracking, ..StaticArrays
 using ..BeamTracking: @makekernel, Coords
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, STATE_ALIVE, STATE_LOST_PZ
-using ..BeamTracking: C_LIGHT, E_CHARGE, EMField, vifelse
+using ..BeamTracking: C_LIGHT, EMField, vifelse
 
 """
-  kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
-        charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+  _kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
+        tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
 
 Calculate the derivative vector du/ds for relativistic particle tracking.
 Returns an SVector{6} containing [dx/ds, dpx/ds, dy/ds, dpy/ds, dz/ds, dpz/ds].
@@ -23,17 +23,15 @@ returns zero derivatives (caller should mark particle as lost).
 # Arguments
 - `x, px, y, py, z, pz`: State vector components
 - `s`: Arc length position
-- `Ex, Ey, Ez`: Electric field components (V/m)
-- `Bx, By, Bz`: Magnetic field components (T)
-- `charge`: Particle charge in units of e
+- `Ex, Ey, Ez`: Physical electric field (V/m)
+- `Bx, By, Bz`: Physical magnetic field (T)
 - `tilde_m`: Normalized mass mc²/(p₀c)
 - `beta_0`: Reference velocity β₀ = v₀/c
 - `gx`, `gy`: Horizontal and vertical reference curvature components
-- `p0c`: Reference momentum × c (eV)
-- `mc2`: Rest mass energy (eV)
+- `electric_scale`, `magnetic_scale`: q/(p₀c) and q/p₀ conversion factors
 """
-@inline function kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
-                charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+@inline function _kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
+                tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
   # Relative momentum
   rel_p = 1 + pz
 
@@ -52,55 +50,22 @@ returns zero derivatives (caller should mark particle as lost).
   inv_gamma_v = sqrt(rel_p2 + tilde_m^2)
   beta = rel_p / inv_gamma_v
   
-  inv_beta_c = 1 / (beta * C_LIGHT)
+  # Unit direction and path-length factor; field conversion factors are
+  # computed once per particle, outside the RK stages.
+  uz = sqrt(1 - vt2_safe)
+  dh_bend = x * gx + y * gy
+  path_factor = (1 + dh_bend) / uz
+  inv_beta = inv(beta)
 
-  # Longitudinal velocity component
-  rel_dir = 1  # +1 for forward tracking
-  vz_norm = sqrt(1 - vt2_safe) * rel_dir
-  vx = beta * C_LIGHT * vt_x
-  vy = beta * C_LIGHT * vt_y
-  vz = beta * C_LIGHT * vz_norm
+  dx_ds = vt_x * path_factor
+  dy_ds = vt_y * path_factor
+  dpx_ds = (Ex * electric_scale * inv_beta + (vt_y * Bz - uz * By) * magnetic_scale) * path_factor + gx * rel_p * uz
+  dpy_ds = (Ey * electric_scale * inv_beta + (uz * Bx - vt_x * Bz) * magnetic_scale) * path_factor + gy * rel_p * uz
 
-  # Lorentz force: F = q*(E + v×B)
-  E_force_x = charge * Ex
-  E_force_y = charge * Ey
-  E_force_z = charge * Ez
-  B_force_x = charge * (vy*Bz - vz*By)
-  B_force_y = charge * (vz*Bx - vx*Bz)
-  B_force_z = charge * (vx*By - vy*Bx)
-
-  # Time derivative w.r.t. arc length
-  dh_bend = x * gx + y * gy  # Longitudinal distance deviation
-  abs_vz = abs(vz)
-  abs_vz_safe = vifelse(good_momenta, abs_vz, one(abs_vz))  # Avoid division by zero
-  dt_ds = rel_dir * (1 + dh_bend) / abs_vz_safe
-
-  # Longitudinal momentum (normalized)
-  pz_p0 = rel_p * rel_dir * abs_vz * inv_beta_c
-
-  # Energy derivative: dp/ds = (F · v) * dt/ds * inv_beta_c
-  F_dot_v = E_force_x*vx + E_force_y*vy + E_force_z*vz
-  dp_ds = F_dot_v * dt_ds * inv_beta_c
-
-  # Total energy for dbeta_ds calculation
-  e_tot = p0c * rel_p / beta
-  dbeta_ds = mc2^2 * dp_ds * C_LIGHT / e_tot^3
-
-  # Position derivatives: dr/ds = v * dt/ds
-  dx_ds = vx * dt_ds
-  dy_ds = vy * dt_ds
-
-  # Momentum derivatives: dp_i/ds = F_i * dt/ds / p0c + corrections
-  p0 = p0c / C_LIGHT
-  dpx_ds = (E_force_x + B_force_x) * dt_ds / p0 + gx * pz_p0
-  dpy_ds = (E_force_y + B_force_y) * dt_ds / p0 + gy * pz_p0
-
-  # Longitudinal coordinate z derivative
-  sqrt_1mvt2 = sqrt(1 - vt2_safe)
-  dz_ds = rel_dir * (beta / beta_0 - 1) + rel_dir * (sqrt_1mvt2 - 1 - dh_bend) / sqrt_1mvt2 + dbeta_ds * z / beta
-
-  # Energy deviation derivative
-  dpz_ds = dp_ds / p0
+  # Only E changes |p|. dβ/ds = (m c/p₀)² / (E/(p₀ c))³ * d(|p|/p₀)/ds.
+  dpz_ds = (Ex * vt_x + Ey * vt_y + Ez * uz) * electric_scale * path_factor * inv_beta
+  dbeta_ds = tilde_m^2 * dpz_ds / inv_gamma_v^3
+  dz_ds = beta / beta_0 - 1 + (uz - 1 - dh_bend) / uz + dbeta_ds * z * inv_beta
 
   # Return zero derivatives if momenta are unphysical (branchless)
   zero_deriv = zero(dx_ds)
@@ -114,17 +79,39 @@ returns zero derivatives (caller should mark particle as lost).
   )
 end
 
-@inline function kick_vector(x, px, y, py, z, pz, s, field::EMField,
-                charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+@inline function _kick_vector(x, px, y, py, z, pz, s, field::EMField,
+                tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
   Ex, Ey, Ez = field.E
   Bx, By, Bz = field.B
-  return kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
+  return _kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
+                     tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
+end
+
+"""
+    kick_vector(x, px, y, py, z, pz, s, field::EMField,
+                charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+
+Evaluate the simplified RK equations with physical electric (V/m) and magnetic
+(T) fields. `charge` is in units of e and `p0c` is in eV. The original argument
+list is preserved; `mc2` is redundant with `tilde_m` and `p0c` and is unused.
+The component overload accepts `Ex, Ey, Ez, Bx, By, Bz` in place of `field`.
+"""
+@inline function kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
+                             charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+  electric_scale = charge / p0c
+  magnetic_scale = electric_scale * C_LIGHT
+  return _kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
+                      tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
+end
+
+@inline function kick_vector(x, px, y, py, z, pz, s, field::EMField,
+                             charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+  return kick_vector(x, px, y, py, z, pz, s, field.E..., field.B...,
                      charge, tilde_m, beta_0, gx, gy, p0c, mc2)
 end
 
 """
-  rk4_step!(coords, i, s, h, source, charge, tilde_m, beta_0,
-            gx, gy, p0c, mc2)
+  _rk4_step!(coords, i, s, h, source, tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
 
 Perform a single RK4 step for particle i, updating coordinates in-place.
 Only updates state if particle is alive.
@@ -135,14 +122,12 @@ Only updates state if particle is alive.
 - `s`: Current arc length
 - `h`: Step size
 - `source`: Concrete callable field source
-- `charge`: Particle charge in units of e
 - `tilde_m`: Normalized mass mc²/(p₀c)
 - `beta_0`: Reference velocity β₀ = v₀/c
 - `gx`, `gy`: Horizontal and vertical reference curvature components
-- `p0c`: Reference momentum × c (eV)
-- `mc2`: Rest mass energy (eV)
+- `electric_scale`, `magnetic_scale`: q/(p₀c) and q/p₀ conversion factors
 """
-@inline function rk4_step!(coords, i, s, h, source, charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+@inline function _rk4_step!(coords, i, s, h, source, tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
   # Check if particle is alive
   alive = (coords.state[i] == STATE_ALIVE)
   
@@ -157,8 +142,8 @@ Only updates state if particle is alive.
 
   # k1 = f(u, s)
   field = source(x, y, z, s)
-  k1 = kick_vector(x, px, y, py, z, pz, s, field,
-                charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+  k1 = _kick_vector(x, px, y, py, z, pz, s, field,
+                tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
 
   # k2 = f(u + h/2 * k1, s + h/2)
   h2 = h / 2
@@ -169,8 +154,8 @@ Only updates state if particle is alive.
   z2 = z + h2 * k1[5]
   pz2 = pz + h2 * k1[6]
   field = source(x2, y2, z2, s + h2)
-  k2 = kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, field,
-                charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+  k2 = _kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, field,
+                tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
 
   # k3 = f(u + h/2 * k2, s + h/2)
   x3 = x + h2 * k2[1]
@@ -180,8 +165,8 @@ Only updates state if particle is alive.
   z3 = z + h2 * k2[5]
   pz3 = pz + h2 * k2[6]
   field = source(x3, y3, z3, s + h2)
-  k3 = kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, field,
-                charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+  k3 = _kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, field,
+                tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
 
   # k4 = f(u + h * k3, s + h)
   x4 = x + h * k3[1]
@@ -191,8 +176,8 @@ Only updates state if particle is alive.
   z4 = z + h * k3[5]
   pz4 = pz + h * k3[6]
   field = source(x4, y4, z4, s + h)
-  k4 = kick_vector(x4, px4, y4, py4, z4, pz4, s + h, field,
-                charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+  k4 = _kick_vector(x4, px4, y4, py4, z4, pz4, s + h, field,
+                tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
 
   # Update state: u += h/6 * (k1 + 2*k2 + 2*k3 + k4)
   # Only update if particle is alive
@@ -206,16 +191,30 @@ Only updates state if particle is alive.
 end
 
 """
+    rk4_step!(coords, i, s, h, source, charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+
+Advance one RK4 step using a physical-unit field source. The full tracking
+kernel reuses the field conversion factors across all steps for each particle.
+"""
+@inline function rk4_step!(coords, i, s, h, source, charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+  electric_scale = charge / p0c
+  return _rk4_step!(coords, i, s, h, source, tilde_m, beta_0, gx, gy,
+                   electric_scale, electric_scale * C_LIGHT)
+end
+
+"""
   rk4_kernel!(i, coords, beta_0, tilde_m, charge, p0c, mc2,
               L, ds_step, n_steps, gx, gy, source)
 
 Kernelized RK4 tracking through a concrete electromagnetic field source.
 Compatible with @makekernel and the package's kernel architecture.
 """
-@makekernel function rk4_kernel!(i, coords::Coords, beta_0, tilde_m,
-                                charge, p0c, mc2, L, ds_step, n_steps,
+@makekernel function rk4_kernel!(i, coords::Coords, beta_0, tilde_m, charge, p0c, mc2,
+                                L, ds_step, n_steps,
                                 gx, gy, source)
   s = zero(L)
+  electric_scale = charge / p0c
+  magnetic_scale = electric_scale * C_LIGHT
 
   v = coords.v
   
@@ -229,7 +228,7 @@ Compatible with @makekernel and the package's kernel architecture.
     coords.state[i] = vifelse((vt2 >= 1) & alive, STATE_LOST_PZ, coords.state[i])
 
     # Perform RK4 step (check for alive status is now inside rk4_step!)
-    rk4_step!(coords, i, s, ds_step, source, charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+    _rk4_step!(coords, i, s, ds_step, source, tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
     s += ds_step
 
     # The common path performs the final callback after exit processing.

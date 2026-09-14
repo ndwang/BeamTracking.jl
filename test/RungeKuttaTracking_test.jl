@@ -1,3 +1,5 @@
+include("rk_physical_reference.jl")
+
 function rk_test_uniform_field(x, y, z, s, parameters)
   carrier = zero(x)
   return EMField(
@@ -45,6 +47,52 @@ end
     p0c = R_to_pc(species, p_over_q_ref)
 
     return species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2
+  end
+
+  @testset "Simplified physical equations match original" begin
+    using Random
+    rng = MersenneTwister(20260914)
+    for species_name in ("electron", "proton"), pc in (1e6, 1e9)
+      species = Species(species_name)
+      R = pc_to_R(species, pc)
+      m = massof(species) / pc
+      beta0 = 1 / sqrt(1 + m^2)
+      for _ in 1:40
+        u = SVector{6}(randn(rng, 6) .* [0.01, 0.1, 0.01, 0.1, 0.1, 0.1])
+        E = SVector{3}(randn(rng, 3) * 1e3)
+        B = SVector{3}(randn(rng, 3) * 0.01)
+        physical = EMField(E, B)
+        gx, gy = 0.03, -0.02
+        old_rhs(v) = RKPhysicalReference.kick_vector(v..., 0.0, physical,
+          chargeof(species), m, beta0, gx, gy, pc, massof(species))
+        new_rhs(v) = RungeKuttaTracking.kick_vector(v..., 0.0, physical,
+          chargeof(species), m, beta0, gx, gy, pc, massof(species))
+        @test new_rhs(u) ≈ old_rhs(u) atol=2e-15 rtol=2e-13
+
+        # Compare a full trajectory with the old equations, including electric work.
+        expected = u
+        h = 0.001
+        for _ in 1:20
+          k1 = old_rhs(expected)
+          k2 = old_rhs(expected + h/2 * k1)
+          k3 = old_rhs(expected + h/2 * k2)
+          k4 = old_rhs(expected + h * k3)
+          expected += h/6 * (k1 + 2*k2 + 2*k3 + k4)
+        end
+        bunch = Bunch(reshape(collect(u), 1, 6); species, p_over_q_ref=R)
+        source = FunctionalField((x, y, z, s, p) -> p, physical)
+        RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta0, m, chargeof(species), pc, massof(species),
+          0.02, h, 20, gx, gy, source)
+        @test vec(bunch.coords.v) ≈ expected atol=2e-15 rtol=2e-13
+      end
+    end
+
+    # Analytic on-axis electric acceleration, including the beta-dependent z term.
+    m, beta0, Ez, z = 2.0, 1/sqrt(5.0), 0.03, 0.2
+    rhs = RungeKuttaTracking.kick_vector(0., 0., 0., 0., z, 0., 0.,
+      EMField(0., 0., Ez, 0., 0., 0.), 1., m, beta0, 0., 0., 1., m)
+    @test rhs[6] ≈ Ez / beta0
+    @test rhs[5] ≈ m^2 * beta0 * Ez * z
   end
 
   @testset "RungeKutta constructor" begin
