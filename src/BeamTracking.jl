@@ -28,7 +28,7 @@ export Symplectic, MatrixKick, BendKick, SolenoidKick, DriftKick, Exact, RungeKu
 export EMField, ZeroField, MultipoleField, FunctionalField, SumField
 export Fringe, SaganCavity, track!
 
-
+include("utils/float32.jl")
 include("utils/coord_transforms.jl")
 include("utils/energy.jl")
 include("utils/math_simd.jl")
