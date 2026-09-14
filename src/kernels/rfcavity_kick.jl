@@ -142,8 +142,8 @@ function omega_cavity(i, coords::Coords, a, beta_0, tilde_m, omega, t_ref, E0_no
     ey = coeff/beta_0*v[i,YI]
     ez = E0_normalized*(1 + omega*r2*denom/4)*s
     e_vec = (ex, ey, ez)
-    bx = -coeff/C_LIGHT*v[i,YI]
-    by =  coeff/C_LIGHT*v[i,XI]
+    bx = -coeff/c_light(eltype(coords.v))*v[i,YI]
+    by =  coeff/c_light(eltype(coords.v))*v[i,XI]
     bz = zero(bx)
     b_vec = (bx, by, bz)
     if length(mm) > 0 && mm[1] == 0
@@ -153,16 +153,6 @@ function omega_cavity(i, coords::Coords, a, beta_0, tilde_m, omega, t_ref, E0_no
       ax = bz
       ay = bz
     end
-
-    @show E0_normalized
-    @show beta_0
-    @show omega
-    @show v[i,XI]
-    @show v[i,YI]
-    @show c 
-    @show s
-    @show e_vec
-    @show b_vec
 
     ox, oy, oz = omega_field(i, coords, a, 0, tilde_m, ax, ay, e_vec, b_vec, Val{false}(), L)
     if length(mm) > 0
