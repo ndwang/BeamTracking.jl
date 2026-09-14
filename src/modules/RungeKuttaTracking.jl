@@ -68,7 +68,7 @@ returns zero derivatives (caller should mark particle as lost).
   dpz_ds = (Ex * vt_x + Ey * vt_y + Ez * uz) * electric_scale * path_factor * inv_beta
   # dβ/ds * z/β = (m̃² / (rel_p² + m̃²)) * dpz/ds * z/rel_p.
   dz_accel = (tilde_m^2 / (rel_p2 + tilde_m^2)) * dpz_ds * z * inv_rel_p
-  dz_ds = beta / beta_0 - 1 + (uz - 1 - dh_bend) * inv_uz + dz_accel
+  dz_ds = beta / beta_0 - path_factor + dz_accel
 
   # Return zero derivatives if momenta are unphysical (branchless)
   zero_deriv = zero(dx_ds)
