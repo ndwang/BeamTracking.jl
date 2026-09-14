@@ -241,6 +241,67 @@ end
     @test bunch.coords.state[1] == STATE_LOST_PZ
   end
 
+  @testset "Invalid RK momenta and rejected steps" begin
+    species, R, beta0, _, m, charge, pc, mc2 = setup_particle()
+    # Include healthy and previously lost particles in the same SIMD lanes.
+    initial = [0.0 0.0 0.0 0.0 0.0 -1.0;
+               0.0 0.0 0.0 0.0 0.0 -2.0;
+               0.0 0.0 0.0 0.0 0.0  0.0;
+               0.0 0.1 0.0 0.0 0.0  0.0;
+               0.0 1.0 0.0 0.0 0.0  0.0;
+               0.0 NaN 0.0 0.0 0.0  0.0;
+               0.0 0.0 0.0 0.0 0.0  Inf;
+               0.0 0.0 0.0 0.0 0.0  0.0]
+    for (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
+      bunch = Bunch(copy(initial); species, p_over_q_ref=R)
+      bunch.coords.state[8] = BeamTracking.STATE_LOST_POS_X
+      call = BeamTracking.make_kernel_call(RungeKuttaTracking.rk4_kernel!,
+        (beta0, m, charge, pc, mc2, 1.0, 1.0, 1, 0.0, 0.0, ZeroField()))
+      BeamTracking.launch!(bunch.coords, call; use_KA, use_explicit_SIMD)
+      @test bunch.coords.state == [STATE_LOST_PZ, STATE_LOST_PZ, STATE_ALIVE,
+        STATE_ALIVE, STATE_LOST_PZ, STATE_LOST_PZ, STATE_LOST_PZ, BeamTracking.STATE_LOST_POS_X]
+      @test isequal(bunch.coords.v[[1, 2, 5, 6, 7, 8], :], initial[[1, 2, 5, 6, 7, 8], :])
+      @test bunch.coords.v[4, 1] ≈ 0.1 / sqrt(1 - 0.1^2)
+    end
+
+    # A bad intermediate stage must reject the step even if zeroing its
+    # derivative would make the weighted final momentum appear valid.
+    intermediate_loss = MultipoleField(SA[1], SA[1.1 * R], SA[0.0])
+    # All stage input momenta are valid here, but k4 makes the final px = -2.
+    final_loss = FunctionalField((x, y, z, s, R) -> begin
+      v = zero(x)
+      by = v + ifelse(s == 1, 12 * R, zero(R))
+      EMField(v, v, v, v, by, v)
+    end, R)
+    for source in (intermediate_loss, final_loss)
+      for (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
+        bunch = Bunch(zeros(8, 6); species, p_over_q_ref=R)
+        call = BeamTracking.make_kernel_call(RungeKuttaTracking.rk4_kernel!,
+          (beta0, m, charge, pc, mc2, 1.0, 1.0, 1, 0.0, 0.0, source))
+        BeamTracking.launch!(bunch.coords, call; use_KA, use_explicit_SIMD)
+        @test all(==(STATE_LOST_PZ), bunch.coords.state)
+        @test iszero(bunch.coords.v)
+      end
+      # Direct users of rk4_step! need the same loss handling as the kernel.
+      bunch = Bunch(zeros(1, 6); species, p_over_q_ref=R)
+      RungeKuttaTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, source,
+        charge, m, beta0, 0.0, 0.0, pc, mc2)
+      @test bunch.coords.state[1] == STATE_LOST_PZ
+      @test iszero(bunch.coords.v)
+    end
+
+    # Electric deceleration may also make total momentum nonpositive midstep.
+    source = FunctionalField((x, y, z, s) -> begin
+      v = zero(x)
+      EMField(v, v, v + 4 * pc, v, v, v)
+    end)
+    bunch = Bunch(zeros(1, 6); species, p_over_q_ref=R)
+    RungeKuttaTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, source,
+      charge, m, beta0, 0.0, 0.0, pc, mc2)
+    @test bunch.coords.state[1] == STATE_LOST_PZ
+    @test iszero(bunch.coords.v)
+  end
+
   @testset "Convergence test" begin
     species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 

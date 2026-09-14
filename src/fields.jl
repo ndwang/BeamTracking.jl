@@ -141,6 +141,13 @@ end
 include("field_parameters.jl")
 
 Adapt.@adapt_structure EMField
-Adapt.@adapt_structure MultipoleField
+# Adaptation preserves the validated orders. Avoid rerunning constructor checks:
+# KernelAbstractions also adapts arguments inside GPU kernels (constify).
+@inline function Adapt.adapt_structure(to, source::MultipoleField)
+  orders = Adapt.adapt(to, source.orders)
+  normal = Adapt.adapt(to, source.normal)
+  skew = Adapt.adapt(to, source.skew)
+  return MultipoleField{typeof(orders),typeof(normal),typeof(skew)}(orders, normal, skew)
+end
 Adapt.@adapt_structure FunctionalField
 Adapt.@adapt_structure SumField

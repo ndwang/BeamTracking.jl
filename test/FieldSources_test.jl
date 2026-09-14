@@ -228,6 +228,11 @@ end
   end
 
   @testset "Adaptation" begin
+    multipole = MultipoleField(SA[0, 2], SA[0.01, 0.03], SA[0.0, 0.02])
+    adapted_multipole = BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), multipole)
+    @test adapted_multipole == multipole
+    @test @ballocated(BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), $multipole)) == 0
+
     source = SumField(
       MultipoleField(SA[1], SA[0.01], SA[0.0]),
       FunctionalField(test_uniform_field, (field_map=[1.0, 2.0, 3.0],)),

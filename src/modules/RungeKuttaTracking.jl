@@ -10,6 +10,13 @@ using ..BeamTracking: @makekernel, Coords
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, STATE_ALIVE, STATE_LOST_PZ
 using ..BeamTracking: C_LIGHT, EMField, vifelse
 
+# Mechanical momenta must describe forward motion with nonzero longitudinal momentum.
+@inline function _valid_momentum(px, py, pz)
+  rel_p = 1 + pz
+  inv_p = inv(vifelse(rel_p > 0, rel_p, one(rel_p)))
+  return (rel_p > 0) & (rel_p < Inf) & ((px * inv_p)^2 + (py * inv_p)^2 < 1)
+end
+
 """
   _kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
         tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
@@ -36,14 +43,14 @@ returns zero derivatives (caller should mark particle as lost).
   rel_p = 1 + pz
 
   # Transverse velocity components (normalized)
-  inv_rel_p = inv(rel_p)
+  inv_rel_p = inv(vifelse(rel_p > 0, rel_p, one(rel_p)))
   vt_x = px * inv_rel_p
   vt_y = py * inv_rel_p
   vt2 = vt_x^2 + vt_y^2
 
   # Check for unphysical momenta (branchless)
   vt2_1 = one(vt2)
-  good_momenta = (vt2 < vt2_1)
+  good_momenta = (rel_p > 0) & (rel_p < Inf) & (vt2 < vt2_1)
   vt2_safe = vifelse(good_momenta, vt2, zero(vt2))
 
   # Particle beta and velocity
@@ -143,6 +150,8 @@ Only updates state if particle is alive.
   z = v[i, ZI]
   pz = v[i, PZI]
 
+  good = _valid_momentum(px, py, pz)
+
   # k1 = f(u, s)
   field = source(x, y, z, s)
   k1 = _kick_vector(x, px, y, py, z, pz, s, field,
@@ -156,6 +165,7 @@ Only updates state if particle is alive.
   py2 = py + h2 * k1[4]
   z2 = z + h2 * k1[5]
   pz2 = pz + h2 * k1[6]
+  good &= _valid_momentum(px2, py2, pz2)
   field = source(x2, y2, z2, s + h2)
   k2 = _kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, field,
                 tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
@@ -167,6 +177,7 @@ Only updates state if particle is alive.
   py3 = py + h2 * k2[4]
   z3 = z + h2 * k2[5]
   pz3 = pz + h2 * k2[6]
+  good &= _valid_momentum(px3, py3, pz3)
   field = source(x3, y3, z3, s + h2)
   k3 = _kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, field,
                 tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
@@ -178,19 +189,27 @@ Only updates state if particle is alive.
   py4 = py + h * k3[4]
   z4 = z + h * k3[5]
   pz4 = pz + h * k3[6]
+  good &= _valid_momentum(px4, py4, pz4)
   field = source(x4, y4, z4, s + h)
   k4 = _kick_vector(x4, px4, y4, py4, z4, pz4, s + h, field,
                 tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
 
-  # Update state: u += h/6 * (k1 + 2*k2 + 2*k3 + k4)
-  # Only update if particle is alive
   h6 = h / 6
-  v[i, XI] = vifelse(alive, x + h6 * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1]), v[i, XI])
-  v[i, PXI] = vifelse(alive, px + h6 * (k1[2] + 2*k2[2] + 2*k3[2] + k4[2]), v[i, PXI])
-  v[i, YI] = vifelse(alive, y + h6 * (k1[3] + 2*k2[3] + 2*k3[3] + k4[3]), v[i, YI])
-  v[i, PYI] = vifelse(alive, py + h6 * (k1[4] + 2*k2[4] + 2*k3[4] + k4[4]), v[i, PYI])
-  v[i, ZI] = vifelse(alive, z + h6 * (k1[5] + 2*k2[5] + 2*k3[5] + k4[5]), v[i, ZI])
-  v[i, PZI] = vifelse(alive, pz + h6 * (k1[6] + 2*k2[6] + 2*k3[6] + k4[6]), v[i, PZI])
+  xn = x + h6 * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
+  pxn = px + h6 * (k1[2] + 2*k2[2] + 2*k3[2] + k4[2])
+  yn = y + h6 * (k1[3] + 2*k2[3] + 2*k3[3] + k4[3])
+  pyn = py + h6 * (k1[4] + 2*k2[4] + 2*k3[4] + k4[4])
+  zn = z + h6 * (k1[5] + 2*k2[5] + 2*k3[5] + k4[5])
+  pzn = pz + h6 * (k1[6] + 2*k2[6] + 2*k3[6] + k4[6])
+  good &= _valid_momentum(pxn, pyn, pzn)
+  coords.state[i] = vifelse(alive & !good, STATE_LOST_PZ, coords.state[i])
+  accept = alive & good
+  v[i, XI] = vifelse(accept, xn, v[i, XI])
+  v[i, PXI] = vifelse(accept, pxn, v[i, PXI])
+  v[i, YI] = vifelse(accept, yn, v[i, YI])
+  v[i, PYI] = vifelse(accept, pyn, v[i, PYI])
+  v[i, ZI] = vifelse(accept, zn, v[i, ZI])
+  v[i, PZI] = vifelse(accept, pzn, v[i, PZI])
 end
 
 """
@@ -219,18 +238,7 @@ Compatible with @makekernel and the package's kernel architecture.
   electric_scale = charge / p0c
   magnetic_scale = electric_scale * C_LIGHT
 
-  v = coords.v
-  
   for step in 1:n_steps
-    # Check if particle is lost
-    rel_p = 1 + v[i, PZI]
-    inv_rel_p = 1 / rel_p
-    vt2 = (v[i, PXI] * inv_rel_p)^2 + (v[i, PYI] * inv_rel_p)^2
-    alive = (coords.state[i] == STATE_ALIVE)
-    # Mark particle as lost
-    coords.state[i] = vifelse((vt2 >= 1) & alive, STATE_LOST_PZ, coords.state[i])
-
-    # Perform RK4 step (check for alive status is now inside rk4_step!)
     _rk4_step!(coords, i, s, ds_step, source, tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
     s += ds_step
 
