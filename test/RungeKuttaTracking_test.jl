@@ -32,6 +32,10 @@ end
                       RungeKuttaTracking, Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE, C_LIGHT
   using StaticArrays
 
+  # Match the batch tests and the compiler-bug guard in beval: batched
+  # explicit SIMD is unsupported on Julia < 1.11 with x86_64 CPUs.
+  batch_simd_supported = !(VERSION < v"1.11" && Sys.ARCH == :x86_64)
+
   # Helper function to setup tracking parameters
   function setup_particle(pc=1e9)  # pc in eV, default corresponds to 1 GeV
     species = Species("electron")
@@ -497,6 +501,9 @@ end
         expected[i, :] .= bunch.coords.v[1, :]
       end
       for source in sources, (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
+        if strength isa DefExpr{BatchParam} && use_explicit_SIMD && !batch_simd_supported
+          continue
+        end
         line = Beamline([Drift(L=0.5, tracking_method=RungeKutta(field=source, n_steps=5))],
                         context=context, p_over_q_ref=p_over_q_ref, species_ref=species)
         bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
@@ -513,7 +520,7 @@ end
       beta_0, tilde_m, charge, p0c, mc2, 0.5, 0.1, 5, 0.0, 0.0, source,
     ))
     bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
-    for simd in (false, true)
+    for simd in (batch_simd_supported ? (false, true) : (false,))
       @test @ballocated(BeamTracking.launch!($bunch.coords, $call;
                        use_KA=false, use_explicit_SIMD=$simd)) == 0
     end
@@ -538,7 +545,7 @@ end
     simd_bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
     ka_bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
 
-    track!(simd_bunch, line; use_KA=false, use_explicit_SIMD=true)
+    track!(simd_bunch, line; use_KA=false, use_explicit_SIMD=batch_simd_supported)
     track!(ka_bunch, line; use_KA=true, use_explicit_SIMD=false)
 
     expected = similar(initial)
