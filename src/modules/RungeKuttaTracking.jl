@@ -8,7 +8,7 @@ module RungeKuttaTracking
 using ..BeamTracking, ..StaticArrays
 using ..BeamTracking: @makekernel, Coords
 using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, STATE_ALIVE, STATE_LOST_PZ
-using ..BeamTracking: C_LIGHT, EMField, vifelse
+using ..BeamTracking: c_light, EMField, vifelse
 
 # Mechanical momenta must describe forward motion with nonzero longitudinal momentum.
 @inline function _valid_momentum(px, py, pz)
@@ -109,7 +109,7 @@ The component overload accepts `Ex, Ey, Ez, Bx, By, Bz` in place of `field`.
 @inline function kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
                              charge, tilde_m, beta_0, gx, gy, p0c, mc2)
   electric_scale = charge / p0c
-  magnetic_scale = electric_scale * C_LIGHT
+  magnetic_scale = electric_scale * c_light(typeof(p0c))
   return _kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
                       tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
 end
@@ -221,7 +221,7 @@ kernel reuses the field conversion factors across all steps for each particle.
 @inline function rk4_step!(coords, i, s, h, source, charge, tilde_m, beta_0, gx, gy, p0c, mc2)
   electric_scale = charge / p0c
   return _rk4_step!(coords, i, s, h, source, tilde_m, beta_0, gx, gy,
-                   electric_scale, electric_scale * C_LIGHT)
+                   electric_scale, electric_scale * c_light(typeof(p0c)))
 end
 
 """
@@ -236,7 +236,7 @@ Compatible with @makekernel and the package's kernel architecture.
                                 gx, gy, source)
   s = zero(L)
   electric_scale = charge / p0c
-  magnetic_scale = electric_scale * C_LIGHT
+  magnetic_scale = electric_scale * c_light(typeof(p0c))
 
   for step in 1:n_steps
     _rk4_step!(coords, i, s, ds_step, source, tilde_m, beta_0, gx, gy, electric_scale, magnetic_scale)
@@ -244,7 +244,7 @@ Compatible with @makekernel and the package's kernel architecture.
 
     # The common path performs the final callback after exit processing.
     if step != n_steps
-      BeamTracking.execute_callbacks(i, coords, s, s / (beta_0 * C_LIGHT))
+      BeamTracking.execute_callbacks(i, coords, s, s / (beta_0 * c_light(typeof(ds_step))))
     end
   end
 end

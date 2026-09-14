@@ -587,6 +587,37 @@ end
     end
   end
 
+  @testset "Float32 field-source tracking" begin
+    species, R, = setup_particle()
+    # Check every RK stage, including SIMD lanes, not just storage.
+    evaluator = (x, y, z, s, p) -> begin
+      @assert eltype(x) === eltype(y) === eltype(z) === eltype(s) === Float32
+      @assert eltype(p.By) === Float32
+      v = zero(x)
+      EMField(v, v, v, v, v + p.By, v)
+    end
+    for (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
+      # Float32 batch gathers currently hit an upstream SIMD pointer-cast bug.
+      # Cover SIMD with static parameters and batches on scalar/KA paths.
+      strength = use_explicit_SIMD ? BatchParam(0.002) : BatchParam([0.002, 0.004])
+      source = SumField(
+        MultipoleField(SA[1], SA[0.001], SA[0.0]),
+        FunctionalField(evaluator, (By=strength,)),
+      )
+      line = Beamline([Drift(L=0.5, tracking_method=RungeKutta(field=source, n_steps=5))],
+                      p_over_q_ref=R, species_ref=species)
+      reference = Beamline([Drift(L=0.5, tracking_method=RungeKutta(
+        field=MultipoleField(SA[1], SA[strength + 0.001], SA[BatchParam(0.0)]),
+        n_steps=5))], p_over_q_ref=R, species_ref=species)
+      bunch = Bunch(zeros(Float32, 16, 6); species, p_over_q_ref=R)
+      expected = Bunch(zeros(16, 6); species, p_over_q_ref=R)
+      track!(expected, reference; use_KA=false, use_explicit_SIMD=false)
+      track!(bunch, line; use_KA, use_explicit_SIMD)
+      # Near-zero z includes cancellation of order-one terms in Float32.
+      @test all(isapprox.(bunch.coords.v, expected.coords.v; rtol=1e-5, atol=eps(Float32)))
+    end
+  end
+
   @testset "Batch field-source tracking" begin
     using Beamlines
 

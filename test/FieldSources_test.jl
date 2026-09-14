@@ -227,6 +227,51 @@ end
     @test ext.unpack_field_source(opaque, context) === opaque
   end
 
+  @testset "Numeric lowering" begin
+    multipole = MultipoleField(SA[1, 2], SA[0.01, 0.03], SA[0.0, 0.02])
+    functional = FunctionalField(test_uniform_field, (
+      Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=0.1, Bz=0.0,
+      nested=(values=(0.25, SA[0.5, 0.75]), order=2, label="field"),
+    ))
+    source = SumField(multipole, functional)
+    for T in (Float32, Float16)
+      lowered = @inferred BeamTracking.num_lower(T, source)
+      @test lowered.sources[1].orders === multipole.orders
+      @test lowered.sources[2].evaluator === functional.evaluator
+      parameters = lowered.sources[2].parameters
+      @test parameters.nested.values === (T(0.25), SVector{2,T}(0.5, 0.75))
+      @test parameters.nested.order === 2
+      @test parameters.nested.label === "field"
+      @test @inferred(lowered(zero(T), zero(T), zero(T), zero(T))) isa EMField{T}
+    end
+    @test BeamTracking.num_lower(Float64, source) === source
+    @test functional.parameters.By === 0.1
+    opaque = FunctionalField(test_uniform_field, FieldTestParameters(0.1))
+    @test BeamTracking.num_lower(Float32, opaque).parameters === opaque.parameters
+
+    # Exercise the actual order: make_kernel_call lowers batch/time wrappers,
+    # then pushing into a chain converts numbers to the coordinate precision.
+    batch = MultipoleField(SA[1], SA[BatchParam([0.1, 0.2])], SA[BatchParam(0.0)])
+    timed = FunctionalField(test_uniform_field, (
+      Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0,
+      By=TimeDependentParam(t -> Float32(t), false), Bz=0.0,
+    ))
+    call = BeamTracking.make_kernel_call(identity, (SumField(batch, timed),))
+    chain = BeamTracking.KernelChain(Val{1}(), BeamTracking.RefState{Float32}(;
+      t_enter=0f0, beta_gamma_enter=1f0))
+    prepared = BeamTracking.push(chain, call).chain[1].args[1]
+    for i in 1:2
+      evaluated = BeamTracking.teval(BeamTracking.beval(prepared, i), 0.25f0)
+      field = @inferred evaluated(0f0, 0f0, 0f0, 0f0)
+      @test field isa EMField{Float32}
+      @test field.B[2] ≈ Float32(i * 0.1) + 0.25f0
+    end
+    @test batch.normal[1].batch == [0.1, 0.2]
+    bad_time = FunctionalField(test_uniform_field, (By=Time(),))
+    bad_call = BeamTracking.make_kernel_call(identity, (bad_time,))
+    @test_throws ErrorException BeamTracking.push(chain, bad_call)
+  end
+
   @testset "Adaptation" begin
     multipole = MultipoleField(SA[0, 2], SA[0.01, 0.03], SA[0.0, 0.02])
     adapted_multipole = BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), multipole)
