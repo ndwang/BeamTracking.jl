@@ -36,8 +36,9 @@ returns zero derivatives (caller should mark particle as lost).
   rel_p = 1 + pz
 
   # Transverse velocity components (normalized)
-  vt_x = px / rel_p
-  vt_y = py / rel_p
+  inv_rel_p = inv(rel_p)
+  vt_x = px * inv_rel_p
+  vt_y = py * inv_rel_p
   vt2 = vt_x^2 + vt_y^2
 
   # Check for unphysical momenta (branchless)
@@ -55,7 +56,7 @@ returns zero derivatives (caller should mark particle as lost).
   uz = sqrt(1 - vt2_safe)
   dh_bend = x * gx + y * gy
   path_factor = (1 + dh_bend) / uz
-  inv_beta = inv(beta)
+  inv_beta = inv_gamma_v * inv_rel_p
 
   dx_ds = vt_x * path_factor
   dy_ds = vt_y * path_factor
