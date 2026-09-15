@@ -6,7 +6,7 @@
 
 using BeamTracking
 using BeamTracking: Species, massof, chargeof, R_to_beta_gamma, R_to_pc, pc_to_R,
-                    RungeKuttaTracking, Bunch, STATE_ALIVE
+                    Bunch, STATE_ALIVE
 using StaticArrays, BenchmarkTools, Random, Printf, TOML, Dates, Sockets
 
 const DEFAULT_PARTICLE_COUNTS = (1, 10, 100, 1_000, 10_000, 100_000, 1_000_000)
@@ -115,7 +115,7 @@ function track_all_particles!(
 )
     n = size(bunch.coords.v, 1)
     for i in 1:n
-        RungeKuttaTracking.rk4_kernel!(
+        BeamTracking.rk4_kernel!(
             i, bunch.coords, beta_0, tilde_m,
             charge, p0c, mc2, L, ds_step, n_steps,
             gx, gy, source,
@@ -200,7 +200,7 @@ function scaling_main(options, gpu_enabled, gpu_reason)
         for n in particle_counts
             cpu_bunch, args... = setup_multi_particle(n)
             initial = copy(cpu_bunch.coords.v)
-            call = BeamTracking.make_kernel_call(RungeKuttaTracking.rk4_kernel!, Tuple(args))
+            call = BeamTracking.make_kernel_call(BeamTracking.rk4_kernel!, Tuple(args))
 
             track_all_particles!(cpu_bunch, args...)
             expected = copy(cpu_bunch.coords.v)

@@ -27,7 +27,7 @@ end
 @testset "RungeKuttaTracking" begin
   using BeamTracking
   using BeamTracking: Species, massof, chargeof, R_to_beta_gamma, R_to_pc, pc_to_R,
-                      RungeKuttaTracking, Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE, C_LIGHT
+                      Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE, C_LIGHT
   using StaticArrays
 
   # Match the batch tests and the compiler-bug guard in beval: batched
@@ -54,7 +54,7 @@ end
   @testset "On-axis electric acceleration" begin
     # Analytic on-axis electric acceleration, including the beta-dependent z term.
     m, beta0, Ez, z = 2.0, 1/sqrt(5.0), 0.03, 0.2
-    rhs = RungeKuttaTracking.kick_vector(0., 0., 0., 0., z, 0., 0.,
+    rhs = BeamTracking.kick_vector(0., 0., 0., 0., z, 0., 0.,
       EMField(0., 0., Ez, 0., 0., 0.), 1., m, beta0, 0., 0., 1., m)
     @test rhs[6] ≈ Ez / beta0
     @test rhs[5] ≈ m^2 * beta0 * Ez * z
@@ -112,7 +112,7 @@ end
     
     source = ZeroField()
 
-    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
+    BeamTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
                                    source)
 
@@ -138,7 +138,7 @@ end
     Bz_physical = 0.01  # Tesla
     source = MultipoleField(SA[0], SA[Bz_physical], SA[0.0])
 
-    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
+    BeamTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
                                    source)
 
@@ -168,7 +168,7 @@ end
     By_physical = 0.01  # Tesla
     source = MultipoleField(SA[1], SA[By_physical], SA[0.0])
 
-    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
+    BeamTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
                                    source)
 
@@ -192,7 +192,7 @@ end
     
     source = ZeroField()
 
-    RungeKuttaTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
+    BeamTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
                                    source)
 
@@ -216,7 +216,7 @@ end
     for (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
       bunch = Bunch(copy(initial); species, p_over_q_ref=R)
       bunch.coords.state[8] = BeamTracking.STATE_LOST_POS_X
-      call = BeamTracking.make_kernel_call(RungeKuttaTracking.rk4_kernel!,
+      call = BeamTracking.make_kernel_call(BeamTracking.rk4_kernel!,
         (beta0, m, charge, pc, mc2, 1.0, 1.0, 1, 0.0, 0.0, ZeroField()))
       BeamTracking.launch!(bunch.coords, call; use_KA, use_explicit_SIMD)
       @test bunch.coords.state == [STATE_LOST_PZ, STATE_LOST_PZ, STATE_ALIVE,
@@ -237,7 +237,7 @@ end
     for source in (intermediate_loss, final_loss)
       for (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
         bunch = Bunch(zeros(8, 6); species, p_over_q_ref=R)
-        call = BeamTracking.make_kernel_call(RungeKuttaTracking.rk4_kernel!,
+        call = BeamTracking.make_kernel_call(BeamTracking.rk4_kernel!,
           (beta0, m, charge, pc, mc2, 1.0, 1.0, 1, 0.0, 0.0, source))
         BeamTracking.launch!(bunch.coords, call; use_KA, use_explicit_SIMD)
         @test all(==(STATE_LOST_PZ), bunch.coords.state)
@@ -245,7 +245,7 @@ end
       end
       # Direct users of rk4_step! need the same loss handling as the kernel.
       bunch = Bunch(zeros(1, 6); species, p_over_q_ref=R)
-      RungeKuttaTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, source,
+      BeamTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, source,
         charge, m, beta0, 0.0, 0.0, pc, mc2)
       @test bunch.coords.state[1] == STATE_LOST_PZ
       @test iszero(bunch.coords.v)
@@ -257,7 +257,7 @@ end
       EMField(v, v, v + 4 * pc, v, v, v)
     end)
     bunch = Bunch(zeros(1, 6); species, p_over_q_ref=R)
-    RungeKuttaTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, source,
+    BeamTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, source,
       charge, m, beta0, 0.0, 0.0, pc, mc2)
     @test bunch.coords.state[1] == STATE_LOST_PZ
     @test iszero(bunch.coords.v)
@@ -278,10 +278,10 @@ end
     source = ZeroField()
 
     # Track with different step sizes
-    RungeKuttaTracking.rk4_kernel!(1, bunch1.coords, beta_0, tilde_m,
+    BeamTracking.rk4_kernel!(1, bunch1.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, 0.1, 10, gx, gy,
                                    source)
-    RungeKuttaTracking.rk4_kernel!(1, bunch2.coords, beta_0, tilde_m,
+    BeamTracking.rk4_kernel!(1, bunch2.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, 0.05, 20, gx, gy,
                                    source)
 
@@ -538,7 +538,7 @@ end
       (x, y, z, s, p) -> RKCustomField(p.strength)(x, y, z, s),
       (strength=BatchParam([0.002, 0.004]),),
     )
-    call = BeamTracking.make_kernel_call(RungeKuttaTracking.rk4_kernel!, (
+    call = BeamTracking.make_kernel_call(BeamTracking.rk4_kernel!, (
       beta_0, tilde_m, charge, p0c, mc2, 0.5, 0.1, 5, 0.0, 0.0, source,
     ))
     bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
@@ -772,11 +772,11 @@ end
     _, p_over_q_ref, beta_0, _, tilde_m, charge, p0c, mc2 = setup_particle()
     zero_field = ntuple(_ -> 0.0, 6)
 
-    horizontal = RungeKuttaTracking.kick_vector(
+    horizontal = BeamTracking.kick_vector(
       0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, zero_field...,
       charge, tilde_m, beta_0, 0.1, 0.0, p0c, mc2,
     )
-    vertical = RungeKuttaTracking.kick_vector(
+    vertical = BeamTracking.kick_vector(
       0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, zero_field...,
       charge, tilde_m, beta_0, 0.0, 0.1, p0c, mc2,
     )

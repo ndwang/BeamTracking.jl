@@ -134,5 +134,5 @@ end
   # all RK substeps.
   params = (beta_0, tilde_m, charge, p0c, mc2, L, ds_step, n_steps,
             gx, gy, source)
-  return push(kc, make_kernel_call(BeamTracking.RungeKuttaTracking.rk4_kernel!, params))
+  return push(kc, make_kernel_call(BeamTracking.rk4_kernel!, params))
 end

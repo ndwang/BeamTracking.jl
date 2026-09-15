@@ -69,9 +69,9 @@ include("kernels/fringe.jl")
 include("kernels/elsep.jl")
 
 include("fields.jl")
+include("kernels/runge_kutta.jl")
 
 include("utils/find_stuff.jl")
-include("modules/RungeKuttaTracking.jl")
 
 # Empty tracking method to be imported+implemented by package extensions
 function track! end

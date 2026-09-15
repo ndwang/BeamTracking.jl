@@ -1,15 +1,3 @@
-"""
-  RungeKuttaTracking
-
-Module implementing particle tracking through electromagnetic field sources
-using a fourth-order Runge-Kutta method.
-"""
-module RungeKuttaTracking
-using ..BeamTracking, ..StaticArrays
-using ..BeamTracking: @makekernel, Coords
-using ..BeamTracking: XI, PXI, YI, PYI, ZI, PZI, STATE_ALIVE, STATE_LOST_PZ
-using ..BeamTracking: c_light, EMField, vifelse, normalized_field_at
-
 # Mechanical momenta must describe forward motion with nonzero longitudinal momentum.
 @inline function _valid_momentum(px, py, pz)
   rel_p = 1 + pz
@@ -244,9 +232,7 @@ Compatible with @makekernel and the package's kernel architecture.
 
     # The common path performs the final callback after exit processing.
     if step != n_steps
-      BeamTracking.execute_callbacks(i, coords, s, s / (beta_0 * c_light(typeof(ds_step))))
+      execute_callbacks(i, coords, s, s / (beta_0 * c_light(typeof(ds_step))))
     end
   end
-end
-
 end
