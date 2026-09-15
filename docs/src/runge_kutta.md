@@ -30,7 +30,12 @@ A field source is a concrete callable object with the interface:
 source(x, y, z, s) -> EMField
 ```
 
-`EMField.E` is an `SVector` in V/m and `EMField.B` is an `SVector` in tesla.
+`EMField.E` and `EMField.B` are `SVector`s. By default they are in V/m and
+tesla. `MultipoleField` and `FunctionalField` accept `normalized=true` to
+declare that **both E and B are divided by reference rigidity**
+`R = p_over_q_ref = p₀/q`, matching the four-potential convention. In particular,
+normalized E is `E/R`, not `E/(R*c)`. The RK equations apply the additional
+factor of `1/c` to electric forces.
 RK tracking provides `ZeroField`, `MultipoleField`, `FunctionalField`, and
 `SumField` source types.
 
@@ -43,7 +48,10 @@ RK tracking provides `ZeroField`, `MultipoleField`, `FunctionalField`, and
   `(x, y, z, s, parameters)` and returns an `EMField`.
 - `FunctionalField(evaluator)` calls the evaluator with `(x, y, z, s)`.
 - `SumField(sources...)` stores a tuple of concrete sources and evaluates the
-  sum with static dispatch.
+  sum with static dispatch. Tracking converts each component to normalized
+  units before addition, so physical and normalized components can be mixed.
+  Direct evaluation of a mixed-unit sum throws an `ArgumentError` because
+  reference rigidity is required.
 
 `field` sets the complete body field:
 
@@ -68,13 +76,27 @@ ele.tracking_method = RungeKutta(additional_field=source, n_steps=20)
 ```
 
 The configured sources and their parameter types remain concrete in the RK
-kernel.
+kernel. The units flag is encoded in each source type and passed to the
+conversion helper as `Val`, so the unused conversion branch is specialized
+away. Physical sources are scaled at each evaluation; normalized sources skip
+that scaling. Unpacking uses normalized coefficients for element multipoles.
+
+```julia
+# Both E and B returned by this evaluator must already be divided by R.
+source = FunctionalField(evaluator, parameters; normalized=true)
+```
+
+Direct `source(x, y, z, s)` calls retain the declared units. The flag declares
+units; it does not convert supplied coefficients or evaluator outputs. Users
+of normalized sources must keep their values consistent with the tracking
+reference rigidity, including its sign and any reference ramping.
 
 ### Custom sources
 
 Custom callable objects can be passed directly to `field` or
 `additional_field` when their fields are already concrete and do not require
-parameter preparation:
+parameter preparation. Custom sources default to physical units; use
+`FunctionalField(custom_source; normalized=true)` for normalized outputs:
 
 ```julia
 struct UniformMagneticField{T}

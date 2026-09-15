@@ -876,3 +876,21 @@ end
   end
 
 end
+
+@testset "RK physical and normalized functional fields" begin
+  for species in (Species("electron"), Species("proton")), T in (Float32, Float64)
+    R = T(chargeof(species) * 3)
+    params = T.((1e4, -2e4, 3e4, 0.001, -0.002, 0.003))
+    physical = FunctionalField((x,y,z,s,p) -> EMField(p...), params)
+    normalized = FunctionalField(physical.evaluator, params ./ R; normalized=true)
+    results = map((physical, normalized)) do source
+      ele = Drift(L=0.2, tracking_method=RungeKutta(field=source, n_steps=10))
+      line = Beamline([ele]; p_over_q_ref=R, species_ref=species)
+      bunch = Bunch(T.([0.001 0.002 -0.003 0.001 0.0 0.01]); p_over_q_ref=R, species=species)
+      track!(bunch, line)
+      bunch.coords
+    end
+    @test results[1].v ≈ results[2].v
+    @test results[1].state == results[2].state
+  end
+end

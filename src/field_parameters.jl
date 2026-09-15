@@ -1,5 +1,5 @@
-@inline function _rebuild_multipole_field(source::MultipoleField, normal, skew)
-  return MultipoleField{typeof(source.orders),typeof(normal),typeof(skew)}(
+@inline function _rebuild_multipole_field(source::MultipoleField{M,KN,KS,N}, normal, skew) where {M,KN,KS,N}
+  return MultipoleField{typeof(source.orders),typeof(normal),typeof(skew),N}(
     source.orders,
     normal,
     skew,
@@ -21,8 +21,8 @@ end
 @inline teval(source::MultipoleField, t) =
   _rebuild_multipole_field(source, teval(source.normal, t), teval(source.skew, t))
 
-@inline _rebuild_functional_field(source::FunctionalField, parameters) =
-  FunctionalField(source.evaluator, parameters)
+@inline _rebuild_functional_field(source::FunctionalField{F,P,N}, parameters) where {F,P,N} =
+  FunctionalField(source.evaluator, parameters; normalized=N)
 
 @inline batch_lower(source::FunctionalField) =
   _rebuild_functional_field(source, batch_lower(source.parameters))

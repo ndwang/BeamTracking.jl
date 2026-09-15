@@ -290,3 +290,35 @@ end
     @test adapted.sources[2].parameters.field_map == SA[1.0, 2.0, 3.0]
   end
 end
+
+@testset "Field unit conventions" begin
+  for T in (Float32, Float64), R in (T(-3), T(2))
+    args = (T(0.02), T(-0.01), zero(T), zero(T))
+    physical = FunctionalField((x,y,z,s,p) -> EMField(p...), T.((1,2,3,4,5,6)))
+    normalized = FunctionalField(physical.evaluator, physical.parameters ./ R; normalized=true)
+    expected = physical(args...)
+    converted = @inferred BeamTracking.normalized_field_at(physical, args..., inv(R))
+    direct = @inferred BeamTracking.normalized_field_at(normalized, args..., inv(R))
+    @test converted.E ≈ expected.E / R
+    @test converted.B ≈ expected.B / R
+    @test converted.E ≈ direct.E
+    @test converted.B ≈ direct.B
+    @test physical(args...).E == expected.E
+    parameter_free = FunctionalField((x,y,z,s) -> EMField(x,x,x,y,y,y); normalized=true)
+    @test @inferred(BeamTracking.normalized_field_at(parameter_free, args..., inv(R))) == parameter_free(args...)
+    multipole = MultipoleField(SA[1,2], T.(SA[0.1,0.2]), T.(SA[0,0]); normalized=true)
+    mixed = SumField(multipole, physical)
+    result = @inferred BeamTracking.normalized_field_at(mixed, args..., inv(R))
+    @test result.E ≈ converted.E
+    @test result.B ≈ multipole(args...).B + converted.B
+    @test_throws ArgumentError mixed(args...)
+    same_units = SumField(multipole, normalized)
+    @test same_units(args...).B ≈ result.B
+    for source in (multipole, normalized, parameter_free)
+      @test BeamTracking.field_normalized(BeamTracking.num_lower(Float32, source)) == Val(true)
+      @test BeamTracking.field_normalized(BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), source)) == Val(true)
+      @test BeamTracking.field_normalized(BeamTracking.time_lower(source)) == Val(true)
+      @test BeamTracking.field_normalized(BeamTracking.batch_lower(source)) == Val(true)
+    end
+  end
+end

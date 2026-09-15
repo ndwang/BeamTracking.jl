@@ -69,11 +69,11 @@ end
   end
 
   mm = getfield(bmultipoleparams, :order)
-  bn, bs = get_physical_strengths(bmultipoleparams, L, p_over_q_ref)
+  bn, bs = get_strengths(bmultipoleparams, L, p_over_q_ref)
   if mm isa Integer
-    return MultipoleField(SA[mm], SA[bn], SA[bs])
+    return MultipoleField(SA[mm], SA[bn], SA[bs]; normalized=true)
   end
-  return MultipoleField(mm, bn, bs)
+  return MultipoleField(mm, bn, bs; normalized=true)
 end
 
 @inline function configured_runge_kutta_field(tm::RungeKutta, element_source)
