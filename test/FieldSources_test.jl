@@ -1,4 +1,4 @@
-function test_uniform_field(x, y, z, s, parameters)
+function test_uniform_field(x, y, s, t, parameters)
   carrier = zero(x)
   return EMField(
     carrier + parameters.Ex,
@@ -10,7 +10,7 @@ function test_uniform_field(x, y, z, s, parameters)
   )
 end
 
-function test_parameter_free_field(x, y, z, s)
+function test_parameter_free_field(x, y, s, t)
   carrier = zero(x)
   return EMField(carrier, carrier, carrier, carrier, carrier, carrier + 1)
 end
@@ -106,6 +106,21 @@ end
     @test @inferred(second_batch_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 2.0, 0.0]
   end
 
+  @testset "Spacetime argument forwarding" begin
+    args = (0.2, -0.3, 1.2, 4e-9)
+    plain = FunctionalField((x, y, s, t) -> EMField(x, y, s, t, s + t, zero(x)))
+    parameterized = FunctionalField(
+      (x, y, s, t, p) -> EMField(x, y, s, t, s + t, p), 2.0)
+    expected = EMField(0.2, -0.3, 1.2, 4e-9, 1.2 + 4e-9, 0.0)
+    @test plain(args...) == expected
+    @test parameterized(args...) == EMField(expected.E, expected.B + SA[0.0, 0.0, 2.0])
+    combined = SumField(plain, parameterized)
+    @test combined(args...) == plain(args...) + parameterized(args...)
+    normalized = BeamTracking.normalized_field_at(combined, args..., 0.5)
+    @test normalized.E ≈ combined(args...).E * 0.5
+    @test normalized.B ≈ combined(args...).B * 0.5
+  end
+
   @testset "SumField" begin
     dipole = MultipoleField(SA[1], SA[2.0], SA[0.0])
     external = FunctionalField(
@@ -172,7 +187,7 @@ end
       strength=Beamlines.DefExpr{Float64}(c -> 2 * c.strength),
       constants=(label="map", count=2),
     )
-    source = FunctionalField((x, y, z, s, p) -> begin
+    source = FunctionalField((x, y, s, t, p) -> begin
       v = zero(x)
       return EMField(v, v, v, v, v + p.strength, v)
     end, parameters)
@@ -294,7 +309,7 @@ end
 @testset "Field unit conventions" begin
   for T in (Float32, Float64), R in (T(-3), T(2))
     args = (T(0.02), T(-0.01), zero(T), zero(T))
-    physical = FunctionalField((x,y,z,s,p) -> EMField(p...), T.((1,2,3,4,5,6)))
+    physical = FunctionalField((x,y,s,t,p) -> EMField(p...), T.((1,2,3,4,5,6)))
     normalized = FunctionalField(physical.evaluator, physical.parameters ./ R; normalized=true)
     expected = physical(args...)
     converted = @inferred BeamTracking.normalized_field_at(physical, args..., inv(R))
@@ -304,7 +319,7 @@ end
     @test converted.E ≈ direct.E
     @test converted.B ≈ direct.B
     @test physical(args...).E == expected.E
-    parameter_free = FunctionalField((x,y,z,s) -> EMField(x,x,x,y,y,y); normalized=true)
+    parameter_free = FunctionalField((x,y,s,t) -> EMField(x,x,x,y,y,y); normalized=true)
     @test @inferred(BeamTracking.normalized_field_at(parameter_free, args..., inv(R))) == parameter_free(args...)
     multipole = MultipoleField(SA[1,2], T.(SA[0.1,0.2]), T.(SA[0,0]); normalized=true)
     mixed = SumField(multipole, physical)

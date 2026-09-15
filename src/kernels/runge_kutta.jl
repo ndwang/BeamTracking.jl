@@ -1,3 +1,14 @@
+# Element-local time: the reference particle enters at t = 0. Keep the
+# stored Bmad z coordinate; recover the particle speed at each RK stage.
+@inline function _rk_particle_time(z, pz, s, tilde_m, beta_0)
+  rel_p = 1 + pz
+  # Invalid particles are rejected by _rk4_step!; keep their field-query time
+  # finite for zero, negative, or infinite total momentum, including SIMD lanes.
+  safe_p = vifelse((rel_p > 0) & (rel_p < Inf), rel_p, one(rel_p))
+  inv_beta = sqrt(safe_p^2 + tilde_m^2) / safe_p
+  return (s / beta_0 - z * inv_beta) / c_light(typeof(tilde_m))
+end
+
 # Mechanical momenta must describe forward motion with nonzero longitudinal momentum.
 @inline function _valid_momentum(px, py, pz)
   rel_p = 1 + pz
@@ -141,7 +152,8 @@ Only updates state if particle is alive.
   good = _valid_momentum(px, py, pz)
 
   # k1 = f(u, s)
-  field = normalized_field_at(source, x, y, z, s, magnetic_scale)
+  t = _rk_particle_time(z, pz, s, tilde_m, beta_0)
+  field = normalized_field_at(source, x, y, s, t, magnetic_scale)
   k1 = _kick_vector(x, px, y, py, z, pz, s, field,
                 tilde_m, beta_0, gx, gy)
 
@@ -154,7 +166,8 @@ Only updates state if particle is alive.
   z2 = z + h2 * k1[5]
   pz2 = pz + h2 * k1[6]
   good &= _valid_momentum(px2, py2, pz2)
-  field = normalized_field_at(source, x2, y2, z2, s + h2, magnetic_scale)
+  t2 = _rk_particle_time(z2, pz2, s + h2, tilde_m, beta_0)
+  field = normalized_field_at(source, x2, y2, s + h2, t2, magnetic_scale)
   k2 = _kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, field,
                 tilde_m, beta_0, gx, gy)
 
@@ -166,7 +179,8 @@ Only updates state if particle is alive.
   z3 = z + h2 * k2[5]
   pz3 = pz + h2 * k2[6]
   good &= _valid_momentum(px3, py3, pz3)
-  field = normalized_field_at(source, x3, y3, z3, s + h2, magnetic_scale)
+  t3 = _rk_particle_time(z3, pz3, s + h2, tilde_m, beta_0)
+  field = normalized_field_at(source, x3, y3, s + h2, t3, magnetic_scale)
   k3 = _kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, field,
                 tilde_m, beta_0, gx, gy)
 
@@ -178,7 +192,8 @@ Only updates state if particle is alive.
   z4 = z + h * k3[5]
   pz4 = pz + h * k3[6]
   good &= _valid_momentum(px4, py4, pz4)
-  field = normalized_field_at(source, x4, y4, z4, s + h, magnetic_scale)
+  t4 = _rk_particle_time(z4, pz4, s + h, tilde_m, beta_0)
+  field = normalized_field_at(source, x4, y4, s + h, t4, magnetic_scale)
   k4 = _kick_vector(x4, px4, y4, py4, z4, pz4, s + h, field,
                 tilde_m, beta_0, gx, gy)
 

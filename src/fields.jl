@@ -27,11 +27,12 @@ end
     ZeroField()
 
 A callable electromagnetic field source which returns zero fields. Field
-sources are called as `source(x, y, z, s)`.
+sources are called as `source(x, y, s, t)`, with spatial coordinates in metres
+and element-local particle time `t` in seconds (reference entrance at zero).
 """
 struct ZeroField end
 
-@inline function (::ZeroField)(x, y, z, s)
+@inline function (::ZeroField)(x, y, s, t)
   v = zero(x)
   zero_vector = SVector(v, v, v)
   return EMField(zero_vector, zero_vector)
@@ -67,7 +68,7 @@ function MultipoleField(
   return MultipoleField{M,KN,KS,normalized}(orders, normal, skew)
 end
 
-@inline function (source::MultipoleField)(x, y, z, s)
+@inline function (source::MultipoleField)(x, y, s, t)
   bx, by = normalized_field(source.orders, source.normal, source.skew, x, y, 0)
   zero_field = zero(bx)
   bz = vifelse(source.orders[1] == 0, source.normal[1], zero_field)
@@ -79,8 +80,10 @@ end
     FunctionalField(evaluator[, parameters]; normalized=false)
 
 A callable field source backed by a concrete evaluator. With parameters, the
-evaluator is called as `evaluator(x, y, z, s, parameters)`. Without parameters,
-it is called as `evaluator(x, y, z, s)`. The evaluator must return `EMField`.
+evaluator is called as `evaluator(x, y, s, t, parameters)`. Without parameters,
+it is called as `evaluator(x, y, s, t)`. The evaluator must return `EMField`.
+Spatial coordinates are in metres and `t` is in seconds, with zero at the
+reference particle's element entrance. RK supplies each stage's particle time.
 With `normalized=true`, both E and B are divided by reference rigidity;
 otherwise they are in V/m and tesla. Direct calls preserve the declared units.
 """
@@ -92,12 +95,12 @@ end
 FunctionalField(evaluator, parameters=nothing; normalized::Bool=false) =
   FunctionalField{typeof(evaluator),typeof(parameters),normalized}(evaluator, parameters)
 
-@inline function (source::FunctionalField{F,Nothing,N})(x, y, z, s) where {F,N}
-  return source.evaluator(x, y, z, s)
+@inline function (source::FunctionalField{F,Nothing,N})(x, y, s, t) where {F,N}
+  return source.evaluator(x, y, s, t)
 end
 
-@inline function (source::FunctionalField)(x, y, z, s)
-  return source.evaluator(x, y, z, s, source.parameters)
+@inline function (source::FunctionalField)(x, y, s, t)
+  return source.evaluator(x, y, s, t, source.parameters)
 end
 
 """
@@ -133,12 +136,12 @@ end
 
 SumField(sources...) = SumField(sources)
 
-@generated function _evaluate_field_sum(sources::S, x, y, z, s) where {S<:Tuple}
+@generated function _evaluate_field_sum(sources::S, x, y, s, t) where {S<:Tuple}
   N = length(S.parameters)
-  N > 0 || return :(ZeroField()(x, y, z, s))
-  expression = :(Base.getfield(sources, 1)(x, y, z, s))
+  N > 0 || return :(ZeroField()(x, y, s, t))
+  expression = :(Base.getfield(sources, 1)(x, y, s, t))
   for i in 2:N
-    expression = :($expression + Base.getfield(sources, $i)(x, y, z, s))
+    expression = :($expression + Base.getfield(sources, $i)(x, y, s, t))
   end
   return expression
 end
@@ -155,17 +158,17 @@ end
 end
 
 """
-    normalized_field_at(source, x, y, z, s, inv_rigidity)
+    normalized_field_at(source, x, y, s, t, inv_rigidity)
 
 Evaluate fields with both E and B divided by reference rigidity, as in
 `implicit_fields`. Custom sources default to physical units; wrap a normalized
 custom evaluator in `FunctionalField(...; normalized=true)`.
 """
-@inline normalized_field_at(source, x, y, z, s, inv_rigidity) =
-  normalized_field_at(source, x, y, z, s, inv_rigidity, field_normalized(source))
+@inline normalized_field_at(source, x, y, s, t, inv_rigidity) =
+  normalized_field_at(source, x, y, s, t, inv_rigidity, field_normalized(source))
 
-@inline function normalized_field_at(source, x, y, z, s, inv_rigidity, ::Val{normalized}) where {normalized}
-  field = source(x, y, z, s)
+@inline function normalized_field_at(source, x, y, s, t, inv_rigidity, ::Val{normalized}) where {normalized}
+  field = source(x, y, s, t)
   if normalized
     return field
   else
@@ -173,14 +176,14 @@ custom evaluator in `FunctionalField(...; normalized=true)`.
   end
 end
 
-@inline function normalized_field_at(source::SumField, x, y, z, s, inv_rigidity)
-  fields = map(f -> normalized_field_at(f, x, y, z, s, inv_rigidity), source.sources)
+@inline function normalized_field_at(source::SumField, x, y, s, t, inv_rigidity)
+  fields = map(f -> normalized_field_at(f, x, y, s, t, inv_rigidity), source.sources)
   return +(fields...)
 end
 
-@inline function (source::SumField)(x, y, z, s)
+@inline function (source::SumField)(x, y, s, t)
   field_normalized(source) # Reject adding physical and normalized values directly.
-  return _evaluate_field_sum(source.sources, x, y, z, s)
+  return _evaluate_field_sum(source.sources, x, y, s, t)
 end
 
 include("field_parameters.jl")

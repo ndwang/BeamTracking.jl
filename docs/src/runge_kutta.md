@@ -27,8 +27,17 @@ ele.tracking_method = RungeKutta(n_steps=50)
 A field source is a concrete callable object with the interface:
 
 ```julia
-source(x, y, z, s) -> EMField
+source(x, y, s, t) -> EMField
 ```
+
+`x`, `y`, and `s` are spatial coordinates in metres; `s` is measured from
+the element entrance. `t` is particle time in seconds, with zero at the
+reference particle's entrance. RK keeps its existing stored `z` coordinate
+and calculates `t = (s / beta_0 - z / beta) / c` at every stage, using that
+stage's particle speed `beta * c`.
+
+This replaces the previous `source(x, y, z, s)` interface. Custom sources
+must update their argument order and any dependence on the old `z` argument.
 
 `EMField.E` and `EMField.B` are `SVector`s. By default they are in V/m and
 tesla. `MultipoleField` and `FunctionalField` accept `normalized=true` to
@@ -45,8 +54,8 @@ RK tracking provides `ZeroField`, `MultipoleField`, `FunctionalField`, and
   tesla.
 - `FunctionalField(evaluator, parameters)` stores the evaluator type and the
   parameter type in the source type. The evaluator receives
-  `(x, y, z, s, parameters)` and returns an `EMField`.
-- `FunctionalField(evaluator)` calls the evaluator with `(x, y, z, s)`.
+  `(x, y, s, t, parameters)` and returns an `EMField`.
+- `FunctionalField(evaluator)` calls the evaluator with `(x, y, s, t)`.
 - `SumField(sources...)` stores a tuple of concrete sources and evaluates the
   sum with static dispatch. Tracking converts each component to normalized
   units before addition, so physical and normalized components can be mixed.
@@ -56,7 +65,7 @@ RK tracking provides `ZeroField`, `MultipoleField`, `FunctionalField`, and
 `field` sets the complete body field:
 
 ```julia
-function uniform_field(x, y, z, s, parameters)
+function uniform_field(x, y, s, t, parameters)
   v = zero(x)
   return EMField(
     v, v, v,
@@ -86,7 +95,7 @@ that scaling. Unpacking uses normalized coefficients for element multipoles.
 source = FunctionalField(evaluator, parameters; normalized=true)
 ```
 
-Direct `source(x, y, z, s)` calls retain the declared units. The flag declares
+Direct `source(x, y, s, t)` calls retain the declared units. The flag declares
 units; it does not convert supplied coefficients or evaluator outputs. Users
 of normalized sources must keep their values consistent with the tracking
 reference rigidity, including its sign and any reference ramping.
@@ -103,7 +112,7 @@ struct UniformMagneticField{T}
   By::T
 end
 
-function (source::UniformMagneticField)(x, y, z, s)
+function (source::UniformMagneticField)(x, y, s, t)
   v = zero(x)
   return EMField(v, v, v, v, v + source.By, v)
 end
@@ -129,12 +138,25 @@ bunch = Bunch(zeros(100, 6), p_over_q_ref=line.p_over_q_ref,
 track!(bunch, line)
 ```
 
-The RK body kernel tracks static electric and magnetic fields. Beamlines
+The RK body kernel tracks static or time-dependent electric and magnetic fields. Beamlines
 magnetic multipoles are represented by `MultipoleField`, including solenoid,
 normal, and skew terms. Bend body tracking uses reference curvature with zero
 edge angles.
 
 ## Time-dependent values and reference ramping
+
+For fields that vary during tracking, use the evaluator's `t` argument.
+It is recalculated at each of the four RK stages. For example:
+
+```julia
+rf_field = FunctionalField((x, y, s, t, p) -> begin
+  v = zero(x)
+  EMField(v, v, p.E0 * cos(p.omega * t + p.phase), v, v, v)
+end, (E0=1e6, omega=2pi * 500e6, phase=0.0))
+```
+
+The parameter wrappers described below are evaluated separately from this
+stage-dependent `t` argument.
 
 `ramp_update_each_particle=true` uses the upstream per-particle reference-ramp
 path. Time-dependent values are evaluated once for each particle, using that

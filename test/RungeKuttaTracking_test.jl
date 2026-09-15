@@ -1,4 +1,4 @@
-function rk_test_uniform_field(x, y, z, s, parameters)
+function rk_test_uniform_field(x, y, s, t, parameters)
   carrier = zero(x)
   return EMField(
     carrier + parameters.Ex,
@@ -10,7 +10,7 @@ function rk_test_uniform_field(x, y, z, s, parameters)
   )
 end
 
-function rk_test_parameter_free_field(x, y, z, s)
+function rk_test_parameter_free_field(x, y, s, t)
   carrier = zero(x)
   return EMField(carrier, carrier, carrier, carrier, carrier, carrier + 1)
 end
@@ -19,7 +19,7 @@ struct RKCustomField{T}
   strength::T
 end
 
-function (source::RKCustomField)(x, y, z, s)
+function (source::RKCustomField)(x, y, s, t)
   v = zero(x)
   return EMField(v, v, v, v, v + source.strength, v)
 end
@@ -58,6 +58,63 @@ end
       EMField(0., 0., Ez, 0., 0., 0.), 1., m, beta0, 0., 0., 1., m)
     @test rhs[6] ≈ Ez / beta0
     @test rhs[5] ≈ m^2 * beta0 * Ez * z
+  end
+
+  @testset "Field-source stage position and time" begin
+    species, R, beta0, _, m, charge, pc, mc2 = setup_particle(2.5e5)
+    initial = [0.01 0.1 -0.02 0.05 0.2 0.3]
+    rel_p = 1 + initial[6]
+    beta = rel_p / sqrt(rel_p^2 + m^2)
+    direction_s = sqrt(1 - (initial[2]^2 + initial[4]^2) / rel_p^2)
+    s0, h = 0.4, 0.1
+    t0 = (s0 / beta0 - initial[5] / beta) / C_LIGHT
+    samples = NTuple{4,Float64}[]
+    source = FunctionalField((x, y, s, t) -> begin
+      push!(samples, (x, y, s, t))
+      ZeroField()(x, y, s, t)
+    end)
+    bunch = Bunch(copy(initial); species, p_over_q_ref=R)
+    BeamTracking.rk4_step!(bunch.coords, 1, s0, h, source,
+      charge, m, beta0, 0.0, 0.0, pc, mc2)
+    @test length(samples) == 4
+    for (sample, ds) in zip(samples, (0.0, h/2, h/2, h))
+      @test sample[1] ≈ initial[1] + ds * initial[2] / (rel_p * direction_s)
+      @test sample[2] ≈ initial[3] + ds * initial[4] / (rel_p * direction_s)
+      @test sample[3] ≈ s0 + ds
+      @test sample[4] ≈ t0 + ds / (beta * C_LIGHT * direction_s)
+    end
+  end
+
+  @testset "Stage-dependent time under acceleration" begin
+    # Exact solution: p/p0 = m*sinh(u), beta = tanh(u), u = u0 + k*c*(t-t0).
+    # E/R = c*m*k*cosh(u) gives s = log(cosh(u)/cosh(u0))/k.
+    # This tests changing particle speed, nonzero z, and off-reference momentum.
+    species, R, beta0, _, m, charge, pc, mc2 = setup_particle(2.5e5)
+    z0, pz0, k, L = 0.2, 0.3, 0.4, 0.3
+    u0 = asinh((1 + pz0) / m)
+    ct0 = -z0 / tanh(u0)
+    u_end = acosh(exp(k * L) * cosh(u0))
+    expected_pz = m * sinh(u_end) - 1
+    expected_z = tanh(u_end) * (L / beta0 - ct0 - (u_end - u0) / k)
+    source = FunctionalField((x, y, s, t, p) -> begin
+      v = zero(x)
+      u = p.u0 + p.k * (p.c * t - p.ct0)
+      EMField(v, v, p.c * p.m * p.k * cosh(u), v, v, v)
+    end, (u0=u0, k=k, c=C_LIGHT, ct0=ct0, m=m); normalized=true)
+    for T in (Float32, Float64), (use_KA, use_explicit_SIMD) in
+        ((false, false), (false, true), (true, false))
+      initial = zeros(T, 8, 6)
+      initial[:, 5] .= z0
+      initial[:, 6] .= pz0
+      bunch = Bunch(initial; species, p_over_q_ref=R)
+      line = Beamline([Drift(L=L, tracking_method=RungeKutta(field=source, n_steps=40))];
+                      species_ref=species, p_over_q_ref=R)
+      track!(bunch, line; use_KA, use_explicit_SIMD)
+      tol = T === Float32 ? 2e-6 : 1e-9
+      @test all(isapprox.(bunch.coords.v[:, 6], expected_pz; atol=tol, rtol=tol))
+      @test all(isapprox.(bunch.coords.v[:, 5], expected_z; atol=tol, rtol=tol))
+      @test all(==(STATE_ALIVE), bunch.coords.state)
+    end
   end
 
   @testset "RungeKutta constructor" begin
@@ -229,7 +286,7 @@ end
     # derivative would make the weighted final momentum appear valid.
     intermediate_loss = MultipoleField(SA[1], SA[1.1 * R], SA[0.0])
     # All stage input momenta are valid here, but k4 makes the final px = -2.
-    final_loss = FunctionalField((x, y, z, s, R) -> begin
+    final_loss = FunctionalField((x, y, s, t, R) -> begin
       v = zero(x)
       by = v + ifelse(s == 1, 12 * R, zero(R))
       EMField(v, v, v, v, by, v)
@@ -252,7 +309,7 @@ end
     end
 
     # Electric deceleration may also make total momentum nonpositive midstep.
-    source = FunctionalField((x, y, z, s) -> begin
+    source = FunctionalField((x, y, s, t) -> begin
       v = zero(x)
       EMField(v, v, v + 4 * pc, v, v, v)
     end)
@@ -506,7 +563,7 @@ end
     )
     for (strength, expected_strengths, scalar_params) in cases
       functional = FunctionalField(
-        (x, y, z, s, p) -> RKCustomField(p.strength)(x, y, z, s),
+        (x, y, s, t, p) -> RKCustomField(p.strength)(x, y, s, t),
         (strength=strength,),
       )
       sources = (
@@ -535,7 +592,7 @@ end
     end
 
     source = FunctionalField(
-      (x, y, z, s, p) -> RKCustomField(p.strength)(x, y, z, s),
+      (x, y, s, t, p) -> RKCustomField(p.strength)(x, y, s, t),
       (strength=BatchParam([0.002, 0.004]),),
     )
     call = BeamTracking.make_kernel_call(BeamTracking.rk4_kernel!, (
@@ -551,8 +608,8 @@ end
   @testset "Float32 field-source tracking" begin
     species, R, = setup_particle()
     # Check every RK stage, including SIMD lanes, not just storage.
-    evaluator = (x, y, z, s, p) -> begin
-      @assert eltype(x) === eltype(y) === eltype(z) === eltype(s) === Float32
+    evaluator = (x, y, s, t, p) -> begin
+      @assert eltype(x) === eltype(y) === eltype(s) === eltype(t) === Float32
       @assert eltype(p.By) === Float32
       v = zero(x)
       EMField(v, v, v, v, v + p.By, v)
@@ -881,7 +938,7 @@ end
   for species in (Species("electron"), Species("proton")), T in (Float32, Float64)
     R = T(chargeof(species) * 3)
     params = T.((1e4, -2e4, 3e4, 0.001, -0.002, 0.003))
-    physical = FunctionalField((x,y,z,s,p) -> EMField(p...), params)
+    physical = FunctionalField((x,y,s,t,p) -> EMField(p...), params)
     normalized = FunctionalField(physical.evaluator, params ./ R; normalized=true)
     results = map((physical, normalized)) do source
       ele = Drift(L=0.2, tracking_method=RungeKutta(field=source, n_steps=10))
