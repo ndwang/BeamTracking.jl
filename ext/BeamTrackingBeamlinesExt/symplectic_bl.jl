@@ -329,6 +329,7 @@ end
   q = chargeof(bunch.species)
   mc2 = massof(bunch.species)
   a = gyromagnetic_anomaly(bunch.species)
+  edge_params = nothing
   if tm.fringe_at != Fringe.NoEnd
     if mm == 1
       Kn0 = sqrt(kn^2 + ks^2)
@@ -353,8 +354,6 @@ end
       end
       edge_params = (a, tilde_m, nothing, nothing, nothing, nothing, Kn1, w1, w1_inv)
     end
-  else
-    edge_params = nothing
   end
   E_ref = mc2/tilde_m/beta_0
   radiation_params = ifelse(tm.radiation_damping_on, (q, mc2, E_ref), nothing)
