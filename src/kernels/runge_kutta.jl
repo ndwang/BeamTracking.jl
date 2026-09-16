@@ -62,7 +62,9 @@ returns zero derivatives (caller should mark particle as lost).
   inv_uz = inv(uz)
   path_factor = (1 + dh_bend) * inv_uz
   inv_beta = inv_gamma_v * inv_rel_p
-  electric_factor = inv_beta / c_light(typeof(tilde_m))
+  # The typed reciprocal is constant-folded, avoiding a division in every RK stage.
+  inv_c = inv(c_light(typeof(tilde_m)))
+  electric_factor = inv_beta * inv_c
 
   dx_ds = vt_x * path_factor
   dy_ds = vt_y * path_factor
