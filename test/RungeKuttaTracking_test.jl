@@ -320,6 +320,34 @@ end
     @test iszero(bunch.coords.v)
   end
 
+  @testset "Finite field-query time for rejected momentum" begin
+    species, R, beta0, _, m, charge, pc, mc2 = setup_particle()
+    # The field is evaluated before a bad lane is rejected. It must not receive
+    # NaN time just because another particle's longitudinal momentum is invalid.
+    source = FunctionalField((x, y, s, t) -> begin
+      @assert all(isfinite(t))
+      v = zero(x)
+      EMField(v, v, v, v, v, v + t)
+    end)
+    for T in (Float32, Float64), (use_KA, use_explicit_SIMD) in
+        ((false, false), (false, true), (true, false))
+      initial = zeros(T, 8, 6)
+      initial[:, 5] .= T(0.2)
+      initial[:, 6] .= T.((-1, -2, Inf, -Inf, NaN, 0, 0, 0))
+      initial[6, 2] = T(0.01)
+      bunch = Bunch(copy(initial); species, p_over_q_ref=R)
+      bunch.coords.state[8] = BeamTracking.STATE_LOST_POS_X
+      call = BeamTracking.make_kernel_call(BeamTracking.rk4_kernel!,
+        (T(beta0), T(m), T(charge), T(pc), T(mc2), T(0.1), T(0.01), 10,
+         zero(T), zero(T), source))
+      BeamTracking.launch!(bunch.coords, call; use_KA, use_explicit_SIMD)
+      @test bunch.coords.state == [STATE_LOST_PZ, STATE_LOST_PZ, STATE_LOST_PZ,
+        STATE_LOST_PZ, STATE_LOST_PZ, STATE_ALIVE, STATE_ALIVE, BeamTracking.STATE_LOST_POS_X]
+      @test isequal(bunch.coords.v[[1, 2, 3, 4, 5, 8], :], initial[[1, 2, 3, 4, 5, 8], :])
+      @test all(isfinite, bunch.coords.v[6:7, :])
+    end
+  end
+
   @testset "Convergence test" begin
     species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
 
