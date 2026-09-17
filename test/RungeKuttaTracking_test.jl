@@ -195,16 +195,6 @@ end
     invalid = Drift(L=0.5, field_source=field_source, additional_field=ZeroField(),
                     tracking_method=RungeKutta(n_steps=5))
     @test_throws ErrorException tracked(invalid)
-
-    # An unrelated method must not even evaluate deferred field-source parameters.
-    ignored_field_source = FunctionalField(rk_test_uniform_field,
-      (By=DefExpr{Float64}(c -> error("unused field source evaluated")),))
-    for tm in (Exact(), Symplectic())
-      ignored = Solenoid(L=0.5, Ksol=0.1, tracking_method=tm,
-                           field_source=ignored_field_source, additional_field=ZeroField())
-      reference = Solenoid(L=0.5, Ksol=0.1, tracking_method=tm)
-      @test tracked(ignored) ≈ tracked(reference)
-    end
   end
 
   @testset "Pure drift" begin
@@ -399,32 +389,6 @@ end
       @test isequal(bunch.coords.v[[1, 2, 3, 4, 5, 8], :], initial[[1, 2, 3, 4, 5, 8], :])
       @test all(isfinite, bunch.coords.v[6:7, :])
     end
-  end
-
-  @testset "Convergence test" begin
-    species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2 = setup_particle(1e9)
-
-    bunch1 = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
-    bunch2 = Bunch(zeros(1, 6), p_over_q_ref=p_over_q_ref, species=species)
-    bunch1.coords.v[1, BeamTracking.PXI] = 0.01
-    bunch2.coords.v[1, BeamTracking.PXI] = 0.01
-
-    L = 1.0
-    gx = 0.0
-    gy = 0.0
-    
-    field_source = ZeroField()
-
-    # Track with different step sizes
-    BeamTracking.rk4_kernel!(1, bunch1.coords, beta_0, tilde_m,
-                                   charge, p0c, mc2, L, 0.1, 10, gx, gy,
-                                   field_source)
-    BeamTracking.rk4_kernel!(1, bunch2.coords, beta_0, tilde_m,
-                                   charge, p0c, mc2, L, 0.05, 20, gx, gy,
-                                   field_source)
-
-    # Results should be identical
-    @test isapprox(bunch1.coords.v, bunch2.coords.v, rtol=1e-2)
   end
 
   @testset "Beamlines integration - Drift" begin

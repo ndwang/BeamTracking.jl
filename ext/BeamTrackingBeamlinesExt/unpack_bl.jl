@@ -27,9 +27,7 @@ function _track!(
   lp = deval(ele.BeamlineParams, context)
   fpp = deval(ele.FourPotentialParams, context)
   em = deval(ele.EMultipoleParams, context)
-
-  # Only RK consumes field sources; other methods do not evaluate this group.
-  fsp = tm isa RungeKutta ? deval(ele.FieldSourceParams, context) : nothing
+  fsp = deval(ele.FieldSourceParams, context)
 
   if scalar_params
     L = scalarize(L)

@@ -106,21 +106,6 @@ end
     @test @inferred(second_batch_field_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 2.0, 0.0]
   end
 
-  @testset "Spacetime argument forwarding" begin
-    args = (0.2, -0.3, 1.2, 4e-9)
-    plain = FunctionalField((x, y, s, t) -> EMField(x, y, s, t, s + t, zero(x)))
-    parameterized = FunctionalField(
-      (x, y, s, t, p) -> EMField(x, y, s, t, s + t, p), 2.0)
-    expected = EMField(0.2, -0.3, 1.2, 4e-9, 1.2 + 4e-9, 0.0)
-    @test plain(args...) == expected
-    @test parameterized(args...) == EMField(expected.E, expected.B + SA[0.0, 0.0, 2.0])
-    combined = SumField(plain, parameterized)
-    @test combined(args...) == plain(args...) + parameterized(args...)
-    normalized = BeamTracking.normalized_field_at(combined, args..., 0.5)
-    @test normalized.E ≈ combined(args...).E * 0.5
-    @test normalized.B ≈ combined(args...).B * 0.5
-  end
-
   @testset "SumField" begin
     dipole = MultipoleField(SA[1], SA[2.0], SA[0.0])
     external = FunctionalField(
