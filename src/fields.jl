@@ -177,7 +177,10 @@ custom evaluator in `FunctionalField(...; normalized=true)`.
 end
 
 @inline function normalized_field_at(source::SumField, x, y, s, t, inv_rigidity)
-  fields = map(f -> normalized_field_at(f, x, y, s, t, inv_rigidity), source.sources)
+  fields = map(source.sources) do f
+    @inline
+    normalized_field_at(f, x, y, s, t, inv_rigidity)
+  end
   return +(fields...)
 end
 
