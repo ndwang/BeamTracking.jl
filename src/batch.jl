@@ -48,10 +48,9 @@ struct BatchParam
     separate processes where each process has its own lattice with its 
     own TimeDependentParams.
   =#
-  function BatchParam(batch::AbstractArray)
+  function BatchParam(batch::Union{AbstractArray,Number})
     return new(batch)
   end
-  BatchParam(n::Number) = new(n)
 end
 
 struct _LoweredBatchParam{N,V<:AbstractArray}
