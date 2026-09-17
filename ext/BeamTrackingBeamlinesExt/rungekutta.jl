@@ -1,5 +1,6 @@
-# RungeKutta uses the common unpacking, reference-ramp, alignment, aperture, and
-# callback path. Only the body field integration is specific to RungeKutta.
+# RungeKutta only constructs the body field integration kernel.
+# Unpacking, reference-ramp, alignment, aperture, and callback
+# are handled by the shared unpacking step.
 
 @inline _unpack_field_parameter(value::NamedTuple{names}, context) where {names} =
   NamedTuple{names}(_unpack_field_parameter(Tuple(value), context))

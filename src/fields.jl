@@ -1,10 +1,12 @@
 """
     EMField{T}
 
-Electric and magnetic field vectors at one particle location. Electric field
-components are in V/m and magnetic field components are in tesla for physical
-field sources. For `normalized=true` field sources, both vectors are divided by reference
-rigidity `p_over_q_ref`, matching the four-potential convention.
+Electric and magnetic field vectors at one particle location, in either physical
+or normalized units as declared by the field source. In physical units, electric
+field components are in V/m and magnetic field components are in tesla. In
+normalized units, both vectors are divided by reference rigidity
+`p_over_q_ref = p₀/q`, matching the four-potential convention.
+`EMField` itself does not store a units flag or convert the supplied values.
 """
 struct EMField{T}
   E::SVector{3,T}
@@ -42,9 +44,12 @@ end
     MultipoleField(orders, normal, skew; normalized=false)
 
 A callable static magnetic multipole field. `normal` and `skew` contain
-non-integrated magnetic-field coefficients. By default the field source returns
-fields in tesla; `normalized=true` declares coefficients and fields divided
-by reference rigidity. All three arguments must be `SVector`s.
+non-integrated magnetic-field coefficients in either physical or normalized
+units. With `normalized=false` (the default), the coefficients produce fields in
+tesla. With `normalized=true`, the supplied coefficients must already be divided
+by reference rigidity `p_over_q_ref = p₀/q`, and the returned fields use that same
+normalization. The flag declares units; it does not convert the coefficients.
+All three arguments must be `SVector`s.
 Orders must be unique and ascending.
 """
 struct MultipoleField{M,KN,KS,N}
@@ -84,8 +89,11 @@ evaluator is called as `evaluator(x, y, s, t, parameters)`. Without parameters,
 it is called as `evaluator(x, y, s, t)`. The evaluator must return `EMField`.
 Spatial coordinates are in metres and `t` is in seconds, with zero at the
 reference particle's element entrance. RK supplies each stage's particle time.
-With `normalized=true`, both E and B are divided by reference rigidity;
-otherwise they are in V/m and tesla. Direct calls preserve the declared units.
+With `normalized=false` (the default), the evaluator must return E in V/m and B
+in tesla. With `normalized=true`, it must return both E and B already divided by
+reference rigidity `p_over_q_ref = p₀/q`. The flag declares the evaluator's output
+units; direct calls preserve those values. Tracking converts physical fields to
+normalized units and uses normalized fields directly.
 """
 struct FunctionalField{F,P,N}
   evaluator::F
