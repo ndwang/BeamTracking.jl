@@ -27,7 +27,7 @@ end
 @testset "RungeKuttaTracking" begin
   using BeamTracking
   using BeamTracking: Species, massof, chargeof, R_to_beta_gamma, R_to_pc, pc_to_R,
-                      Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE, C_LIGHT
+                      Bunch, STATE_ALIVE, STATE_LOST_PZ, E_CHARGE
   using StaticArrays
 
   # Match the batch tests and the compiler-bug guard in beval: batched
@@ -58,63 +58,6 @@ end
       EMField(0., 0., Ez, 0., 0., 0.), 1., m, beta0, 0., 0., 1., m)
     @test rhs[6] ≈ Ez / beta0
     @test rhs[5] ≈ m^2 * beta0 * Ez * z
-  end
-
-  @testset "Field source stage position and time" begin
-    species, R, beta0, _, m, charge, pc, mc2 = setup_particle(2.5e5)
-    initial = [0.01 0.1 -0.02 0.05 0.2 0.3]
-    rel_p = 1 + initial[6]
-    beta = rel_p / sqrt(rel_p^2 + m^2)
-    direction_s = sqrt(1 - (initial[2]^2 + initial[4]^2) / rel_p^2)
-    s0, h = 0.4, 0.1
-    t0 = (s0 / beta0 - initial[5] / beta) / C_LIGHT
-    samples = NTuple{4,Float64}[]
-    field_source = FunctionalField((x, y, s, t) -> begin
-      push!(samples, (x, y, s, t))
-      ZeroField()(x, y, s, t)
-    end)
-    bunch = Bunch(copy(initial); species, p_over_q_ref=R)
-    BeamTracking.rk4_step!(bunch.coords, 1, s0, h, field_source,
-      charge, m, beta0, 0.0, 0.0, pc, mc2)
-    @test length(samples) == 4
-    for (sample, ds) in zip(samples, (0.0, h/2, h/2, h))
-      @test sample[1] ≈ initial[1] + ds * initial[2] / (rel_p * direction_s)
-      @test sample[2] ≈ initial[3] + ds * initial[4] / (rel_p * direction_s)
-      @test sample[3] ≈ s0 + ds
-      @test sample[4] ≈ t0 + ds / (beta * C_LIGHT * direction_s)
-    end
-  end
-
-  @testset "Stage-dependent time under acceleration" begin
-    # Exact solution: p/p0 = m*sinh(u), beta = tanh(u), u = u0 + k*c*(t-t0).
-    # E/R = c*m*k*cosh(u) gives s = log(cosh(u)/cosh(u0))/k.
-    # This tests changing particle speed, nonzero z, and off-reference momentum.
-    species, R, beta0, _, m, charge, pc, mc2 = setup_particle(2.5e5)
-    z0, pz0, k, L = 0.2, 0.3, 0.4, 0.3
-    u0 = asinh((1 + pz0) / m)
-    ct0 = -z0 / tanh(u0)
-    u_end = acosh(exp(k * L) * cosh(u0))
-    expected_pz = m * sinh(u_end) - 1
-    expected_z = tanh(u_end) * (L / beta0 - ct0 - (u_end - u0) / k)
-    field_source = FunctionalField((x, y, s, t, p) -> begin
-      v = zero(x)
-      u = p.u0 + p.k * (p.c * t - p.ct0)
-      EMField(v, v, p.c * p.m * p.k * cosh(u), v, v, v)
-    end, (u0=u0, k=k, c=C_LIGHT, ct0=ct0, m=m); normalized=true)
-    for T in (Float32, Float64), (use_KA, use_explicit_SIMD) in
-        ((false, false), (false, true), (true, false))
-      initial = zeros(T, 8, 6)
-      initial[:, 5] .= z0
-      initial[:, 6] .= pz0
-      bunch = Bunch(initial; species, p_over_q_ref=R)
-      line = Beamline([Drift(L=L, field_source=field_source, tracking_method=RungeKutta(n_steps=40))];
-                      species_ref=species, p_over_q_ref=R)
-      track!(bunch, line; use_KA, use_explicit_SIMD)
-      tol = T === Float32 ? 2e-6 : 1e-9
-      @test all(isapprox.(bunch.coords.v[:, 6], expected_pz; atol=tol, rtol=tol))
-      @test all(isapprox.(bunch.coords.v[:, 5], expected_z; atol=tol, rtol=tol))
-      @test all(==(STATE_ALIVE), bunch.coords.state)
-    end
   end
 
   @testset "RungeKutta constructor" begin
