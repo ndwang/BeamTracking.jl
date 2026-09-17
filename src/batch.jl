@@ -49,9 +49,6 @@ struct BatchParam
     own TimeDependentParams.
   =#
   function BatchParam(batch::AbstractArray)
-    if length(batch) == 1
-      error("Cannot make BatchParam with array of length 1")
-    end
     return new(batch)
   end
   BatchParam(n::Number) = new(n)
