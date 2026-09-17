@@ -36,12 +36,12 @@ end
   end
 
   @testset "ZeroField" begin
-    source = ZeroField()
-    field = @inferred source(1.0, 2.0, 3.0, 4.0)
+    field_source = ZeroField()
+    field = @inferred field_source(1.0, 2.0, 3.0, 4.0)
     @test field == EMField(SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 0.0])
 
     dual = ForwardDiff.Dual(1.0, 1.0)
-    dual_field = @inferred source(dual, dual, dual, 0.0)
+    dual_field = @inferred field_source(dual, dual, dual, 0.0)
     @test eltype(dual_field.E) === typeof(dual)
     @test eltype(dual_field.B) === typeof(dual)
   end
@@ -76,34 +76,34 @@ end
 
   @testset "FunctionalField" begin
     parameters = (Ex=1.0, Ey=2.0, Ez=3.0, Bx=4.0, By=5.0, Bz=6.0)
-    source = FunctionalField(test_uniform_field, parameters)
-    @test @inferred(source(0.0, 0.0, 0.0, 0.0)) ==
+    field_source = FunctionalField(test_uniform_field, parameters)
+    @test @inferred(field_source(0.0, 0.0, 0.0, 0.0)) ==
           EMField(SA[1.0, 2.0, 3.0], SA[4.0, 5.0, 6.0])
 
     parameter_free = FunctionalField(test_parameter_free_field)
     @test @inferred(parameter_free(0.0, 0.0, 0.0, 0.0)) ==
           EMField(SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1.0])
 
-    time_source = FunctionalField(
+    time_field_source = FunctionalField(
       test_uniform_field,
       (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=2.0 * Time(), Bz=0.0),
     )
-    lowered_time_source = BeamTracking.time_lower(time_source)
-    @test BeamTracking.static_timecheck(lowered_time_source)
-    evaluated_time_source = @inferred BeamTracking.teval(lowered_time_source, 0.25)
-    @test @inferred(evaluated_time_source(0.0, 0.0, 0.0, 0.0)) ==
+    lowered_time_field_source = BeamTracking.time_lower(time_field_source)
+    @test BeamTracking.static_timecheck(lowered_time_field_source)
+    evaluated_time_field_source = @inferred BeamTracking.teval(lowered_time_field_source, 0.25)
+    @test @inferred(evaluated_time_field_source(0.0, 0.0, 0.0, 0.0)) ==
           EMField(SA[0.0, 0.0, 0.0], SA[0.0, 0.5, 0.0])
 
-    batch_source = FunctionalField(
+    batch_field_source = FunctionalField(
       test_uniform_field,
       (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=BatchParam([1.0, 2.0]), Bz=0.0),
     )
-    lowered_batch_source = BeamTracking.batch_lower(batch_source)
-    @test BeamTracking.static_batchcheck(lowered_batch_source)
-    first_batch_source = @inferred BeamTracking.beval(lowered_batch_source, 1)
-    second_batch_source = @inferred BeamTracking.beval(lowered_batch_source, 2)
-    @test @inferred(first_batch_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 1.0, 0.0]
-    @test @inferred(second_batch_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 2.0, 0.0]
+    lowered_batch_field_source = BeamTracking.batch_lower(batch_field_source)
+    @test BeamTracking.static_batchcheck(lowered_batch_field_source)
+    first_batch_field_source = @inferred BeamTracking.beval(lowered_batch_field_source, 1)
+    second_batch_field_source = @inferred BeamTracking.beval(lowered_batch_field_source, 2)
+    @test @inferred(first_batch_field_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 1.0, 0.0]
+    @test @inferred(second_batch_field_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 2.0, 0.0]
   end
 
   @testset "Spacetime argument forwarding" begin
@@ -127,16 +127,16 @@ end
       test_uniform_field,
       (Ex=0.0, Ey=0.0, Ez=0.0, Bx=1.0, By=0.0, Bz=3.0),
     )
-    source = SumField(dipole, external)
+    field_source = SumField(dipole, external)
 
-    @test @inferred(source(0.0, 0.0, 0.0, 0.0)) ==
+    @test @inferred(field_source(0.0, 0.0, 0.0, 0.0)) ==
           EMField(SA[0.0, 0.0, 0.0], SA[1.0, 2.0, 3.0])
     @test SumField(()) isa ZeroField
     @test SumField((ZeroField(), dipole)) === dipole
 
     nested = SumField(ZeroField(), SumField(dipole, external), ZeroField())
     @test nested isa SumField
-    @test nested.sources == (dipole, external)
+    @test nested.field_sources == (dipole, external)
 
     dynamic = SumField(
       dipole,
@@ -150,72 +150,72 @@ end
   end
 
   @testset "MultipoleField parameters" begin
-    batch_source = MultipoleField(
+    batch_field_source = MultipoleField(
       SA[1],
       SA[BatchParam([2.0, 3.0])],
       SA[BatchParam(0.0)],
     )
-    lowered_batch_source = BeamTracking.batch_lower(batch_source)
-    @test BeamTracking.static_batchcheck(lowered_batch_source)
-    first_batch_source = @inferred BeamTracking.beval(lowered_batch_source, 1)
-    second_batch_source = @inferred BeamTracking.beval(lowered_batch_source, 2)
-    @test @inferred(first_batch_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 2.0, 0.0]
-    @test @inferred(second_batch_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 3.0, 0.0]
+    lowered_batch_field_source = BeamTracking.batch_lower(batch_field_source)
+    @test BeamTracking.static_batchcheck(lowered_batch_field_source)
+    first_batch_field_source = @inferred BeamTracking.beval(lowered_batch_field_source, 1)
+    second_batch_field_source = @inferred BeamTracking.beval(lowered_batch_field_source, 2)
+    @test @inferred(first_batch_field_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 2.0, 0.0]
+    @test @inferred(second_batch_field_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 3.0, 0.0]
 
-    time_source = MultipoleField(SA[1], SA[4.0 * Time()], SA[TimeDependentParam(0.0)])
-    evaluated_time_source =
-      @inferred BeamTracking.teval(BeamTracking.time_lower(time_source), 0.5)
-    @test @inferred(evaluated_time_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 2.0, 0.0]
+    time_field_source = MultipoleField(SA[1], SA[4.0 * Time()], SA[TimeDependentParam(0.0)])
+    evaluated_time_field_source =
+      @inferred BeamTracking.teval(BeamTracking.time_lower(time_field_source), 0.5)
+    @test @inferred(evaluated_time_field_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 2.0, 0.0]
   end
 
   @testset "No scalar allocations" begin
-    source = SumField(
+    field_source = SumField(
       MultipoleField(SA[2], SA[4.0], SA[5.0]),
       FunctionalField(
         test_uniform_field,
         (Ex=0.0, Ey=0.0, Ez=0.0, Bx=1.0, By=0.0, Bz=3.0),
       ),
     )
-    @test_opt source(0.2, 0.3, 0.0, 0.0)
-    @test @ballocated($source(0.2, 0.3, 0.0, 0.0)) == 0
+    @test_opt field_source(0.2, 0.3, 0.0, 0.0)
+    @test @ballocated($field_source(0.2, 0.3, 0.0, 0.0)) == 0
   end
 
-  @testset "Field-source preparation" begin
+  @testset "Field source preparation" begin
     ext = Base.get_extension(BeamTracking, :BeamTrackingBeamlinesExt)
     context = Beamlines.Context(strength=0.25)
     parameters = (
       strength=Beamlines.DefExpr{Float64}(c -> 2 * c.strength),
       constants=(label="map", count=2),
     )
-    source = FunctionalField((x, y, s, t, p) -> begin
+    field_source = FunctionalField((x, y, s, t, p) -> begin
       v = zero(x)
       return EMField(v, v, v, v, v + p.strength, v)
     end, parameters)
-    prepared = @inferred ext.unpack_field_source(source, context)
-    @test prepared.evaluator === source.evaluator
+    prepared = @inferred Beamlines.deval(field_source, context)
+    @test prepared.evaluator === field_source.evaluator
     @test prepared.parameters.strength == 0.5
     @test prepared.parameters.constants === parameters.constants
-    @test source.parameters.strength isa Beamlines.DefExpr
+    @test field_source.parameters.strength isa Beamlines.DefExpr
 
     opaque_parameters = FieldTestParameters(parameters.strength)
-    opaque_source = FunctionalField(source.evaluator, opaque_parameters)
-    @test ext.unpack_field_source(opaque_source, context).parameters === opaque_parameters
+    opaque_field_source = FunctionalField(field_source.evaluator, opaque_parameters)
+    @test Beamlines.deval(opaque_field_source, context).parameters === opaque_parameters
     @test BeamTracking.batch_lower(
-      FunctionalField(source.evaluator, FieldTestParameters(BatchParam([0.5, 1.5]))),
+      FunctionalField(field_source.evaluator, FieldTestParameters(BatchParam([0.5, 1.5]))),
     ).parameters isa FieldTestParameters{BatchParam}
 
     context.strength = 0.75
-    @test ext.unpack_field_source(source, context).parameters.strength == 1.5
+    @test Beamlines.deval(field_source, context).parameters.strength == 1.5
 
-    dual_source = FunctionalField(source.evaluator, (
+    dual_field_source = FunctionalField(field_source.evaluator, (
       strength=ForwardDiff.Dual(0.5, 1.0),
       constants=parameters.constants,
     ))
-    scalar_source = @inferred ext.scalarize_field_source(dual_source)
-    @test scalar_source.evaluator === source.evaluator
-    @test scalar_source.parameters.strength === 0.5
+    scalar_field_source = @inferred Beamlines.scalarize(dual_field_source)
+    @test scalar_field_source.evaluator === field_source.evaluator
+    @test scalar_field_source.parameters.strength === 0.5
 
-    dynamic = FunctionalField(source.evaluator, (
+    dynamic = FunctionalField(field_source.evaluator, (
       strength=BatchParam([0.5, 1.5]),
       constants=parameters.constants,
     ))
@@ -226,7 +226,7 @@ end
     @test_opt BeamTracking.beval(lowered, 2)
     @test @ballocated(BeamTracking.beval($lowered, 2)) == 0
 
-    timed = FunctionalField(source.evaluator, (
+    timed = FunctionalField(field_source.evaluator, (
       strength=2 * Time(),
       constants=parameters.constants,
     ))
@@ -239,7 +239,7 @@ end
     opaque = let value = parameters.strength
       () -> value
     end
-    @test ext.unpack_field_source(opaque, context) === opaque
+    @test Beamlines.deval(opaque, context) === opaque
   end
 
   @testset "Numeric lowering" begin
@@ -248,18 +248,18 @@ end
       Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=0.1, Bz=0.0,
       nested=(values=(0.25, SA[0.5, 0.75]), order=2, label="field"),
     ))
-    source = SumField(multipole, functional)
+    field_source = SumField(multipole, functional)
     for T in (Float32, Float16)
-      lowered = @inferred BeamTracking.num_lower(T, source)
-      @test lowered.sources[1].orders === multipole.orders
-      @test lowered.sources[2].evaluator === functional.evaluator
-      parameters = lowered.sources[2].parameters
+      lowered = @inferred BeamTracking.num_lower(T, field_source)
+      @test lowered.field_sources[1].orders === multipole.orders
+      @test lowered.field_sources[2].evaluator === functional.evaluator
+      parameters = lowered.field_sources[2].parameters
       @test parameters.nested.values === (T(0.25), SVector{2,T}(0.5, 0.75))
       @test parameters.nested.order === 2
       @test parameters.nested.label === "field"
       @test @inferred(lowered(zero(T), zero(T), zero(T), zero(T))) isa EMField{T}
     end
-    @test BeamTracking.num_lower(Float64, source) === source
+    @test BeamTracking.num_lower(Float64, field_source) === field_source
     @test functional.parameters.By === 0.1
     opaque = FunctionalField(test_uniform_field, FieldTestParameters(0.1))
     @test BeamTracking.num_lower(Float32, opaque).parameters === opaque.parameters
@@ -293,16 +293,16 @@ end
     @test adapted_multipole == multipole
     @test @ballocated(BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), $multipole)) == 0
 
-    source = SumField(
+    field_source = SumField(
       MultipoleField(SA[1], SA[0.01], SA[0.0]),
       FunctionalField(test_uniform_field, (field_map=[1.0, 2.0, 3.0],)),
     )
-    adapted = BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), source)
+    adapted = BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), field_source)
 
     @test adapted isa SumField
-    @test adapted.sources[1] isa MultipoleField
-    @test adapted.sources[2] isa FunctionalField
-    @test adapted.sources[2].parameters.field_map == SA[1.0, 2.0, 3.0]
+    @test adapted.field_sources[1] isa MultipoleField
+    @test adapted.field_sources[2] isa FunctionalField
+    @test adapted.field_sources[2].parameters.field_map == SA[1.0, 2.0, 3.0]
   end
 end
 
@@ -329,11 +329,11 @@ end
     @test_throws ArgumentError mixed(args...)
     same_units = SumField(multipole, normalized)
     @test same_units(args...).B ≈ result.B
-    for source in (multipole, normalized, parameter_free)
-      @test BeamTracking.field_normalized(BeamTracking.num_lower(Float32, source)) == Val(true)
-      @test BeamTracking.field_normalized(BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), source)) == Val(true)
-      @test BeamTracking.field_normalized(BeamTracking.time_lower(source)) == Val(true)
-      @test BeamTracking.field_normalized(BeamTracking.batch_lower(source)) == Val(true)
+    for field_source in (multipole, normalized, parameter_free)
+      @test BeamTracking.field_normalized(BeamTracking.num_lower(Float32, field_source)) == Val(true)
+      @test BeamTracking.field_normalized(BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), field_source)) == Val(true)
+      @test BeamTracking.field_normalized(BeamTracking.time_lower(field_source)) == Val(true)
+      @test BeamTracking.field_normalized(BeamTracking.batch_lower(field_source)) == Val(true)
     end
   end
 end

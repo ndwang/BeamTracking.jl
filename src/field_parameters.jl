@@ -1,58 +1,58 @@
-@inline function _rebuild_multipole_field(source::MultipoleField{M,KN,KS,N}, normal, skew) where {M,KN,KS,N}
-  return MultipoleField{typeof(source.orders),typeof(normal),typeof(skew),N}(
-    source.orders,
+@inline function _rebuild_multipole_field(field_source::MultipoleField{M,KN,KS,N}, normal, skew) where {M,KN,KS,N}
+  return MultipoleField{typeof(field_source.orders),typeof(normal),typeof(skew),N}(
+    field_source.orders,
     normal,
     skew,
   )
 end
 
-@inline batch_lower(source::MultipoleField) =
-  _rebuild_multipole_field(source, batch_lower(source.normal), batch_lower(source.skew))
-@inline time_lower(source::MultipoleField) =
-  _rebuild_multipole_field(source, time_lower(source.normal), time_lower(source.skew))
-@inline num_lower(::Type{T}, source::MultipoleField) where {T<:Union{Float32,Float16}} =
-  _rebuild_multipole_field(source, num_lower(T, source.normal), num_lower(T, source.skew))
-@inline static_batchcheck(source::MultipoleField) =
-  static_batchcheck(source.normal) || static_batchcheck(source.skew)
-@inline static_timecheck(source::MultipoleField) =
-  static_timecheck(source.normal) || static_timecheck(source.skew)
-@inline beval(source::MultipoleField, i) =
-  _rebuild_multipole_field(source, beval(source.normal, i), beval(source.skew, i))
-@inline teval(source::MultipoleField, t) =
-  _rebuild_multipole_field(source, teval(source.normal, t), teval(source.skew, t))
+@inline batch_lower(field_source::MultipoleField) =
+  _rebuild_multipole_field(field_source, batch_lower(field_source.normal), batch_lower(field_source.skew))
+@inline time_lower(field_source::MultipoleField) =
+  _rebuild_multipole_field(field_source, time_lower(field_source.normal), time_lower(field_source.skew))
+@inline num_lower(::Type{T}, field_source::MultipoleField) where {T<:Union{Float32,Float16}} =
+  _rebuild_multipole_field(field_source, num_lower(T, field_source.normal), num_lower(T, field_source.skew))
+@inline static_batchcheck(field_source::MultipoleField) =
+  static_batchcheck(field_source.normal) || static_batchcheck(field_source.skew)
+@inline static_timecheck(field_source::MultipoleField) =
+  static_timecheck(field_source.normal) || static_timecheck(field_source.skew)
+@inline beval(field_source::MultipoleField, i) =
+  _rebuild_multipole_field(field_source, beval(field_source.normal, i), beval(field_source.skew, i))
+@inline teval(field_source::MultipoleField, t) =
+  _rebuild_multipole_field(field_source, teval(field_source.normal, t), teval(field_source.skew, t))
 
-@inline _rebuild_functional_field(source::FunctionalField{F,P,N}, parameters) where {F,P,N} =
-  FunctionalField(source.evaluator, parameters; normalized=N)
+@inline _rebuild_functional_field(field_source::FunctionalField{F,P,N}, parameters) where {F,P,N} =
+  FunctionalField(field_source.evaluator, parameters; normalized=N)
 
-@inline batch_lower(source::FunctionalField) =
-  _rebuild_functional_field(source, batch_lower(source.parameters))
-@inline time_lower(source::FunctionalField) =
-  _rebuild_functional_field(source, time_lower(source.parameters))
-@inline num_lower(::Type{T}, source::FunctionalField) where {T<:Union{Float32,Float16}} =
-  _rebuild_functional_field(source, num_lower(T, source.parameters))
-@inline static_batchcheck(source::FunctionalField) =
-  static_batchcheck(source.parameters)
-@inline static_timecheck(source::FunctionalField) =
-  static_timecheck(source.parameters)
-@inline beval(source::FunctionalField, i) =
-  _rebuild_functional_field(source, beval(source.parameters, i))
-@inline teval(source::FunctionalField, t) =
-  _rebuild_functional_field(source, teval(source.parameters, t))
+@inline batch_lower(field_source::FunctionalField) =
+  _rebuild_functional_field(field_source, batch_lower(field_source.parameters))
+@inline time_lower(field_source::FunctionalField) =
+  _rebuild_functional_field(field_source, time_lower(field_source.parameters))
+@inline num_lower(::Type{T}, field_source::FunctionalField) where {T<:Union{Float32,Float16}} =
+  _rebuild_functional_field(field_source, num_lower(T, field_source.parameters))
+@inline static_batchcheck(field_source::FunctionalField) =
+  static_batchcheck(field_source.parameters)
+@inline static_timecheck(field_source::FunctionalField) =
+  static_timecheck(field_source.parameters)
+@inline beval(field_source::FunctionalField, i) =
+  _rebuild_functional_field(field_source, beval(field_source.parameters, i))
+@inline teval(field_source::FunctionalField, t) =
+  _rebuild_functional_field(field_source, teval(field_source.parameters, t))
 
-@inline _rebuild_sum_field(source::SumField, sources) =
-  SumField{typeof(sources)}(sources)
+@inline _rebuild_sum_field(field_source::SumField, field_sources) =
+  SumField{typeof(field_sources)}(field_sources)
 
-@inline batch_lower(source::SumField) =
-  _rebuild_sum_field(source, batch_lower(source.sources))
-@inline time_lower(source::SumField) =
-  _rebuild_sum_field(source, time_lower(source.sources))
-@inline num_lower(::Type{T}, source::SumField) where {T<:Union{Float32,Float16}} =
-  _rebuild_sum_field(source, num_lower(T, source.sources))
-@inline static_batchcheck(source::SumField) =
-  static_batchcheck(source.sources)
-@inline static_timecheck(source::SumField) =
-  static_timecheck(source.sources)
-@inline beval(source::SumField, i) =
-  _rebuild_sum_field(source, beval(source.sources, i))
-@inline teval(source::SumField, t) =
-  _rebuild_sum_field(source, teval(source.sources, t))
+@inline batch_lower(field_source::SumField) =
+  _rebuild_sum_field(field_source, batch_lower(field_source.field_sources))
+@inline time_lower(field_source::SumField) =
+  _rebuild_sum_field(field_source, time_lower(field_source.field_sources))
+@inline num_lower(::Type{T}, field_source::SumField) where {T<:Union{Float32,Float16}} =
+  _rebuild_sum_field(field_source, num_lower(T, field_source.field_sources))
+@inline static_batchcheck(field_source::SumField) =
+  static_batchcheck(field_source.field_sources)
+@inline static_timecheck(field_source::SumField) =
+  static_timecheck(field_source.field_sources)
+@inline beval(field_source::SumField, i) =
+  _rebuild_sum_field(field_source, beval(field_source.field_sources, i))
+@inline teval(field_source::SumField, t) =
+  _rebuild_sum_field(field_source, teval(field_source.field_sources, t))

@@ -27,7 +27,7 @@ ele.tracking_method = RungeKutta(n_steps=50)
 A field source is a concrete callable object with the interface:
 
 ```julia
-source(x, y, s, t) -> EMField
+field_source(x, y, s, t) -> EMField
 ```
 
 `x`, `y`, and `s` are spatial coordinates in metres; `s` is measured from
@@ -36,7 +36,7 @@ reference particle's entrance. RK keeps its existing stored `z` coordinate
 and calculates `t = (s / beta_0 - z / beta) / c` at every stage, using that
 stage's particle speed `beta * c`.
 
-This replaces the previous `source(x, y, z, s)` interface. Custom sources
+This replaces the previous `field_source(x, y, z, s)` interface. Custom field sources
 must update their argument order and any dependence on the old `z` argument.
 
 `EMField.E` and `EMField.B` are `SVector`s. By default they are in V/m and
@@ -46,23 +46,23 @@ declare that **both E and B are divided by reference rigidity**
 normalized E is `E/R`, not `E/(R*c)`. The RK equations apply the additional
 factor of `1/c` to electric forces.
 RK tracking provides `ZeroField`, `MultipoleField`, `FunctionalField`, and
-`SumField` source types.
+`SumField` field source types.
 
 - `ZeroField()` returns zero electric and magnetic fields.
 - `MultipoleField(orders, normal, skew)` stores static multipole orders and
   non-integrated physical magnetic coefficients. Its field values are in
   tesla.
 - `FunctionalField(evaluator, parameters)` stores the evaluator type and the
-  parameter type in the source type. The evaluator receives
+  parameter type in the field source type. The evaluator receives
   `(x, y, s, t, parameters)` and returns an `EMField`.
 - `FunctionalField(evaluator)` calls the evaluator with `(x, y, s, t)`.
-- `SumField(sources...)` stores a tuple of concrete sources and evaluates the
+- `SumField(field_sources...)` stores a tuple of concrete field sources and evaluates the
   sum with static dispatch. Tracking converts each component to normalized
   units before addition, so physical and normalized components can be mixed.
   Direct evaluation of a mixed-unit sum throws an `ArgumentError` because
   reference rigidity is required.
 
-`field` sets the complete body field:
+`field_source` sets the complete body field:
 
 ```julia
 function uniform_field(x, y, s, t, parameters)
@@ -73,51 +73,74 @@ function uniform_field(x, y, s, t, parameters)
   )
 end
 
-source = FunctionalField(uniform_field, (Bx=0.0, By=0.1, Bz=0.0))
-ele.tracking_method = RungeKutta(field=source, n_steps=20)
+field_source = FunctionalField(uniform_field, (Bx=0.0, By=0.1, Bz=0.0))
+ele.tracking_method = RungeKutta(n_steps=20)
+ele.field_source = field_source
 ```
 
-`additional_field` adds a source to the magnetic multipoles stored on the
+`additional_field` adds a field source to the magnetic multipoles stored on the
 element:
 
 ```julia
-ele.tracking_method = RungeKutta(additional_field=source, n_steps=20)
+ele.tracking_method = RungeKutta(n_steps=20)
+ele.FieldSourceParams = FieldSourceParams(additional_field=field_source)
 ```
 
-The configured sources and their parameter types remain concrete in the RK
-kernel. The units flag is encoded in each source type and passed to the
+The field configuration belongs to Beamlines' `FieldSourceParams` group. Both
+whole-group and individual-property construction are supported:
+
+```julia
+ele = Quadrupole(L=0.5, Kn1=0.1,
+    FieldSourceParams=FieldSourceParams(additional_field=field_source),
+    tracking_method=RungeKutta(n_steps=20))
+# Equivalently:
+ele = Quadrupole(L=0.5, Kn1=0.1, additional_field=field_source,
+    tracking_method=RungeKutta(n_steps=20))
+```
+
+Set at most one of `field_source` and `additional_field`. An absent or empty
+group uses the element-derived magnetic field. Other tracking methods ignore
+this group. To remove it, set `ele.FieldSourceParams = nothing`.
+
+`RungeKutta` now accepts only integration settings. Migrate old
+`RungeKutta(field=...)` and `RungeKutta(additional_field=...)` calls to the
+corresponding element properties (`field_source` and `additional_field`).
+
+The configured field sources and their parameter types remain concrete in the RK
+kernel. The units flag is encoded in each field source type and passed to the
 conversion helper as `Val`, so the unused conversion branch is specialized
-away. Physical sources are scaled at each evaluation; normalized sources skip
+away. Physical field sources are scaled at each evaluation; normalized field sources skip
 that scaling. Unpacking uses normalized coefficients for element multipoles.
 
 ```julia
 # Both E and B returned by this evaluator must already be divided by R.
-source = FunctionalField(evaluator, parameters; normalized=true)
+field_source = FunctionalField(evaluator, parameters; normalized=true)
 ```
 
-Direct `source(x, y, s, t)` calls retain the declared units. The flag declares
+Direct `field_source(x, y, s, t)` calls retain the declared units. The flag declares
 units; it does not convert supplied coefficients or evaluator outputs. Users
-of normalized sources must keep their values consistent with the tracking
+of normalized field sources must keep their values consistent with the tracking
 reference rigidity, including its sign and any reference ramping.
 
-### Custom sources
+### Custom field sources
 
-Custom callable objects can be passed directly to `field` or
+Custom callable objects can be passed directly to `field_source` or
 `additional_field` when their fields are already concrete and do not require
-parameter preparation. Custom sources default to physical units; use
-`FunctionalField(custom_source; normalized=true)` for normalized outputs:
+parameter preparation. Custom field sources default to physical units; use
+`FunctionalField(custom_field_source; normalized=true)` for normalized outputs:
 
 ```julia
 struct UniformMagneticField{T}
   By::T
 end
 
-function (source::UniformMagneticField)(x, y, s, t)
+function (field_source::UniformMagneticField)(x, y, s, t)
   v = zero(x)
-  return EMField(v, v, v, v, v + source.By, v)
+  return EMField(v, v, v, v, v + field_source.By, v)
 end
 
-ele.tracking_method = RungeKutta(field=UniformMagneticField(0.1))
+ele.tracking_method = RungeKutta()
+ele.field_source = UniformMagneticField(0.1)
 ```
 
 ## Beamlines usage
@@ -175,8 +198,8 @@ The low-level entry point is:
 
 ```julia
 rk4_kernel!(i, coords, beta_0, tilde_m, charge, p0c, mc2,
-            L, ds_step, n_steps, gx, gy, source)
+            L, ds_step, n_steps, gx, gy, field_source)
 ```
 
-`source` is a concrete callable field source. The kernel marks a particle as
+`field_source` is a concrete callable field source. The kernel marks a particle as
 `STATE_LOST_PZ` when its transverse velocity is unphysical.

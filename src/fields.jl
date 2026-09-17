@@ -3,7 +3,7 @@
 
 Electric and magnetic field vectors at one particle location. Electric field
 components are in V/m and magnetic field components are in tesla for physical
-sources. For `normalized=true` sources, both vectors are divided by reference
+field sources. For `normalized=true` field sources, both vectors are divided by reference
 rigidity `p_over_q_ref`, matching the four-potential convention.
 """
 struct EMField{T}
@@ -26,8 +26,8 @@ end
 """
     ZeroField()
 
-A callable electromagnetic field source which returns zero fields. Field
-sources are called as `source(x, y, s, t)`, with spatial coordinates in metres
+A callable electromagnetic field source which returns zero fields.
+Field sources are called as `field_source(x, y, s, t)`, with spatial coordinates in metres
 and element-local particle time `t` in seconds (reference entrance at zero).
 """
 struct ZeroField end
@@ -42,7 +42,7 @@ end
     MultipoleField(orders, normal, skew; normalized=false)
 
 A callable static magnetic multipole field. `normal` and `skew` contain
-non-integrated magnetic-field coefficients. By default the source returns
+non-integrated magnetic-field coefficients. By default the field source returns
 fields in tesla; `normalized=true` declares coefficients and fields divided
 by reference rigidity. All three arguments must be `SVector`s.
 Orders must be unique and ascending.
@@ -68,10 +68,10 @@ function MultipoleField(
   return MultipoleField{M,KN,KS,normalized}(orders, normal, skew)
 end
 
-@inline function (source::MultipoleField)(x, y, s, t)
-  bx, by = normalized_field(source.orders, source.normal, source.skew, x, y, 0)
+@inline function (field_source::MultipoleField)(x, y, s, t)
+  bx, by = normalized_field(field_source.orders, field_source.normal, field_source.skew, x, y, 0)
   zero_field = zero(bx)
-  bz = vifelse(source.orders[1] == 0, source.normal[1], zero_field)
+  bz = vifelse(field_source.orders[1] == 0, field_source.normal[1], zero_field)
   E = SVector(zero_field, zero_field, zero_field)
   return EMField(E, SVector(bx, by, bz))
 end
@@ -95,17 +95,17 @@ end
 FunctionalField(evaluator, parameters=nothing; normalized::Bool=false) =
   FunctionalField{typeof(evaluator),typeof(parameters),normalized}(evaluator, parameters)
 
-@inline function (source::FunctionalField{F,Nothing,N})(x, y, s, t) where {F,N}
-  return source.evaluator(x, y, s, t)
+@inline function (field_source::FunctionalField{F,Nothing,N})(x, y, s, t) where {F,N}
+  return field_source.evaluator(x, y, s, t)
 end
 
-@inline function (source::FunctionalField)(x, y, s, t)
-  return source.evaluator(x, y, s, t, source.parameters)
+@inline function (field_source::FunctionalField)(x, y, s, t)
+  return field_source.evaluator(x, y, s, t, field_source.parameters)
 end
 
 """
-    SumField(sources...)
-    SumField(sources::Tuple)
+    SumField(field_sources...)
+    SumField(field_sources::Tuple)
 
 A callable, statically dispatched sum of electromagnetic field sources.
 Nested sums are flattened and `ZeroField` members are removed at construction.
@@ -113,62 +113,62 @@ Direct evaluation requires all components to use the same units. Tracking
 normalizes each component before addition and also supports mixed-unit sums.
 """
 struct SumField{S<:Tuple}
-  sources::S
+  field_sources::S
 
-  SumField{S}(sources::S) where {S<:Tuple} = new{S}(sources)
+  SumField{S}(field_sources::S) where {S<:Tuple} = new{S}(field_sources)
 end
 
 @inline _flatten_field_source(::ZeroField) = ()
-@inline _flatten_field_source(source::SumField) = source.sources
-@inline _flatten_field_source(source) = (source,)
+@inline _flatten_field_source(field_source::SumField) = field_source.field_sources
+@inline _flatten_field_source(field_source) = (field_source,)
 
 @inline _flatten_field_sources(::Tuple{}) = ()
-@inline function _flatten_field_sources(sources::Tuple)
-  return (_flatten_field_source(first(sources))..., _flatten_field_sources(Base.tail(sources))...)
+@inline function _flatten_field_sources(field_sources::Tuple)
+  return (_flatten_field_source(first(field_sources))..., _flatten_field_sources(Base.tail(field_sources))...)
 end
 
-function SumField(sources::Tuple)
-  flattened = _flatten_field_sources(sources)
+function SumField(field_sources::Tuple)
+  flattened = _flatten_field_sources(field_sources)
   isempty(flattened) && return ZeroField()
   length(flattened) == 1 && return first(flattened)
   return SumField{typeof(flattened)}(flattened)
 end
 
-SumField(sources...) = SumField(sources)
+SumField(field_sources...) = SumField(field_sources)
 
-@generated function _evaluate_field_sum(sources::S, x, y, s, t) where {S<:Tuple}
+@generated function _evaluate_field_sum(field_sources::S, x, y, s, t) where {S<:Tuple}
   N = length(S.parameters)
   N > 0 || return :(ZeroField()(x, y, s, t))
-  expression = :(Base.getfield(sources, 1)(x, y, s, t))
+  expression = :(Base.getfield(field_sources, 1)(x, y, s, t))
   for i in 2:N
-    expression = :($expression + Base.getfield(sources, $i)(x, y, s, t))
+    expression = :($expression + Base.getfield(field_sources, $i)(x, y, s, t))
   end
   return expression
 end
 
 # Unit traits are compile-time constants, like the implicit integrator's Val flag.
-@inline field_normalized(source) = Val(false)
+@inline field_normalized(field_source) = Val(false)
 @inline field_normalized(::MultipoleField{M,KN,KS,N}) where {M,KN,KS,N} = Val(N)
 @inline field_normalized(::FunctionalField{F,P,N}) where {F,P,N} = Val(N)
-@inline function field_normalized(source::SumField)
-  units = field_normalized(first(source.sources))
-  all(s -> field_normalized(s) == units, source.sources) ||
+@inline function field_normalized(field_source::SumField)
+  units = field_normalized(first(field_source.field_sources))
+  all(s -> field_normalized(s) == units, field_source.field_sources) ||
     throw(ArgumentError("mixed-unit SumField requires reference rigidity; evaluate it through tracking"))
   return units
 end
 
 """
-    normalized_field_at(source, x, y, s, t, inv_rigidity)
+    normalized_field_at(field_source, x, y, s, t, inv_rigidity)
 
 Evaluate fields with both E and B divided by reference rigidity, as in
-`implicit_fields`. Custom sources default to physical units; wrap a normalized
+`implicit_fields`. Custom field sources default to physical units; wrap a normalized
 custom evaluator in `FunctionalField(...; normalized=true)`.
 """
-@inline normalized_field_at(source, x, y, s, t, inv_rigidity) =
-  normalized_field_at(source, x, y, s, t, inv_rigidity, field_normalized(source))
+@inline normalized_field_at(field_source, x, y, s, t, inv_rigidity) =
+  normalized_field_at(field_source, x, y, s, t, inv_rigidity, field_normalized(field_source))
 
-@inline function normalized_field_at(source, x, y, s, t, inv_rigidity, ::Val{normalized}) where {normalized}
-  field = source(x, y, s, t)
+@inline function normalized_field_at(field_source, x, y, s, t, inv_rigidity, ::Val{normalized}) where {normalized}
+  field = field_source(x, y, s, t)
   if normalized
     return field
   else
@@ -176,17 +176,17 @@ custom evaluator in `FunctionalField(...; normalized=true)`.
   end
 end
 
-@inline function normalized_field_at(source::SumField, x, y, s, t, inv_rigidity)
-  fields = map(source.sources) do f
+@inline function normalized_field_at(field_source::SumField, x, y, s, t, inv_rigidity)
+  fields = map(field_source.field_sources) do f
     @inline
     normalized_field_at(f, x, y, s, t, inv_rigidity)
   end
   return +(fields...)
 end
 
-@inline function (source::SumField)(x, y, s, t)
-  field_normalized(source) # Reject adding physical and normalized values directly.
-  return _evaluate_field_sum(source.sources, x, y, s, t)
+@inline function (field_source::SumField)(x, y, s, t)
+  field_normalized(field_source) # Reject adding physical and normalized values directly.
+  return _evaluate_field_sum(field_source.field_sources, x, y, s, t)
 end
 
 include("field_parameters.jl")
@@ -194,14 +194,14 @@ include("field_parameters.jl")
 Adapt.@adapt_structure EMField
 # Adaptation preserves the validated orders. Avoid rerunning constructor checks:
 # KernelAbstractions also adapts arguments inside GPU kernels (constify).
-@inline function Adapt.adapt_structure(to, source::MultipoleField{M,KN,KS,N}) where {M,KN,KS,N}
-  orders = Adapt.adapt(to, source.orders)
-  normal = Adapt.adapt(to, source.normal)
-  skew = Adapt.adapt(to, source.skew)
+@inline function Adapt.adapt_structure(to, field_source::MultipoleField{M,KN,KS,N}) where {M,KN,KS,N}
+  orders = Adapt.adapt(to, field_source.orders)
+  normal = Adapt.adapt(to, field_source.normal)
+  skew = Adapt.adapt(to, field_source.skew)
   return MultipoleField{typeof(orders),typeof(normal),typeof(skew),N}(orders, normal, skew)
 end
-@inline function Adapt.adapt_structure(to, source::FunctionalField{F,P,N}) where {F,P,N}
-  return FunctionalField(Adapt.adapt(to, source.evaluator),
-                         Adapt.adapt(to, source.parameters); normalized=N)
+@inline function Adapt.adapt_structure(to, field_source::FunctionalField{F,P,N}) where {F,P,N}
+  return FunctionalField(Adapt.adapt(to, field_source.evaluator),
+                         Adapt.adapt(to, field_source.parameters); normalized=N)
 end
 Adapt.@adapt_structure SumField

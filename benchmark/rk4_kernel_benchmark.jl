@@ -103,22 +103,22 @@ function setup_multi_particle(n_particles)
     gy = 0.0
 
     Bz_physical = 0.01
-    source = MultipoleField(SA[0], SA[Bz_physical], SA[0.0])
+    field_source = MultipoleField(SA[0], SA[Bz_physical], SA[0.0])
 
     return bunch, beta_0, tilde_m, charge, p0c, mc2, L, ds_step, n_steps,
-           gx, gy, source
+           gx, gy, field_source
 end
 
 function track_all_particles!(
     bunch, beta_0, tilde_m, charge, p0c, mc2,
-    L, ds_step, n_steps, gx, gy, source,
+    L, ds_step, n_steps, gx, gy, field_source,
 )
     n = size(bunch.coords.v, 1)
     for i in 1:n
         BeamTracking.rk4_kernel!(
             i, bunch.coords, beta_0, tilde_m,
             charge, p0c, mc2, L, ds_step, n_steps,
-            gx, gy, source,
+            gx, gy, field_source,
         )
     end
     return nothing

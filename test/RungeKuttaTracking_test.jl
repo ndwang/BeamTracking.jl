@@ -19,9 +19,9 @@ struct RKCustomField{T}
   strength::T
 end
 
-function (source::RKCustomField)(x, y, s, t)
+function (field_source::RKCustomField)(x, y, s, t)
   v = zero(x)
-  return EMField(v, v, v, v, v + source.strength, v)
+  return EMField(v, v, v, v, v + field_source.strength, v)
 end
 
 @testset "RungeKuttaTracking" begin
@@ -60,7 +60,7 @@ end
     @test rhs[5] ≈ m^2 * beta0 * Ez * z
   end
 
-  @testset "Field-source stage position and time" begin
+  @testset "Field source stage position and time" begin
     species, R, beta0, _, m, charge, pc, mc2 = setup_particle(2.5e5)
     initial = [0.01 0.1 -0.02 0.05 0.2 0.3]
     rel_p = 1 + initial[6]
@@ -69,12 +69,12 @@ end
     s0, h = 0.4, 0.1
     t0 = (s0 / beta0 - initial[5] / beta) / C_LIGHT
     samples = NTuple{4,Float64}[]
-    source = FunctionalField((x, y, s, t) -> begin
+    field_source = FunctionalField((x, y, s, t) -> begin
       push!(samples, (x, y, s, t))
       ZeroField()(x, y, s, t)
     end)
     bunch = Bunch(copy(initial); species, p_over_q_ref=R)
-    BeamTracking.rk4_step!(bunch.coords, 1, s0, h, source,
+    BeamTracking.rk4_step!(bunch.coords, 1, s0, h, field_source,
       charge, m, beta0, 0.0, 0.0, pc, mc2)
     @test length(samples) == 4
     for (sample, ds) in zip(samples, (0.0, h/2, h/2, h))
@@ -96,7 +96,7 @@ end
     u_end = acosh(exp(k * L) * cosh(u0))
     expected_pz = m * sinh(u_end) - 1
     expected_z = tanh(u_end) * (L / beta0 - ct0 - (u_end - u0) / k)
-    source = FunctionalField((x, y, s, t, p) -> begin
+    field_source = FunctionalField((x, y, s, t, p) -> begin
       v = zero(x)
       u = p.u0 + p.k * (p.c * t - p.ct0)
       EMField(v, v, p.c * p.m * p.k * cosh(u), v, v, v)
@@ -107,7 +107,7 @@ end
       initial[:, 5] .= z0
       initial[:, 6] .= pz0
       bunch = Bunch(initial; species, p_over_q_ref=R)
-      line = Beamline([Drift(L=L, tracking_method=RungeKutta(field=source, n_steps=40))];
+      line = Beamline([Drift(L=L, field_source=field_source, tracking_method=RungeKutta(n_steps=40))];
                       species_ref=species, p_over_q_ref=R)
       track!(bunch, line; use_KA, use_explicit_SIMD)
       tol = T === Float32 ? 2e-6 : 1e-9
@@ -143,15 +143,68 @@ end
     @test rk_nothing.ds_step == 0.2
     @test rk_nothing.n_steps == -1
 
-    replacement = MultipoleField(SA[1], SA[0.01], SA[0.0])
-    rk_replacement = RungeKutta(field=replacement)
-    @test rk_replacement.field === replacement
-    @test isnothing(rk_replacement.additional_field)
+    @test fieldnames(RungeKutta) == (:ds_step, :n_steps)
+    @test_throws MethodError RungeKutta(field_source=ZeroField())
 
-    additional = FunctionalField(rk_test_parameter_free_field)
-    rk_additional = RungeKutta(additional_field=additional)
-    @test rk_additional.additional_field === additional
-    @test isnothing(rk_additional.field)
+  end
+
+  @testset "Element field source parameters" begin
+    using Beamlines
+    species, R, _, _, _, _, _, _ = setup_particle()
+    field_source = MultipoleField(SA[1], SA[0.004], SA[0.0])
+    group = FieldSourceParams(; field_source)
+    whole = Quadrupole(L=0.5, Kn1=0.1, FieldSourceParams=group,
+                       tracking_method=RungeKutta(n_steps=5))
+    individual = Quadrupole(L=0.5, Kn1=0.1, field_source=field_source,
+                            tracking_method=RungeKutta(n_steps=5))
+    @test whole.FieldSourceParams === group
+    @test whole.field_source === field_source
+    @test whole.FieldSourceParams ≈ individual.FieldSourceParams
+    @test isnothing(whole.additional_field)
+    @test isnothing(Drift().FieldSourceParams)
+    @test isnothing(Drift().field_source)
+    @test isnothing(Drift().additional_field)
+    copied = Beamlines.deepcopy_no_beamline(whole)
+    @test copied.FieldSourceParams ≈ group
+    @test copied.FieldSourceParams !== group
+    copied.field_source = ZeroField() # Rebuild the group when its type changes.
+    @test copied.field_source isa ZeroField
+    @test whole.field_source === field_source
+    copied.FieldSourceParams = nothing
+    @test isnothing(copied.FieldSourceParams)
+
+    initial = [0.001 0.01 -0.002 0.003 0.0 0.0]
+    function tracked(ele)
+      line = Beamline([ele]; p_over_q_ref=R, species_ref=species)
+      bunch = Bunch(copy(initial); p_over_q_ref=R, species)
+      track!(bunch, line; use_KA=false, use_explicit_SIMD=false)
+      return bunch.coords.v
+    end
+    @test tracked(whole) ≈ tracked(individual)
+    empty_group = Quadrupole(L=0.5, Kn1=0.1, FieldSourceParams=FieldSourceParams(),
+                             tracking_method=RungeKutta(n_steps=5))
+    plain = Quadrupole(L=0.5, Kn1=0.1, tracking_method=RungeKutta(n_steps=5))
+    @test tracked(empty_group) ≈ tracked(plain)
+
+    # Beamline children inherit the group and see replacements on their parent.
+    line = Beamline([whole]; p_over_q_ref=R, species_ref=species)
+    @test line.line[1].field_source === field_source
+    whole.field_source = ZeroField()
+    @test line.line[1].field_source isa ZeroField
+
+    invalid = Drift(L=0.5, field_source=field_source, additional_field=ZeroField(),
+                    tracking_method=RungeKutta(n_steps=5))
+    @test_throws ErrorException tracked(invalid)
+
+    # An unrelated method must not even evaluate deferred field-source parameters.
+    ignored_field_source = FunctionalField(rk_test_uniform_field,
+      (By=DefExpr{Float64}(c -> error("unused field source evaluated")),))
+    for tm in (Exact(), Symplectic())
+      ignored = Solenoid(L=0.5, Ksol=0.1, tracking_method=tm,
+                           field_source=ignored_field_source, additional_field=ZeroField())
+      reference = Solenoid(L=0.5, Ksol=0.1, tracking_method=tm)
+      @test tracked(ignored) ≈ tracked(reference)
+    end
   end
 
   @testset "Pure drift" begin
@@ -167,11 +220,11 @@ end
     gx = 0.0
     gy = 0.0
     
-    source = ZeroField()
+    field_source = ZeroField()
 
     BeamTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
-                                   source)
+                                   field_source)
 
     # Regression test
     solution = [0.0100005  0.01  0.0  0.0  -5.00038e-5  0.0]
@@ -193,11 +246,11 @@ end
     
     # Solenoid field
     Bz_physical = 0.01  # Tesla
-    source = MultipoleField(SA[0], SA[Bz_physical], SA[0.0])
+    field_source = MultipoleField(SA[0], SA[Bz_physical], SA[0.0])
 
     BeamTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
-                                   source)
+                                   field_source)
 
     # In uniform B-field, particle should follow circular path
     # Total transverse momentum should be conserved
@@ -223,11 +276,11 @@ end
     
     # Dipole field
     By_physical = 0.01  # Tesla
-    source = MultipoleField(SA[1], SA[By_physical], SA[0.0])
+    field_source = MultipoleField(SA[1], SA[By_physical], SA[0.0])
 
     BeamTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
-                                   source)
+                                   field_source)
 
     # Regression test
     solution = [0.011499735519796054 0.012997924579999955 0.0 0.0 -6.649432859025015e-5 0.0]
@@ -247,11 +300,11 @@ end
     gx = 0.0
     gy = 0.0
     
-    source = ZeroField()
+    field_source = ZeroField()
 
     BeamTracking.rk4_kernel!(1, bunch.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, ds_step, n_steps, gx, gy,
-                                   source)
+                                   field_source)
 
     # Particle should not track
     solution = [0.0  1.5  0.0  0.0  0.0  0.0]
@@ -291,30 +344,30 @@ end
       by = v + ifelse(s == 1, 12 * R, zero(R))
       EMField(v, v, v, v, by, v)
     end, R)
-    for source in (intermediate_loss, final_loss)
+    for field_source in (intermediate_loss, final_loss)
       for (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
         bunch = Bunch(zeros(8, 6); species, p_over_q_ref=R)
         call = BeamTracking.make_kernel_call(BeamTracking.rk4_kernel!,
-          (beta0, m, charge, pc, mc2, 1.0, 1.0, 1, 0.0, 0.0, source))
+          (beta0, m, charge, pc, mc2, 1.0, 1.0, 1, 0.0, 0.0, field_source))
         BeamTracking.launch!(bunch.coords, call; use_KA, use_explicit_SIMD)
         @test all(==(STATE_LOST_PZ), bunch.coords.state)
         @test iszero(bunch.coords.v)
       end
       # Direct users of rk4_step! need the same loss handling as the kernel.
       bunch = Bunch(zeros(1, 6); species, p_over_q_ref=R)
-      BeamTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, source,
+      BeamTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, field_source,
         charge, m, beta0, 0.0, 0.0, pc, mc2)
       @test bunch.coords.state[1] == STATE_LOST_PZ
       @test iszero(bunch.coords.v)
     end
 
     # Electric deceleration may also make total momentum nonpositive midstep.
-    source = FunctionalField((x, y, s, t) -> begin
+    field_source = FunctionalField((x, y, s, t) -> begin
       v = zero(x)
       EMField(v, v, v + 4 * pc, v, v, v)
     end)
     bunch = Bunch(zeros(1, 6); species, p_over_q_ref=R)
-    BeamTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, source,
+    BeamTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, field_source,
       charge, m, beta0, 0.0, 0.0, pc, mc2)
     @test bunch.coords.state[1] == STATE_LOST_PZ
     @test iszero(bunch.coords.v)
@@ -324,7 +377,7 @@ end
     species, R, beta0, _, m, charge, pc, mc2 = setup_particle()
     # The field is evaluated before a bad lane is rejected. It must not receive
     # NaN time just because another particle's longitudinal momentum is invalid.
-    source = FunctionalField((x, y, s, t) -> begin
+    field_source = FunctionalField((x, y, s, t) -> begin
       @assert all(isfinite(t))
       v = zero(x)
       EMField(v, v, v, v, v, v + t)
@@ -339,7 +392,7 @@ end
       bunch.coords.state[8] = BeamTracking.STATE_LOST_POS_X
       call = BeamTracking.make_kernel_call(BeamTracking.rk4_kernel!,
         (T(beta0), T(m), T(charge), T(pc), T(mc2), T(0.1), T(0.01), 10,
-         zero(T), zero(T), source))
+         zero(T), zero(T), field_source))
       BeamTracking.launch!(bunch.coords, call; use_KA, use_explicit_SIMD)
       @test bunch.coords.state == [STATE_LOST_PZ, STATE_LOST_PZ, STATE_LOST_PZ,
         STATE_LOST_PZ, STATE_LOST_PZ, STATE_ALIVE, STATE_ALIVE, BeamTracking.STATE_LOST_POS_X]
@@ -360,15 +413,15 @@ end
     gx = 0.0
     gy = 0.0
     
-    source = ZeroField()
+    field_source = ZeroField()
 
     # Track with different step sizes
     BeamTracking.rk4_kernel!(1, bunch1.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, 0.1, 10, gx, gy,
-                                   source)
+                                   field_source)
     BeamTracking.rk4_kernel!(1, bunch2.coords, beta_0, tilde_m,
                                    charge, p0c, mc2, L, 0.05, 20, gx, gy,
-                                   source)
+                                   field_source)
 
     # Results should be identical
     @test isapprox(bunch1.coords.v, bunch2.coords.v, rtol=1e-2)
@@ -461,7 +514,7 @@ end
     element = Quadrupole(
       L=0.5,
       Kn1=element_strength,
-      tracking_method=RungeKutta(additional_field=external, n_steps=5),
+      additional_field=external, tracking_method=RungeKutta(n_steps=5),
     )
     composed = SumField(
       MultipoleField(SA[2], SA[element_strength * p_over_q_ref], SA[0.0]),
@@ -469,7 +522,7 @@ end
     )
     reference = Drift(
       L=0.5,
-      tracking_method=RungeKutta(field=composed, n_steps=5),
+      field_source=composed, tracking_method=RungeKutta(n_steps=5),
     )
 
     element_line = Beamline([element], p_over_q_ref=p_over_q_ref, species_ref=species)
@@ -485,11 +538,11 @@ end
     replacement_element = Quadrupole(
       L=0.5,
       Kn1=5 * element_strength,
-      tracking_method=RungeKutta(field=external, n_steps=5),
+      field_source=external, tracking_method=RungeKutta(n_steps=5),
     )
     replacement_reference = Drift(
       L=0.5,
-      tracking_method=RungeKutta(field=external, n_steps=5),
+      field_source=external, tracking_method=RungeKutta(n_steps=5),
     )
     replacement_line = Beamline(
       [replacement_element],
@@ -514,13 +567,13 @@ end
     @test replacement_bunch.coords.v ≈ replacement_reference_bunch.coords.v
   end
 
-  @testset "Beamlines field-source context" begin
+  @testset "Beamlines field source context" begin
     using Beamlines
 
     species, p_over_q_ref, _, _, _, _, _, _ = setup_particle()
     initial = [0.001 0.01 -0.002 0.003 0.0 0.0]
     context = Context(dipole=0.003, external=0.004)
-    context_source = SumField(
+    context_field_source = SumField(
       MultipoleField(
         SA[1],
         SA[DefExpr{Float64}(c -> c.dipole)],
@@ -538,7 +591,7 @@ end
         ),
       ),
     )
-    fixed_source = SumField(
+    fixed_field_source = SumField(
       MultipoleField(SA[1], SA[context.dipole], SA[0.0]),
       FunctionalField(
         rk_test_uniform_field,
@@ -547,11 +600,11 @@ end
     )
     context_element = Drift(
       L=0.5,
-      tracking_method=RungeKutta(field=context_source, n_steps=5),
+      field_source=context_field_source, tracking_method=RungeKutta(n_steps=5),
     )
     fixed_element = Drift(
       L=0.5,
-      tracking_method=RungeKutta(field=fixed_source, n_steps=5),
+      field_source=fixed_field_source, tracking_method=RungeKutta(n_steps=5),
     )
     context_line = Beamline(
       [context_element],
@@ -573,7 +626,7 @@ end
     @test context_bunch.coords.v ≈ fixed_bunch.coords.v
   end
 
-  @testset "Functional field-source tracking" begin
+  @testset "Functional field source tracking" begin
     species, p_over_q_ref, beta_0, _, tilde_m, charge, p0c, mc2 = setup_particle()
     context = Context(strength=0.004)
     initial = repeat([0.001 0.01 -0.002 0.003 0.0 0.0], 8, 1)
@@ -594,24 +647,24 @@ end
         (x, y, s, t, p) -> RKCustomField(p.strength)(x, y, s, t),
         (strength=strength,),
       )
-      sources = (
+      field_sources = (
         functional,
         SumField(functional, RKCustomField(0.0)),
       )
       expected = similar(initial)
       for i in axes(initial, 1)
         fixed = MultipoleField(SA[1], SA[expected_strengths[i]], SA[0.0])
-        line = Beamline([Drift(L=0.5, tracking_method=RungeKutta(field=fixed, n_steps=5))],
+        line = Beamline([Drift(L=0.5, field_source=fixed, tracking_method=RungeKutta(n_steps=5))],
                         p_over_q_ref=p_over_q_ref, species_ref=species)
         bunch = Bunch(copy(initial[i:i, :]), p_over_q_ref=p_over_q_ref, species=species)
         track!(bunch, line; use_KA=false, use_explicit_SIMD=false)
         expected[i, :] .= bunch.coords.v[1, :]
       end
-      for source in sources, (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
+      for field_source in field_sources, (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
         if strength isa DefExpr{BatchParam} && use_explicit_SIMD && !batch_simd_supported
           continue
         end
-        line = Beamline([Drift(L=0.5, tracking_method=RungeKutta(field=source, n_steps=5))],
+        line = Beamline([Drift(L=0.5, field_source=field_source, tracking_method=RungeKutta(n_steps=5))],
                         context=context, p_over_q_ref=p_over_q_ref, species_ref=species)
         bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
         track!(bunch, line; scalar_params, use_KA, use_explicit_SIMD)
@@ -619,12 +672,12 @@ end
       end
     end
 
-    source = FunctionalField(
+    field_source = FunctionalField(
       (x, y, s, t, p) -> RKCustomField(p.strength)(x, y, s, t),
       (strength=BatchParam([0.002, 0.004]),),
     )
     call = BeamTracking.make_kernel_call(BeamTracking.rk4_kernel!, (
-      beta_0, tilde_m, charge, p0c, mc2, 0.5, 0.1, 5, 0.0, 0.0, source,
+      beta_0, tilde_m, charge, p0c, mc2, 0.5, 0.1, 5, 0.0, 0.0, field_source,
     ))
     bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
     for simd in (batch_simd_supported ? (false, true) : (false,))
@@ -633,7 +686,7 @@ end
     end
   end
 
-  @testset "Float32 field-source tracking" begin
+  @testset "Float32 field source tracking" begin
     species, R, = setup_particle()
     # Check every RK stage, including SIMD lanes, not just storage.
     evaluator = (x, y, s, t, p) -> begin
@@ -646,15 +699,13 @@ end
       # Float32 batch gathers currently hit an upstream SIMD pointer-cast bug.
       # Cover SIMD with static parameters and batches on scalar/KA paths.
       strength = use_explicit_SIMD ? BatchParam(0.002) : BatchParam([0.002, 0.004])
-      source = SumField(
+      field_source = SumField(
         MultipoleField(SA[1], SA[0.001], SA[0.0]),
         FunctionalField(evaluator, (By=strength,)),
       )
-      line = Beamline([Drift(L=0.5, tracking_method=RungeKutta(field=source, n_steps=5))],
+      line = Beamline([Drift(L=0.5, field_source=field_source, tracking_method=RungeKutta(n_steps=5))],
                       p_over_q_ref=R, species_ref=species)
-      reference = Beamline([Drift(L=0.5, tracking_method=RungeKutta(
-        field=MultipoleField(SA[1], SA[strength + 0.001], SA[BatchParam(0.0)]),
-        n_steps=5))], p_over_q_ref=R, species_ref=species)
+      reference = Beamline([Drift(L=0.5, field_source=MultipoleField(SA[1], SA[strength + 0.001], SA[BatchParam(0.0)]), tracking_method=RungeKutta(n_steps=5))], p_over_q_ref=R, species_ref=species)
       bunch = Bunch(zeros(Float32, 16, 6); species, p_over_q_ref=R)
       expected = Bunch(zeros(16, 6); species, p_over_q_ref=R)
       track!(expected, reference; use_KA=false, use_explicit_SIMD=false)
@@ -664,20 +715,20 @@ end
     end
   end
 
-  @testset "Batch field-source tracking" begin
+  @testset "Batch field source tracking" begin
     using Beamlines
 
     species, p_over_q_ref, _, _, _, _, _, _ = setup_particle()
     batch_fields = [0.002, 0.004]
     initial_particle = [0.001 0.01 -0.002 0.003 0.0 0.0]
     initial = repeat(initial_particle, 8, 1)
-    source = FunctionalField(
+    field_source = FunctionalField(
       rk_test_uniform_field,
       (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=BatchParam(batch_fields), Bz=0.0),
     )
     element = Drift(
       L=0.5,
-      tracking_method=RungeKutta(field=source, n_steps=5),
+      field_source=field_source, tracking_method=RungeKutta(n_steps=5),
     )
     line = Beamline([element], p_over_q_ref=p_over_q_ref, species_ref=species)
     simd_bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
@@ -688,7 +739,7 @@ end
 
     expected = similar(initial)
     for i in axes(initial, 1)
-      fixed_source = FunctionalField(
+      fixed_field_source = FunctionalField(
         rk_test_uniform_field,
         (
           Ex=0.0,
@@ -701,7 +752,7 @@ end
       )
       fixed_element = Drift(
         L=0.5,
-        tracking_method=RungeKutta(field=fixed_source, n_steps=5),
+        field_source=fixed_field_source, tracking_method=RungeKutta(n_steps=5),
       )
       fixed_line = Beamline(
         [fixed_element],
@@ -721,27 +772,27 @@ end
     @test ka_bunch.coords.v ≈ expected
   end
 
-  @testset "Scalarized field-source tracking" begin
+  @testset "Scalarized field source tracking" begin
     using Beamlines
 
     species, p_over_q_ref, _, _, _, _, _, _ = setup_particle()
     initial = [0.001 0.01 -0.002 0.003 0.0 0.0]
     dual_field = ForwardDiff.Dual(0.004, 1.0)
-    source = FunctionalField(
+    field_source = FunctionalField(
       rk_test_uniform_field,
       (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=dual_field, Bz=0.0),
     )
-    fixed_source = FunctionalField(
+    fixed_field_source = FunctionalField(
       rk_test_uniform_field,
       (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=ForwardDiff.value(dual_field), Bz=0.0),
     )
     element = Drift(
       L=0.5,
-      tracking_method=RungeKutta(field=source, n_steps=5),
+      field_source=field_source, tracking_method=RungeKutta(n_steps=5),
     )
     fixed_element = Drift(
       L=0.5,
-      tracking_method=RungeKutta(field=fixed_source, n_steps=5),
+      field_source=fixed_field_source, tracking_method=RungeKutta(n_steps=5),
     )
     line = Beamline([element], p_over_q_ref=p_over_q_ref, species_ref=species)
     fixed_line = Beamline(
@@ -758,7 +809,7 @@ end
     @test bunch.coords.v ≈ fixed_bunch.coords.v
   end
 
-  @testset "Time-dependent field-source tracking" begin
+  @testset "Time-dependent field source tracking" begin
     using Beamlines
 
     species, p_over_q_ref, _, _, _, _, _, _ = setup_particle()
@@ -770,13 +821,13 @@ end
       0.001 0.01 -0.002 0.003 -0.15  0.0
     ]
     field_at_time = 0.002 + 1.0e6 * Time()
-    source = FunctionalField(
+    field_source = FunctionalField(
       rk_test_uniform_field,
       (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=field_at_time, Bz=0.0),
     )
     element = Drift(
       L=0.5,
-      tracking_method=RungeKutta(field=source, n_steps=5),
+      field_source=field_source, tracking_method=RungeKutta(n_steps=5),
     )
     line = Beamline([element], p_over_q_ref=p_over_q_ref, species_ref=species)
     dynamic_bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
@@ -791,7 +842,7 @@ end
         0.0,
         beta_gamma_ref,
       )
-      fixed_source = FunctionalField(
+      fixed_field_source = FunctionalField(
         rk_test_uniform_field,
         (
           Ex=0.0,
@@ -804,7 +855,7 @@ end
       )
       fixed_element = Drift(
         L=0.5,
-        tracking_method=RungeKutta(field=fixed_source, n_steps=5),
+        field_source=fixed_field_source, tracking_method=RungeKutta(n_steps=5),
       )
       fixed_line = Beamline(
         [fixed_element],
@@ -968,8 +1019,8 @@ end
     params = T.((1e4, -2e4, 3e4, 0.001, -0.002, 0.003))
     physical = FunctionalField((x,y,s,t,p) -> EMField(p...), params)
     normalized = FunctionalField(physical.evaluator, params ./ R; normalized=true)
-    results = map((physical, normalized)) do source
-      ele = Drift(L=0.2, tracking_method=RungeKutta(field=source, n_steps=10))
+    results = map((physical, normalized)) do field_source
+      ele = Drift(L=0.2, field_source=field_source, tracking_method=RungeKutta(n_steps=10))
       line = Beamline([ele]; p_over_q_ref=R, species_ref=species)
       bunch = Bunch(T.([0.001 0.002 -0.003 0.001 0.0 0.01]); p_over_q_ref=R, species=species)
       track!(bunch, line)
