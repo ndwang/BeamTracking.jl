@@ -318,16 +318,16 @@ static_batchcheck(::_LoweredBatchParam) = true
   return false
 end
 
-@inline beval(b::_LoweredBatchParam{B}, i) where {B} = b.batch[mod1(i, B)]
+@inline beval(b::_LoweredBatchParam{B}, i, batch_start) where {B} = b.batch[mod1((i+batch_start-1), B)]
 
-@inline function beval(b::_LoweredBatchParam{B}, lane::SIMD.VecRange{N}) where {B,N}
+@inline function beval(b::_LoweredBatchParam{B}, lane::SIMD.VecRange{N}, batch_start) where {B,N}
   @static if (VERSION < v"1.11" && Sys.ARCH == :x86_64)
     error("Julia's explicit SIMD.jl has a compiler bug that appears with batch 
            parameters on versions < 1.11 AND an x86_64 bit architecture, which we 
            detected that you have. To get around this, specify the `track!` 
            keyword argument `use_explicit_SIMD=false`")
   end
-  m = rem(lane2vec(lane), B)
+  m = rem(lane2vec(lane)+batch_start-1, B)
   i = vifelse(m == 0, B, m)
   return b.batch[i]
 end
@@ -352,12 +352,12 @@ end
 
 # === THIS BLOCK WAS PARTIALLY WRITTEN BY CLAUDE ===
 # Generated function for arbitrary-length tuples
-@generated function beval(f::T, t) where {T<:Tuple}
+@generated function beval(f::T, t, batch_start) where {T<:Tuple}
   N = length(T.parameters)
   # Use getfield with literal integer arguments
-  exprs = [:(beval(Base.getfield(f, $i), t)) for i in 1:N]
+  exprs = [:(beval(Base.getfield(f, $i), t, batch_start)) for i in 1:N]
   return :(tuple($(exprs...)))
 end
 # === END CLAUDE ===
 
-@inline beval(b, i) = b
+@inline beval(b, i, batch_start) = b
