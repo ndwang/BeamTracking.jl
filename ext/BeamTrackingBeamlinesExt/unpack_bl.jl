@@ -9,7 +9,8 @@ function _track!(
   scalar_params,
   ramp_particle_energy_without_rf,
   ramp_update_each_particle,
-  rf_on;
+  rf_on,
+  batch_start;
   kwargs...
 )
   # Unpack the line element (type unstable)
@@ -44,7 +45,7 @@ function _track!(
   end
 
   # Function barrier
-  universal!(coords, tm, ele, ramp_particle_energy_without_rf, ramp_update_each_particle, bunch, L, p_over_q_ref, ap, bp, bm, pp, dp, rp, lp, mp, fpp, em; kwargs...)
+  universal!(coords, tm, ele, ramp_particle_energy_without_rf, ramp_update_each_particle, batch_start, bunch, L, p_over_q_ref, ap, bp, bm, pp, dp, rp, lp, mp, fpp, em; kwargs...)
 end
 
 # Step 2: Push particles through -----------------------------------------
@@ -54,6 +55,7 @@ function universal!(
   ele,
   ramp_particle_energy_without_rf, 
   ramp_update_each_particle,
+  batch_start,
   bunch,
   L, 
   p_over_q_ref,
@@ -338,7 +340,7 @@ end
 #---------------------------------------------------------------------------------------------------
 # universal! for SaganCavity tracking.
 
-function universal!(coords, tm::SaganCavity, ele, ramp_particle_energy_without_rf, ramp_update_each_particle, bunch, L,
+function universal!(coords, tm::SaganCavity, ele, ramp_particle_energy_without_rf, ramp_update_each_particle, batch_start, bunch, L,
   p_over_q_ref, alignmentparams, bendparams, bmultipoleparams, patchparams, apertureparams,
   rfparams, beamlineparams, mapparams, fourpotentialparams, emultipoleparams; kwargs...) 
 
