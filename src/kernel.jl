@@ -42,9 +42,9 @@ end
 
 # For ForwardDiff specifically
 num_lower(::Type{T}, t::Float64) where {S<:Union{Float32,Float16},T<:ForwardDiff.Dual{<:Any,S}} = S(t)
-num_lower(::Type{T}, t::ForwardDiff.Dual{<:Any,Float64}) where {T<:ForwardDiff.Dual{<:Any,Union{Float32,Float16}}} = T(t)
+num_lower(::Type{T}, t::ForwardDiff.Dual{<:Any,Float64}) where {T<:ForwardDiff.Dual{<:Any,<:Union{Float32,Float16}}} = T(t)
 num_lower(::Type{T}, t::SArray{SI,Float64}) where {SI,S<:Union{Float32,Float16},T<:ForwardDiff.Dual{<:Any,S}} = S.(t)
-num_lower(::Type{T}, t::SArray{SI,<:ForwardDiff.Dual{<:Any,Float64}}) where {SI,S<:Union{Float32,Float16},T<:ForwardDiff.Dual{<:Any,S}} = T.(t)
+num_lower(::Type{T}, t::SArray{SI,ForwardDiff.Dual{TAG,Float64,N}}) where {SI,TAG,N,S<:Union{Float32,Float16},T<:ForwardDiff.Dual{<:Any,S}} = T.(t)
 num_lower(::Type{T}, t::S) where {T<:ForwardDiff.Dual{<:Any,<:Union{Float16,Float32}},S<:Tuple} = map(ti->num_lower(T, ti), t)
 function num_lower(::Type{T}, tf::TimeFunction) where {T<:ForwardDiff.Dual{<:Any,<:Union{Float32,Float16}}}
   S = typeof(tf(0))
