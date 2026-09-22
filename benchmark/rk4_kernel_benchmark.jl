@@ -6,7 +6,7 @@
 
 using BeamTracking
 using BeamTracking: Species, massof, chargeof, R_to_beta_gamma, R_to_pc, pc_to_R,
-                    Bunch, STATE_ALIVE, FunctionalField, SumField
+                    Bunch, STATE_ALIVE
 using StaticArrays, BenchmarkTools, Random, Printf, TOML, Dates, Sockets
 
 const DEFAULT_PARTICLE_COUNTS = (1, 10, 100, 1_000, 10_000, 100_000, 1_000_000)
@@ -103,22 +103,23 @@ function setup_multi_particle(n_particles)
     gy = 0.0
 
     Bz_physical = 0.01
-    field_source = FunctionalField(BeamTracking.multipole_field, (SA[0], SA[Bz_physical], SA[0.0]))
+    field_function = BeamTracking.multipole_field
+    field_parameters = (SA[0], SA[Bz_physical], SA[0.0])
 
     return bunch, beta_0, tilde_m, charge, p0c, mc2, L, ds_step, n_steps,
-           gx, gy, field_source
+           gx, gy, field_function, field_parameters, Val(false)
 end
 
 function track_all_particles!(
     bunch, beta_0, tilde_m, charge, p0c, mc2,
-    L, ds_step, n_steps, gx, gy, field_source,
+    L, ds_step, n_steps, gx, gy, field_function, field_parameters, field_normalized,
 )
     n = size(bunch.coords.v, 1)
     for i in 1:n
         BeamTracking.rk4_kernel!(
             i, bunch.coords, beta_0, tilde_m,
             charge, p0c, mc2, L, ds_step, n_steps,
-            gx, gy, field_source,
+            gx, gy, field_function, field_parameters, field_normalized,
         )
     end
     return nothing

@@ -144,7 +144,7 @@ end
 end
 
 """
-  _rk4_step!(coords, i, s, h, field_source, tilde_m, beta_0, gx, gy, magnetic_scale)
+  _rk4_step!(coords, i, s, h, field_function, field_parameters, field_normalized, tilde_m, beta_0, gx, gy, magnetic_scale)
 
 Perform a single RK4 step for particle i, updating coordinates in-place.
 Only updates state if particle is alive.
@@ -154,13 +154,13 @@ Only updates state if particle is alive.
 - `i`: Particle index
 - `s`: Current arc length
 - `h`: Step size
-- `field_source`: Concrete callable field source
+- `field_function`, `field_parameters`, `field_normalized`: Evaluator(s), payload(s), and units flag(s)
 - `tilde_m`: Normalized mass mc²/(p₀c)
 - `beta_0`: Reference velocity β₀ = v₀/c
 - `gx`, `gy`: Horizontal and vertical reference curvature components
 - `magnetic_scale`: inverse reference rigidity, q/p₀
 """
-@inline function _rk4_step!(coords, i, s, h, field_source, tilde_m, beta_0, gx, gy, magnetic_scale,
+@inline function _rk4_step!(coords, i, s, h, field_function, field_parameters, field_normalized, tilde_m, beta_0, gx, gy, magnetic_scale,
                             reference=_rk_reference_factors(beta_0, tilde_m))
   # Check if particle is alive
   alive = (coords.state[i] == STATE_ALIVE)
@@ -179,7 +179,7 @@ Only updates state if particle is alive.
   # k1 = f(u, s)
   factors = _rk_kinematics(pz, tilde_m)
   t = _rk_time_from_factors(z, s, tilde_m, beta_0, factors, reference)
-  field = normalized_field_at(field_source, x, y, s, t, magnetic_scale)
+  field = normalized_field_at(field_function, field_parameters, field_normalized, x, y, s, t, magnetic_scale)
   k1 = _kick_vector(x, px, y, py, z, pz, s, field,
                 tilde_m, beta_0, gx, gy, factors, reference)
 
@@ -194,7 +194,7 @@ Only updates state if particle is alive.
   good &= _valid_momentum(px2, py2, pz2)
   factors2 = _rk_kinematics(pz2, tilde_m)
   t2 = _rk_time_from_factors(z2, s + h2, tilde_m, beta_0, factors2, reference)
-  field = normalized_field_at(field_source, x2, y2, s + h2, t2, magnetic_scale)
+  field = normalized_field_at(field_function, field_parameters, field_normalized, x2, y2, s + h2, t2, magnetic_scale)
   k2 = _kick_vector(x2, px2, y2, py2, z2, pz2, s + h2, field,
                 tilde_m, beta_0, gx, gy, factors2, reference)
 
@@ -208,7 +208,7 @@ Only updates state if particle is alive.
   good &= _valid_momentum(px3, py3, pz3)
   factors3 = _rk_kinematics(pz3, tilde_m)
   t3 = _rk_time_from_factors(z3, s + h2, tilde_m, beta_0, factors3, reference)
-  field = normalized_field_at(field_source, x3, y3, s + h2, t3, magnetic_scale)
+  field = normalized_field_at(field_function, field_parameters, field_normalized, x3, y3, s + h2, t3, magnetic_scale)
   k3 = _kick_vector(x3, px3, y3, py3, z3, pz3, s + h2, field,
                 tilde_m, beta_0, gx, gy, factors3, reference)
 
@@ -222,7 +222,7 @@ Only updates state if particle is alive.
   good &= _valid_momentum(px4, py4, pz4)
   factors4 = _rk_kinematics(pz4, tilde_m)
   t4 = _rk_time_from_factors(z4, s + h, tilde_m, beta_0, factors4, reference)
-  field = normalized_field_at(field_source, x4, y4, s + h, t4, magnetic_scale)
+  field = normalized_field_at(field_function, field_parameters, field_normalized, x4, y4, s + h, t4, magnetic_scale)
   k4 = _kick_vector(x4, px4, y4, py4, z4, pz4, s + h, field,
                 tilde_m, beta_0, gx, gy, factors4, reference)
 
@@ -245,34 +245,34 @@ Only updates state if particle is alive.
 end
 
 """
-    rk4_step!(coords, i, s, h, field_source, charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+    rk4_step!(coords, i, s, h, field_function, field_parameters, field_normalized, charge, tilde_m, beta_0, gx, gy, p0c, mc2)
 
 Advance one RK4 step using a field source with its declared unit convention. The full tracking
 kernel reuses the field conversion factors across all steps for each particle.
 """
-@inline function rk4_step!(coords, i, s, h, field_source, charge, tilde_m, beta_0, gx, gy, p0c, mc2)
+@inline function rk4_step!(coords, i, s, h, field_function, field_parameters, field_normalized, charge, tilde_m, beta_0, gx, gy, p0c, mc2)
   electric_scale = charge / p0c
-  return _rk4_step!(coords, i, s, h, field_source, tilde_m, beta_0, gx, gy,
+  return _rk4_step!(coords, i, s, h, field_function, field_parameters, field_normalized, tilde_m, beta_0, gx, gy,
                    electric_scale * c_light(typeof(p0c)))
 end
 
 """
   rk4_kernel!(i, coords, beta_0, tilde_m, charge, p0c, mc2,
-              L, ds_step, n_steps, gx, gy, field_source)
+              L, ds_step, n_steps, gx, gy, field_function, field_parameters, field_normalized)
 
 Kernelized RK4 tracking through a concrete electromagnetic field source.
 Compatible with @makekernel and the package's kernel architecture.
 """
 @makekernel function rk4_kernel!(i, coords::Coords, beta_0, tilde_m, charge, p0c, mc2,
                                 L, ds_step, n_steps,
-                                gx, gy, field_source)
+                                gx, gy, field_function, field_parameters, field_normalized)
   s = zero(L)
   electric_scale = charge / p0c
   magnetic_scale = electric_scale * c_light(typeof(p0c))
   reference = _rk_reference_factors(beta_0, tilde_m)
 
   for step in 1:n_steps
-    _rk4_step!(coords, i, s, ds_step, field_source, tilde_m, beta_0, gx, gy, magnetic_scale, reference)
+    _rk4_step!(coords, i, s, ds_step, field_function, field_parameters, field_normalized, tilde_m, beta_0, gx, gy, magnetic_scale, reference)
     s += ds_step
 
     # The common path performs the final callback after exit processing.
