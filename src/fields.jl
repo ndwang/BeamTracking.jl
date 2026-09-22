@@ -73,8 +73,6 @@ end
 
 @inline function normalized_field_at(field_functions::Tuple, parameters::Tuple, normalized::Tuple,
                                      x, y, s, t, inv_rigidity)
-  length(field_functions) == length(parameters) == length(normalized) ||
-    throw(DimensionMismatch("field functions, parameters, and normalization flags must have equal lengths"))
   return _normalized_field_sum(field_functions, parameters, normalized, x, y, s, t, inv_rigidity)
 end
 

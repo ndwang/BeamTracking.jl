@@ -70,6 +70,8 @@ end
   field_functions = (multipole_functions..., custom_functions...)
   field_parameters = (multipole_parameters..., custom_parameters...)
   field_normalized = (multipole_normalized..., custom_normalized...)
+  length(field_functions) == length(field_parameters) == length(field_normalized) ||
+    throw(DimensionMismatch("field functions, parameters, and normalization flags must have equal lengths"))
 
   # Time-dependent values in params are evaluated once, at the particle's
   # element-entrance time, by the common kernel path. They stay fixed during
