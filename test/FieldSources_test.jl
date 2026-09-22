@@ -1,3 +1,5 @@
+using BeamTracking: ZeroField, FunctionalField, SumField
+
 function test_uniform_field(x, y, s, t, parameters)
   carrier = zero(x)
   return EMField(
@@ -46,14 +48,10 @@ end
     @test eltype(dual_field.B) === typeof(dual)
   end
 
-  @testset "MultipoleField" begin
-    solenoid = MultipoleField(SA[0], SA[1.5], SA[0.0])
-    dipole = MultipoleField(SA[1], SA[2.0], SA[3.0])
-    quadrupole = MultipoleField(SA[2], SA[4.0], SA[5.0])
-
-    @test_throws MethodError MultipoleField(SA[1], MVector(0.01), SA[0.0])
-    @test_throws MethodError MultipoleField(MVector(1), SA[0.01], SA[0.0])
-    @test_throws MethodError MultipoleField(SA[1], SA[0.01], MVector(0.0))
+  @testset "Multipole field evaluator" begin
+    solenoid = FunctionalField(BeamTracking.multipole_field, (SA[0], SA[1.5], SA[0.0]))
+    dipole = FunctionalField(BeamTracking.multipole_field, (SA[1], SA[2.0], SA[3.0]))
+    quadrupole = FunctionalField(BeamTracking.multipole_field, (SA[2], SA[4.0], SA[5.0]))
 
     @test @inferred(solenoid(0.2, 0.3, 0.0, 0.0)) ==
           EMField(SA[0.0, 0.0, 0.0], SA[0.0, 0.0, 1.5])
@@ -107,7 +105,7 @@ end
   end
 
   @testset "SumField" begin
-    dipole = MultipoleField(SA[1], SA[2.0], SA[0.0])
+    dipole = FunctionalField(BeamTracking.multipole_field, (SA[1], SA[2.0], SA[0.0]))
     external = FunctionalField(
       test_uniform_field,
       (Ex=0.0, Ey=0.0, Ez=0.0, Bx=1.0, By=0.0, Bz=3.0),
@@ -134,12 +132,11 @@ end
     @test @inferred(evaluated_dynamic(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 3.5, 0.0]
   end
 
-  @testset "MultipoleField parameters" begin
-    batch_field_source = MultipoleField(
+  @testset "Multipole field parameters" begin
+    batch_field_source = FunctionalField(BeamTracking.multipole_field, (
       SA[1],
       SA[BatchParam([2.0, 3.0])],
-      SA[BatchParam(0.0)],
-    )
+      SA[BatchParam(0.0)]))
     lowered_batch_field_source = BeamTracking.batch_lower(batch_field_source)
     @test BeamTracking.static_batchcheck(lowered_batch_field_source)
     first_batch_field_source = @inferred BeamTracking.beval(lowered_batch_field_source, 1)
@@ -147,7 +144,7 @@ end
     @test @inferred(first_batch_field_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 2.0, 0.0]
     @test @inferred(second_batch_field_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 3.0, 0.0]
 
-    time_field_source = MultipoleField(SA[1], SA[4.0 * Time()], SA[TimeDependentParam(0.0)])
+    time_field_source = FunctionalField(BeamTracking.multipole_field, (SA[1], SA[4.0 * Time()], SA[TimeDependentParam(0.0)]))
     evaluated_time_field_source =
       @inferred BeamTracking.teval(BeamTracking.time_lower(time_field_source), 0.5)
     @test @inferred(evaluated_time_field_source(0.0, 0.0, 0.0, 0.0)).B == SA[0.0, 2.0, 0.0]
@@ -155,7 +152,7 @@ end
 
   @testset "No scalar allocations" begin
     field_source = SumField(
-      MultipoleField(SA[2], SA[4.0], SA[5.0]),
+      FunctionalField(BeamTracking.multipole_field, (SA[2], SA[4.0], SA[5.0])),
       FunctionalField(
         test_uniform_field,
         (Ex=0.0, Ey=0.0, Ez=0.0, Bx=1.0, By=0.0, Bz=3.0),
@@ -228,7 +225,7 @@ end
   end
 
   @testset "Numeric lowering" begin
-    multipole = MultipoleField(SA[1, 2], SA[0.01, 0.03], SA[0.0, 0.02])
+    multipole = FunctionalField(BeamTracking.multipole_field, (SA[1, 2], SA[0.01, 0.03], SA[0.0, 0.02]))
     functional = FunctionalField(test_uniform_field, (
       Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=0.1, Bz=0.0,
       nested=(values=(0.25, SA[0.5, 0.75]), order=2, label="field"),
@@ -236,7 +233,7 @@ end
     field_source = SumField(multipole, functional)
     for T in (Float32, Float16)
       lowered = @inferred BeamTracking.num_lower(T, field_source)
-      @test lowered.field_sources[1].orders === multipole.orders
+      @test lowered.field_sources[1].parameters[1] === multipole.parameters[1]
       @test lowered.field_sources[2].evaluator === functional.evaluator
       parameters = lowered.field_sources[2].parameters
       @test parameters.nested.values === (T(0.25), SVector{2,T}(0.5, 0.75))
@@ -251,7 +248,7 @@ end
 
     # Exercise the actual order: make_kernel_call lowers batch/time wrappers,
     # then pushing into a chain converts numbers to the coordinate precision.
-    batch = MultipoleField(SA[1], SA[BatchParam([0.1, 0.2])], SA[BatchParam(0.0)])
+    batch = FunctionalField(BeamTracking.multipole_field, (SA[1], SA[BatchParam([0.1, 0.2])], SA[BatchParam(0.0)]))
     timed = FunctionalField(test_uniform_field, (
       Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0,
       By=TimeDependentParam(t -> Float32(t), false), Bz=0.0,
@@ -266,26 +263,26 @@ end
       @test field isa EMField{Float32}
       @test field.B[2] ≈ Float32(i * 0.1) + 0.25f0
     end
-    @test batch.normal[1].batch == [0.1, 0.2]
+    @test batch.parameters[2][1].batch == [0.1, 0.2]
     bad_time = FunctionalField(test_uniform_field, (By=Time(),))
     bad_call = BeamTracking.make_kernel_call(identity, (bad_time,))
     @test_throws ErrorException BeamTracking.push(chain, bad_call)
   end
 
   @testset "Adaptation" begin
-    multipole = MultipoleField(SA[0, 2], SA[0.01, 0.03], SA[0.0, 0.02])
+    multipole = FunctionalField(BeamTracking.multipole_field, (SA[0, 2], SA[0.01, 0.03], SA[0.0, 0.02]))
     adapted_multipole = BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), multipole)
     @test adapted_multipole == multipole
     @test @ballocated(BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), $multipole)) == 0
 
     field_source = SumField(
-      MultipoleField(SA[1], SA[0.01], SA[0.0]),
+      FunctionalField(BeamTracking.multipole_field, (SA[1], SA[0.01], SA[0.0])),
       FunctionalField(test_uniform_field, (field_map=[1.0, 2.0, 3.0],)),
     )
     adapted = BeamTracking.Adapt.adapt(FieldSourceTestAdaptor(), field_source)
 
     @test adapted isa SumField
-    @test adapted.field_sources[1] isa MultipoleField
+    @test adapted.field_sources[1].evaluator === BeamTracking.multipole_field
     @test adapted.field_sources[2] isa FunctionalField
     @test adapted.field_sources[2].parameters.field_map == SA[1.0, 2.0, 3.0]
   end
@@ -306,7 +303,7 @@ end
     @test physical(args...).E == expected.E
     parameter_free = FunctionalField((x,y,s,t) -> EMField(x,x,x,y,y,y); normalized=true)
     @test @inferred(BeamTracking.normalized_field_at(parameter_free, args..., inv(R))) == parameter_free(args...)
-    multipole = MultipoleField(SA[1,2], T.(SA[0.1,0.2]), T.(SA[0,0]); normalized=true)
+    multipole = FunctionalField(BeamTracking.multipole_field, (SA[1,2], T.(SA[0.1,0.2]), T.(SA[0,0])); normalized=true)
     mixed = SumField(multipole, physical)
     result = @inferred BeamTracking.normalized_field_at(mixed, args..., inv(R))
     @test result.E ≈ converted.E

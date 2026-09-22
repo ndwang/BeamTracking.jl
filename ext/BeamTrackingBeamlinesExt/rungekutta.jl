@@ -18,12 +18,6 @@
   map(_scalarize_field_parameter, value)
 @inline _scalarize_field_parameter(value) = scalarize(value)
 
-@inline Beamlines.deval(field_source::MultipoleField, context) =
-  BeamTracking._rebuild_multipole_field(
-    field_source,
-    _unpack_field_parameter(field_source.normal, context),
-    _unpack_field_parameter(field_source.skew, context),
-  )
 @inline Beamlines.deval(field_source::FunctionalField, context) =
   BeamTracking._rebuild_functional_field(
     field_source,
@@ -35,12 +29,6 @@
     map(item -> deval(item, context), field_source.field_sources),
   )
 
-@inline Beamlines.scalarize(field_source::MultipoleField) =
-  BeamTracking._rebuild_multipole_field(
-    field_source,
-    _scalarize_field_parameter(field_source.normal),
-    _scalarize_field_parameter(field_source.skew),
-  )
 @inline Beamlines.scalarize(field_source::FunctionalField) =
   BeamTracking._rebuild_functional_field(
     field_source,
@@ -60,24 +48,20 @@
   mm = getfield(bmultipoleparams, :order)
   bn, bs = get_strengths(bmultipoleparams, L, p_over_q_ref)
   if mm isa Integer
-    return MultipoleField(SA[mm], SA[bn], SA[bs]; normalized=true)
+    return FunctionalField(BeamTracking.multipole_field, (SA[mm], SA[bn], SA[bs]); normalized=true)
   end
-  return MultipoleField(mm, bn, bs; normalized=true)
+  return FunctionalField(BeamTracking.multipole_field, (mm, bn, bs); normalized=true)
 end
 
-@inline configured_runge_kutta_field(::Nothing, element_field_source) = element_field_source
+@inline runge_kutta_custom_field(::Nothing) = ZeroField()
 
-@inline function configured_runge_kutta_field(field_source_params::FieldSourceParams, element_field_source)
-  field_source = field_source_params.field_source
-  additional_field = field_source_params.additional_field
-  if !isnothing(field_source) && !isnothing(additional_field)
-    error("FieldSourceParams accepts either field_source or additional_field")
-  elseif !isnothing(field_source)
-    return field_source
-  elseif !isnothing(additional_field)
-    return SumField(element_field_source, additional_field)
-  end
-  return element_field_source
+@inline function runge_kutta_custom_field(field_function_params::FieldFunctionParams)
+  isnothing(field_function_params.field_function) && return ZeroField()
+  return FunctionalField(
+    BeamTracking.call_field_function,
+    (field_function_params.field_function, field_function_params.field_function_params);
+    normalized=field_function_params.field_function_normalized,
+  )
 end
 
 @inline function runge_kutta_body(
@@ -92,7 +76,7 @@ end
   mapparams,
   fourpotentialparams,
   emultipoleparams,
-  field_source_params,
+  field_function_params,
   L,
 )
   L > 0 || error("RungeKutta tracking requires a positive element length")
@@ -123,7 +107,7 @@ end
   mc2 = massof(species)
   n_steps, ds_step = BeamTracking.find_steps(tm, L)
   element_field_source = runge_kutta_field(bmultipoleparams, L, p_over_q_ref)
-  field_source = configured_runge_kutta_field(field_source_params, element_field_source)
+  field_source = SumField(element_field_source, runge_kutta_custom_field(field_function_params))
 
   # Time-dependent values in params are evaluated once, at the particle's
   # element-entrance time, by the common kernel path. They stay fixed during

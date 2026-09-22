@@ -41,45 +41,24 @@ struct ZeroField end
 end
 
 """
-    MultipoleField(orders, normal, skew; normalized=false)
+    multipole_field(x, y, s, t, parameters)
 
-A callable static magnetic multipole field. `normal` and `skew` contain
-non-integrated magnetic-field coefficients in either physical or normalized
-units. With `normalized=false` (the default), the coefficients produce fields in
-tesla. With `normalized=true`, the supplied coefficients must already be divided
-by reference rigidity `p_over_q_ref = p₀/q`, and the returned fields use that same
-normalization. The flag declares units; it does not convert the coefficients.
-All three arguments must be `SVector`s.
-Orders must be unique and ascending.
+Evaluate magnetic multipoles from `(orders, normal, skew)` coefficients.
+Element tracking obtains these coefficients exclusively from `BMultipoleParams`
+during unpacking. The returned field uses the coefficients' units.
 """
-struct MultipoleField{M,KN,KS,N}
-  orders::M
-  normal::KN
-  skew::KS
-
-  MultipoleField{M,KN,KS,N}(orders::M, normal::KN, skew::KS) where {M,KN,KS,N} =
-    new{M,KN,KS,N}(orders, normal, skew)
-end
-
-function MultipoleField(
-  orders::M,
-  normal::KN,
-  skew::KS;
-  normalized::Bool=false,
-) where {N,M<:SVector{N,<:Integer},KN<:SVector{N},KS<:SVector{N}}
-  N > 0 || throw(ArgumentError("use ZeroField for an empty field source"))
-  issorted(orders) || throw(ArgumentError("multipole orders must be ascending"))
-  allunique(orders) || throw(ArgumentError("multipole orders must be unique"))
-  return MultipoleField{M,KN,KS,normalized}(orders, normal, skew)
-end
-
-@inline function (field_source::MultipoleField)(x, y, s, t)
-  bx, by = normalized_field(field_source.orders, field_source.normal, field_source.skew, x, y, 0)
+@inline function multipole_field(x, y, s, t, parameters)
+  orders, normal, skew = parameters
+  bx, by = normalized_field(orders, normal, skew, x, y, 0)
   zero_field = zero(bx)
-  bz = vifelse(field_source.orders[1] == 0, field_source.normal[1], zero_field)
-  E = SVector(zero_field, zero_field, zero_field)
-  return EMField(E, SVector(bx, by, bz))
+  bz = vifelse(orders[1] == 0, normal[1], zero_field)
+  return EMField(SVector(zero_field, zero_field, zero_field), SVector(bx, by, bz))
 end
+
+# Keep the evaluator and its payload explicit so all parameter preparation
+# traverses the payload, including when the user's payload is nothing.
+@inline call_field_function(x, y, s, t, parameters) =
+  parameters[1](x, y, s, t, parameters[2])
 
 """
     FunctionalField(evaluator[, parameters]; normalized=false)
@@ -156,7 +135,6 @@ end
 
 # Unit traits are compile-time constants, like the implicit integrator's Val flag.
 @inline field_normalized(field_source) = Val(false)
-@inline field_normalized(::MultipoleField{M,KN,KS,N}) where {M,KN,KS,N} = Val(N)
 @inline field_normalized(::FunctionalField{F,P,N}) where {F,P,N} = Val(N)
 @inline function field_normalized(field_source::SumField)
   units = field_normalized(first(field_source.field_sources))
@@ -200,14 +178,6 @@ end
 include("field_parameters.jl")
 
 Adapt.@adapt_structure EMField
-# Adaptation preserves the validated orders. Avoid rerunning constructor checks:
-# KernelAbstractions also adapts arguments inside GPU kernels (constify).
-@inline function Adapt.adapt_structure(to, field_source::MultipoleField{M,KN,KS,N}) where {M,KN,KS,N}
-  orders = Adapt.adapt(to, field_source.orders)
-  normal = Adapt.adapt(to, field_source.normal)
-  skew = Adapt.adapt(to, field_source.skew)
-  return MultipoleField{typeof(orders),typeof(normal),typeof(skew),N}(orders, normal, skew)
-end
 @inline function Adapt.adapt_structure(to, field_source::FunctionalField{F,P,N}) where {F,P,N}
   return FunctionalField(Adapt.adapt(to, field_source.evaluator),
                          Adapt.adapt(to, field_source.parameters); normalized=N)
