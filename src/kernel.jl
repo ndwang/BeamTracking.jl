@@ -15,7 +15,7 @@ function make_kernel_call(kernel=blank_kernel!, args=())
   return KernelCall(kernel, _args)
 end
 
-num_lower(::Type, t) = t
+num_lower(::Type, t) = t #(@show typeof(t); @show t; t)
 num_lower(::Type{T}, t::Float64) where {T<:Union{Float32,Float16}} = T(t)
 num_lower(::Type{T}, t::SArray{S,Float64}) where {T<:Union{Float32,Float16},S} = T.(t)
 # Index each tuple member directly so nested field parameters remain inferable
@@ -51,6 +51,35 @@ end
   return eltype(b.batch) == T ? b : _LoweredBatchParam{N}(T.(b.batch))
 end
 
+# For ForwardDiff specifically
+num_lower(::Type{T}, t::Float64) where {S<:Union{Float32,Float16},T<:ForwardDiff.Dual{<:Any,S}} = S(t)
+num_lower(::Type{T}, t::ForwardDiff.Dual{<:Any,Float64}) where {T<:ForwardDiff.Dual{<:Any,<:Union{Float32,Float16}}} = T(t)
+num_lower(::Type{T}, t::SArray{SI,Float64}) where {SI,S<:Union{Float32,Float16},T<:ForwardDiff.Dual{<:Any,S}} = S.(t)
+num_lower(::Type{T}, t::SArray{SI,ForwardDiff.Dual{TAG,Float64,N}}) where {SI,TAG,N,S<:Union{Float32,Float16},T<:ForwardDiff.Dual{<:Any,S}} = T.(t)
+num_lower(::Type{T}, t::S) where {T<:ForwardDiff.Dual{<:Any,<:Union{Float16,Float32}},S<:Tuple} = map(ti->num_lower(T, ti), t)
+function num_lower(::Type{T}, tf::TimeFunction) where {T<:ForwardDiff.Dual{<:Any,<:Union{Float32,Float16}}}
+  S = typeof(tf(0))
+  if S != ForwardDiff.valtype(T)
+    error("
+      Failure to lower TimeFunction with output type $S to $T: if you are ramping
+      the reference energy, for $T support you will need to specify a ramping 
+      TimeFunction of `p_over_q_ref` that outputs $T.
+    ")
+  end
+  return tf
+end
+
+function num_lower(::Type{T}, b::BatchParam) where {S<:Union{Float32,Float16},T<:ForwardDiff.Dual{<:Any,S}}
+  B = eltype(b)
+  if B == Float64
+    return BatchParam(S.(b.batch))
+  elseif B <: ForwardDiff.Dual{<:Any,Float64}
+    return BatchParam(T.(b.batch))
+  else
+    return b
+  end
+end
+
 # In case KernelCall contains batch GPU array
 Adapt.@adapt_structure KernelCall
 
@@ -74,25 +103,40 @@ end
 
 coordstype(::RefState{T}) where {T} = T
 
-@inline function beval(ref::RefState{T}, i) where {T}
-  return RefState{T}(beval(ref.t_enter, i), beval(ref.beta_gamma_enter, i), beval(ref.t_exit, i), beval(ref.beta_gamma_exit, i), beval(ref.L, i), beval(ref.g, i), beval(ref.ds_step, i))
+@inline function beval(ref::RefState{T}, i, batch_start) where {T}
+  return RefState{T}(
+    beval(ref.t_enter, i, batch_start), 
+    beval(ref.beta_gamma_enter, i, batch_start), 
+    beval(ref.t_exit, i, batch_start), 
+    beval(ref.beta_gamma_exit, i, batch_start), 
+    beval(ref.L, i, batch_start), 
+    beval(ref.g, i, batch_start), 
+    beval(ref.ds_step, i, batch_start)
+  )
 end
 
 # Alias
 struct KernelChain{C<:Tuple{Vararg{<:KernelCall}}, S<:RefState, TOUT<:Tuple{Vararg{<:KernelCall}}, TIN<:Tuple{Vararg{<:KernelCall}}}
   chain::C  # The tuple of KernelCalls
   ref::S    # A RefState
+  batch_start::Int
   transforms_out::TOUT
   transforms_in::TIN
-  function KernelChain(chain, ref, transforms_out=ntuple(t->KernelCall(), Val{3}()), transforms_in=ntuple(t->KernelCall(), Val{3}()))
-    new{typeof(chain), typeof(ref), typeof(transforms_out), typeof(transforms_in)}(chain, ref, transforms_out, transforms_in)
+  function KernelChain(chain, ref, batch_start=1, transforms_out=ntuple(t->KernelCall(), Val{3}()), transforms_in=ntuple(t->KernelCall(), Val{3}()))
+    new{typeof(chain), typeof(ref), typeof(transforms_out), typeof(transforms_in)}(chain, ref, batch_start, transforms_out, transforms_in)
   end
 end
 
 # In case KernelChain contains batch GPU array
 Adapt.@adapt_structure KernelChain
 
-KernelChain(::Val{N}, ref, transforms_out=ntuple(t->KernelCall(), Val{3}()), transforms_in=ntuple(t->KernelCall(), Val{3}())) where {N} = KernelChain(ntuple(t->KernelCall(), Val{N}()), ref, transforms_out, transforms_in)
+KernelChain(
+  ::Val{N}, 
+  ref, 
+  batch_start=1,
+  transforms_out=ntuple(t->KernelCall(), Val{3}()), 
+  transforms_in=ntuple(t->KernelCall(), Val{3}()), 
+) where {N} = KernelChain(ntuple(t->KernelCall(), Val{N}()), ref, batch_start, transforms_out, transforms_in)
 
 push(kc::KernelChain, kcall::Nothing) = kc
 push_transforms_out(kc::KernelChain, tout::Nothing) = kc
@@ -123,14 +167,14 @@ end
   @inline _generic_kernel!(i, coords, kc)
 end
 
-_generic_kernel!(i, coords, kc) = __generic_kernel!(i, coords, kc.chain, beval(kc.ref, i), kc.transforms_out, kc.transforms_in)
+_generic_kernel!(i, coords, kc) = __generic_kernel!(i, coords, kc.chain, beval(kc.ref, i, kc.batch_start), kc.batch_start, kc.transforms_out, kc.transforms_in)
 
-@generated function __generic_kernel!(i, coords, chain::T, ref, transforms_out, transforms_in) where {T}
+@generated function __generic_kernel!(i, coords, chain::T, ref, batch_start, transforms_out, transforms_in) where {T}
   N = length(T.parameters)
   if N > 0 && first(T.parameters) <: KernelCall{typeof(reference_momentum_shift!),Tuple{<:Any,TimeFunction}}
     # Static check that everything is ok
     if last(T.parameters) <: KernelCall{typeof(reference_momentum_shift!),Tuple{TimeFunction,TimeFunction}}
-      return :(__generic_kernel_ramp!(i, coords, chain, ref, transforms_out, transforms_in))
+      return :(__generic_kernel_ramp!(i, coords, chain, ref, batch_start, transforms_out, transforms_in))
     else
       error("
         Kernels with time-dependent reference energies must start and end with `reference_momentum_shift!`,
@@ -140,38 +184,38 @@ _generic_kernel!(i, coords, kc) = __generic_kernel!(i, coords, kc.chain, beval(k
       ")
     end
   else
-    return :(__generic_kernel_noramp!(i, coords, chain, ref, transforms_out, transforms_in))
+    return :(__generic_kernel_noramp!(i, coords, chain, ref, batch_start, transforms_out, transforms_in))
   end
 end
 
-function __generic_kernel_noramp!(i, coords::Coords, chain, ref, transforms_out, transforms_in)
-  body_callback = construct_main_callback(coords, transforms_out, transforms_in, ref.t_enter, ref.beta_gamma_enter, ref.ds_step, ref.g)
+function __generic_kernel_noramp!(i, coords::Coords, chain, ref, batch_start, transforms_out, transforms_in)
+  body_callback = construct_main_callback(coords, batch_start, transforms_out, transforms_in, ref.t_enter, ref.beta_gamma_enter, ref.ds_step, ref.g)
   body_coords = Coords(coords.state, coords.v, coords.q, coords.weight, body_callback)
-  __generic_kernel_noramp_body!(i, body_coords, chain, ref.t_enter, ref.beta_gamma_enter)
+  __generic_kernel_noramp_body!(i, body_coords, chain, batch_start, ref.t_enter, ref.beta_gamma_enter)
   # note: t_ref only used by transforms, can pass 0 for t_ref_transform 
   # beta_gamma is like ds_step and g, passed to callback, so that can't be 0
-  exit_callback = construct_main_callback(coords, (), (), 0, ref.beta_gamma_exit, ref.ds_step, ref.g)
+  exit_callback = construct_main_callback(coords, batch_start, (), (), 0, ref.beta_gamma_exit, ref.ds_step, ref.g)
   _execute_callbacks(i, coords, exit_callback, ref.L, ref.t_exit)
   return nothing
 end
 
 
-@unroll function __generic_kernel_noramp_body!(i, body_coords, chain, t_ref_enter, beta_gamma_ref_enter)
+@unroll function __generic_kernel_noramp_body!(i, body_coords, chain, batch_start, t_ref_enter, beta_gamma_ref_enter)
   @unroll for kcall in chain
-    bargs = process_batch_args(i, kcall.args)
+    bargs = process_batch_args(i, kcall.args, batch_start)
     args = process_time_args(i, body_coords, bargs, t_ref_enter, beta_gamma_ref_enter)
     (kcall.kernel)(i, body_coords, args...)
   end
 end
 
 # For ramping we need to do something special:
-function __generic_kernel_ramp!(i, coords::Coords, chain, ref, transforms_out, transforms_in)
+function __generic_kernel_ramp!(i, coords::Coords, chain, ref, batch_start, transforms_out, transforms_in)
   @assert last(chain).kernel == reference_momentum_shift! 
   @assert last(chain).args[1] isa TimeFunction
   @assert last(chain).args[2] isa TimeFunction
   # Have to store each particles initial time:
   t_initial = compute_time(coords.v[i,ZI], coords.v[i,PZI], ref.t_enter, ref.beta_gamma_enter)
-  @inline __generic_kernel_noramp!(i, coords, Base.front(chain), ref, transforms_out, transforms_in)
+  @inline __generic_kernel_noramp!(i, coords, Base.front(chain), ref, batch_start, transforms_out, transforms_in)
   # With initial particle's time we now know the dbeta_gamma to evaluate for the last function
   beta_gamma_in_ele = teval(last(chain).args[1], t_initial)
   dbeta_gamma_in_ele = teval(last(chain).args[2], t_initial)
@@ -179,14 +223,14 @@ function __generic_kernel_ramp!(i, coords::Coords, chain, ref, transforms_out, t
   # note: can pass 0 for t_ref_transform because that is not used now 
   # since transforms are empty tuples at the end (back in global frame)
   # However we do now give the user access to reference energy
-  exit_callback = construct_main_callback(coords, (), (), 0, ref.beta_gamma_exit, ref.ds_step, ref.g)
+  exit_callback = construct_main_callback(coords, batch_start, (), (), 0, ref.beta_gamma_exit, ref.ds_step, ref.g)
   _execute_callbacks(i, coords, exit_callback, ref.L, ref.t_exit)
   return nothing
 end
 
-function process_batch_args(i, args)
+function process_batch_args(i, args, batch_start)
   if static_batchcheck(args) 
-    return beval(args, i)
+    return beval(args, i, batch_start)
   else
     return args
   end

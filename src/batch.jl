@@ -48,13 +48,9 @@ struct BatchParam
     separate processes where each process has its own lattice with its 
     own TimeDependentParams.
   =#
-  function BatchParam(batch::AbstractArray)
-    if length(batch) == 1
-      error("Cannot make BatchParam with array of length 1")
-    end
+  function BatchParam(batch::Union{AbstractArray,Number})
     return new(batch)
   end
-  BatchParam(n::Number) = new(n)
 end
 
 struct _LoweredBatchParam{N,V<:AbstractArray}
@@ -83,6 +79,16 @@ Base.eltype(b::BatchParam) = eltype(b.batch)
 Base.zero(b::BatchParam) = BatchParam(zero(first(b.batch)))
 Base.one(b::BatchParam)  = BatchParam(one(first(b.batch))) 
 
+
+function batch_num_lower(batch, num_or_array)
+  T = ForwardDiff.valtype(eltype(batch))
+  if T == Float16 || T == Float32 # Then we need to keep it that
+    return eltype(batch).(num_or_array)
+  else
+    return num_or_array
+  end
+end
+
 # Now define the math operations:
 # The operations are individually-specialized for each operator, assuming that the 
 # most expensive step is creating temporary arrays, not type instability. As such, 
@@ -96,7 +102,7 @@ function _batch_addsub(batch_a, batch_b, op::T) where {T<:Union{typeof(+),typeof
       if batch_a ≈ 0 # add/sub by zero gives identity
         return BatchParam(batch_b)
       else
-        let a = batch_a
+        let a = batch_num_lower(batch_b, batch_a)
           return BatchParam(map((bi)->op(a, bi), batch_b))
         end
       end
@@ -105,7 +111,7 @@ function _batch_addsub(batch_a, batch_b, op::T) where {T<:Union{typeof(+),typeof
     if batch_b ≈ 0 # add/sub by zero gives identity
       return BatchParam(batch_a)
     else
-      let b = batch_b
+      let b = batch_num_lower(batch_a, batch_b)
         return BatchParam(map((ai)->op(ai, b), batch_a))
       end
     end
@@ -135,7 +141,7 @@ function _batch_mul(batch_a, batch_b)
       elseif batch_a ≈ 1 # mul by 1 gives identity
         return BatchParam(batch_b)
       else
-        let a = batch_a
+        let a = batch_num_lower(batch_b, batch_a)
           return BatchParam(map((bi)->*(a, bi), batch_b))
         end
       end
@@ -146,7 +152,7 @@ function _batch_mul(batch_a, batch_b)
     elseif batch_b ≈ 1 # mul by 1 gives identity
         return BatchParam(batch_a)
     else
-      let b = batch_b
+      let b = batch_num_lower(batch_a, batch_b)
         return BatchParam(map((ai)->*(ai, b), batch_a))
       end
     end
@@ -167,7 +173,7 @@ function _batch_div(batch_a, batch_b)
     if batch_b isa Number
       return BatchParam(/(batch_a, batch_b))
     else
-      let a = batch_a
+      let a = batch_num_lower(batch_b, batch_a)
         return BatchParam(map((bi)->/(a, bi), batch_b))
       end
     end
@@ -177,7 +183,7 @@ function _batch_div(batch_a, batch_b)
     elseif batch_b ≈ 1 # div by 1 gives identity
         return BatchParam(batch_a)
     else
-      let b = batch_b
+      let b = batch_num_lower(batch_a, batch_b)
         return BatchParam(map((ai)->/(ai, b), batch_a))
       end
     end
@@ -199,12 +205,12 @@ function _batch_pow(batch_a, batch_b)
     if batch_b isa Number
       return BatchParam(^(batch_a, batch_b))
     else
-      let a = batch_a
+      let a = batch_num_lower(batch_b, batch_a)
         return BatchParam(map((bi)->^(a, bi), batch_b))
       end
     end
   elseif batch_b isa Number
-    let b = batch_b
+    let b = batch_num_lower(batch_a, batch_b)
       return BatchParam(map((ai)->^(ai, b), batch_a))
     end
   elseif length(batch_a) == length(batch_b)
@@ -215,8 +221,8 @@ function _batch_pow(batch_a, batch_b)
   end
 end
 
-Base.:^(ba::BatchParam, n::Number)      = _batch_pow(ba.batch, n)
-Base.:^(n::Number, bb::BatchParam)      = _batch_pow(n, bb.batch)
+Base.:^(ba::BatchParam, n::Number)      = _batch_pow(ba.batch, batch_num_lower(ba.batch, n))
+Base.:^(n::Number, bb::BatchParam)      = _batch_pow(batch_num_lower(bb.batch, n), bb.batch)
 Base.:^(ba::BatchParam, bb::BatchParam) = _batch_pow(ba.batch, bb.batch)
 
 function Base.literal_pow(::typeof(^), ba::BatchParam, ::Val{N}) where {N}
@@ -230,12 +236,12 @@ function _batch_atan2(batch_a, batch_b)
     if batch_b isa Number
       return BatchParam(atan2(batch_a, batch_b))
     else
-      let a = batch_a
+      let a = batch_num_lower(batch_b, batch_a)
         return BatchParam(map((bi)->atan2(a, bi), batch_b))
       end
     end
   elseif batch_b isa Number
-    let b = batch_b
+    let b = batch_num_lower(batch_a, batch_b)
       return BatchParam(map((ai)->atan2(ai, b), batch_a))
     end
   elseif length(batch_a) == length(batch_b)
@@ -325,19 +331,19 @@ static_batchcheck(::_LoweredBatchParam) = true
   return false
 end
 
-@inline beval(nt::NamedTuple{names}, i) where {names} =
-  NamedTuple{names}(beval(Tuple(nt), i))
+@inline beval(nt::NamedTuple{names}, i, batch_start) where {names} =
+  NamedTuple{names}(beval(Tuple(nt), i, batch_start))
 
-@inline beval(b::_LoweredBatchParam{B}, i) where {B} = b.batch[mod1(i, B)]
+@inline beval(b::_LoweredBatchParam{B}, i, batch_start) where {B} = b.batch[mod1((i+batch_start-1), B)]
 
-@inline function beval(b::_LoweredBatchParam{B}, lane::SIMD.VecRange{N}) where {B,N}
+@inline function beval(b::_LoweredBatchParam{B}, lane::SIMD.VecRange{N}, batch_start) where {B,N}
   @static if (VERSION < v"1.11" && Sys.ARCH == :x86_64)
     error("Julia's explicit SIMD.jl has a compiler bug that appears with batch 
            parameters on versions < 1.11 AND an x86_64 bit architecture, which we 
            detected that you have. To get around this, specify the `track!` 
            keyword argument `use_explicit_SIMD=false`")
   end
-  m = rem(lane2vec(lane), B)
+  m = rem(lane2vec(lane)+batch_start-1, B)
   i = vifelse(m == 0, B, m)
   return b.batch[i]
 end
@@ -362,12 +368,12 @@ end
 
 # === THIS BLOCK WAS PARTIALLY WRITTEN BY CLAUDE ===
 # Generated function for arbitrary-length tuples
-@generated function beval(f::T, t) where {T<:Tuple}
+@generated function beval(f::T, t, batch_start) where {T<:Tuple}
   N = length(T.parameters)
   # Use getfield with literal integer arguments
-  exprs = [:(beval(Base.getfield(f, $i), t)) for i in 1:N]
+  exprs = [:(beval(Base.getfield(f, $i), t, batch_start)) for i in 1:N]
   return :(tuple($(exprs...)))
 end
 # === END CLAUDE ===
 
-@inline beval(b, i) = b
+@inline beval(b, i, batch_start) = b

@@ -618,6 +618,18 @@ end
 
     @test simd_bunch.coords.v ≈ expected
     @test ka_bunch.coords.v ≈ expected
+
+    # The same offset must reach field-function named tuples through both the
+    # scalar and SIMD/KA launch paths, with cyclic batch selection preserved.
+    for batch_start in (2, length(batch_fields) + 2)
+      shifted = expected[[mod1(i + batch_start - 1, length(batch_fields))
+                          for i in axes(initial, 1)], :]
+      for (use_KA, use_explicit_SIMD) in ((false, false), (false, batch_simd_supported), (true, false))
+        bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
+        track!(bunch, line; batch_start, use_KA, use_explicit_SIMD)
+        @test bunch.coords.v ≈ shifted
+      end
+    end
   end
 
   @testset "Scalarized field function tracking" begin

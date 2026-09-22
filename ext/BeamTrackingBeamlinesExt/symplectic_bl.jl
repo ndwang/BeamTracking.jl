@@ -140,99 +140,11 @@ end
   return push(kc, integration_launcher(BeamTracking.sks_multipole!, params, photon_params, tm, edge_params, L))
 end
 
-@inline function thick_pure_bdipole(tm::DriftKick, kc, p_over_q_ref, bunch, bm, L)
-  p_over_q_ref = p_over_q_ref
-  tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(bunch.species, p_over_q_ref)
-  mm = bm.order
-  kn, ks = get_strengths(bm, L, p_over_q_ref)
-  q = chargeof(bunch.species)
-  mc2 = massof(bunch.species)
-  a = gyromagnetic_anomaly(bunch.species)
-  Kn0 = nothing
-  tilt0 = 0
-  Kn1 = nothing
-  tilt1 = 0
-  for j in 1:length(mm)
-    if mm[j] == 1
-      Kn0 = sqrt(kn[j]^2 + ks[j]^2)
-      tilt0 = atan2(ks[j], kn[j])
-    elseif mm[j] == 2
-      Kn1 = sqrt(kn[j]^2 + ks[j]^2)
-      tilt1 = atan2(ks[j], kn[j]) / 2
-    end
-  end
-  if tilt0 ≈ 0
-    w0 = nothing
-    w0_inv = nothing
-  else
-    w0 = rot_quaternion(0, 0, tilt0)
-    w0_inv = inv_rot_quaternion(0, 0, tilt0)
-  end
-  if tilt1 ≈ 0
-    w1 = nothing
-    w1_inv = nothing
-  else
-    w1 = rot_quaternion(0, 0, tilt1)
-    w1_inv = inv_rot_quaternion(0, 0, tilt1)
-  end
-  edge_params = (a, tilde_m, nothing, Kn0, w0, w0_inv, Kn1, w1, w1_inv)
-  E_ref = mc2/tilde_m/beta_0
-  radiation_params = ifelse(tm.radiation_damping_on, (q, mc2, E_ref), nothing)
-  params = (radiation_params, beta_0, gamsqr_0, tilde_m, a, SA[mm], SA[kn], SA[ks])
-  if isprimitivetype(eltype(bunch.coords.v)) && tm.radiation_fluctuations_on
-    photon_params = (get_backend(bunch.coords.v), q, mc2, E_ref, 0, 0, SA[mm], SA[kn], SA[ks])
-  else
-    photon_params = nothing
-  end
-  return push(kc, integration_launcher(BeamTracking.dkd_multipole!, params, photon_params, tm, edge_params, L))
-end
-
-@inline function thick_bdipole(tm::Union{Symplectic,DriftKick}, kc, p_over_q_ref, bunch, bm, L)
-  p_over_q_ref = p_over_q_ref
-  tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(bunch.species, p_over_q_ref)
-  mm = bm.order
-  kn, ks = get_strengths(bm, L, p_over_q_ref)
-  q = chargeof(bunch.species)
-  mc2 = massof(bunch.species)
-  a = gyromagnetic_anomaly(bunch.species)
-  Kn0 = nothing
-  tilt0 = 0
-  Kn1 = nothing
-  tilt1 = 0
-  for j in 1:length(mm)
-    if mm[j] == 1
-      Kn0 = sqrt(kn[j]^2 + ks[j]^2)
-      tilt0 = atan2(ks[j], kn[j])
-    elseif mm[j] == 2
-      Kn1 = sqrt(kn[j]^2 + ks[j]^2)
-      tilt1 = atan2(ks[j], kn[j]) / 2
-    end
-  end
-  if tilt0 ≈ 0
-    w0 = nothing
-    w0_inv = nothing
-  else
-    w0 = rot_quaternion(0, 0, tilt0)
-    w0_inv = inv_rot_quaternion(0, 0, tilt0)
-  end
-  if tilt1 ≈ 0
-    w1 = nothing
-    w1_inv = nothing
-  else
-    w1 = rot_quaternion(0, 0, tilt1)
-    w1_inv = inv_rot_quaternion(0, 0, tilt1)
-  end
-  edge_params = (a, tilde_m, nothing, Kn0, w0, w0_inv, Kn1, w1, w1_inv)
-  E_ref = mc2/tilde_m/beta_0
-  radiation_params = ifelse(tm.radiation_damping_on, (q, mc2, E_ref), nothing)
-  params = (radiation_params, beta_0, gamsqr_0, tilde_m, a, mm, kn, ks)
-  if isprimitivetype(eltype(bunch.coords.v)) && tm.radiation_fluctuations_on
-    photon_params = (get_backend(bunch.coords.v), q, mc2, E_ref, 0, 0, mm, kn, ks)
-  else
-    photon_params = nothing
-  end
-  return push(kc, integration_launcher(BeamTracking.dkd_multipole!, params, photon_params, tm, edge_params, L))
-end
+@inline thick_pure_bdipole(tm::DriftKick, kc, p_over_q_ref, bunch, bm, L) = 
+  thick_pure_bmultipole(tm, kc, p_over_q_ref, bunch, bm, L)
+ 
+@inline thick_bdipole(tm::Union{Symplectic,DriftKick}, kc, p_over_q_ref, bunch, bm, L) = 
+  thick_bmultipole(tm, kc, p_over_q_ref, bunch, bm, L)
 
 @inline function thick_pure_bdipole(tm::Union{Symplectic,BendKick}, kc, p_over_q_ref, bunch, bm1, L) 
   p_over_q_ref = p_over_q_ref
@@ -377,7 +289,7 @@ end
 end
 
 @inline thick_pure_bquadrupole(tm::DriftKick, kc, p_over_q_ref, bunch, bm, L) = 
-  thick_pure_bdipole(tm, kc, p_over_q_ref, bunch, bm, L)
+  thick_pure_bmultipole(tm, kc, p_over_q_ref, bunch, bm, L)
 
 @inline function thick_bquadrupole(tm::Union{Symplectic,MatrixKick}, kc, p_over_q_ref, bunch, bm, L)
   p_over_q_ref = p_over_q_ref
@@ -408,13 +320,98 @@ end
   return push(kc, integration_launcher(BeamTracking.mkm_quadrupole!, params, photon_params, tm, edge_params, L))
 end
 
-@inline thick_bquadrupole(tm::DriftKick, kc, p_over_q_ref, bunch, bm, L) = thick_bdipole(tm, kc, p_over_q_ref, bunch, bm, L)
+@inline thick_bquadrupole(tm::DriftKick, kc, p_over_q_ref, bunch, bm, L) = thick_bmultipole(tm, kc, p_over_q_ref, bunch, bm, L)
 
-@inline thick_pure_bmultipole(tm::Union{Symplectic,DriftKick}, kc, p_over_q_ref, bunch, bm, L) = 
-  thick_pure_bdipole(remake(DriftKick, tm), kc, p_over_q_ref, bunch, bm, L)
+@inline function thick_pure_bmultipole(tm::Union{Symplectic,DriftKick}, kc, p_over_q_ref, bunch, bm, L)
+  tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(bunch.species, p_over_q_ref)
+  mm = bm.order
+  kn, ks = get_strengths(bm, L, p_over_q_ref)
+  q = chargeof(bunch.species)
+  mc2 = massof(bunch.species)
+  a = gyromagnetic_anomaly(bunch.species)
+  edge_params = nothing
+  if tm.fringe_at != Fringe.NoEnd
+    if mm == 1
+      Kn0 = sqrt(kn^2 + ks^2)
+      tilt0 = atan2(ks, kn)
+      if tilt0 ≈ 0
+        w0 = nothing
+        w0_inv = nothing
+      else
+        w0 = rot_quaternion(0, 0, tilt0)
+        w0_inv = inv_rot_quaternion(0, 0, tilt0)
+      end
+      edge_params = (a, tilde_m, nothing, Kn0, w0, w0_inv, nothing, nothing, nothing)
+    elseif mm == 2
+      Kn1 = sqrt(kn^2 + ks^2)
+      tilt1 = atan2(ks, kn) / 2
+      if tilt1 ≈ 0
+        w1 = nothing
+        w1_inv = nothing
+      else
+        w1 = rot_quaternion(0, 0, tilt1)
+        w1_inv = inv_rot_quaternion(0, 0, tilt1)
+      end
+      edge_params = (a, tilde_m, nothing, nothing, nothing, nothing, Kn1, w1, w1_inv)
+    end
+  end
+  E_ref = mc2/tilde_m/beta_0
+  radiation_params = ifelse(tm.radiation_damping_on, (q, mc2, E_ref), nothing)
+  params = (radiation_params, beta_0, gamsqr_0, tilde_m, a, SA[mm], SA[kn], SA[ks])
+  if isprimitivetype(eltype(bunch.coords.v)) && tm.radiation_fluctuations_on
+    photon_params = (get_backend(bunch.coords.v), q, mc2, E_ref, 0, 0, SA[mm], SA[kn], SA[ks])
+  else
+    photon_params = nothing
+  end
+  return push(kc, integration_launcher(BeamTracking.dkd_multipole!, params, photon_params, tm, edge_params, L))
+end
 
-@inline thick_bmultipole(tm::Union{Symplectic,DriftKick}, kc, p_over_q_ref, bunch, bm, L) = 
-  thick_bdipole(remake(DriftKick, tm), kc, p_over_q_ref, bunch, bm, L)
+@inline function thick_bmultipole(tm::Union{Symplectic,DriftKick}, kc, p_over_q_ref, bunch, bm, L)
+  p_over_q_ref = p_over_q_ref
+  tilde_m, gamsqr_0, beta_0 = BeamTracking.drift_params(bunch.species, p_over_q_ref)
+  mm = bm.order
+  kn, ks = get_strengths(bm, L, p_over_q_ref)
+  q = chargeof(bunch.species)
+  mc2 = massof(bunch.species)
+  a = gyromagnetic_anomaly(bunch.species)
+  Kn0 = nothing
+  tilt0 = 0
+  Kn1 = nothing
+  tilt1 = 0
+  for j in 1:length(mm)
+    if mm[j] == 1
+      Kn0 = sqrt(kn[j]^2 + ks[j]^2)
+      tilt0 = atan2(ks[j], kn[j])
+    elseif mm[j] == 2
+      Kn1 = sqrt(kn[j]^2 + ks[j]^2)
+      tilt1 = atan2(ks[j], kn[j]) / 2
+    end
+  end
+  if tilt0 ≈ 0
+    w0 = nothing
+    w0_inv = nothing
+  else
+    w0 = rot_quaternion(0, 0, tilt0)
+    w0_inv = inv_rot_quaternion(0, 0, tilt0)
+  end
+  if tilt1 ≈ 0
+    w1 = nothing
+    w1_inv = nothing
+  else
+    w1 = rot_quaternion(0, 0, tilt1)
+    w1_inv = inv_rot_quaternion(0, 0, tilt1)
+  end
+  edge_params = (a, tilde_m, nothing, Kn0, w0, w0_inv, Kn1, w1, w1_inv)
+  E_ref = mc2/tilde_m/beta_0
+  radiation_params = ifelse(tm.radiation_damping_on, (q, mc2, E_ref), nothing)
+  params = (radiation_params, beta_0, gamsqr_0, tilde_m, a, mm, kn, ks)
+  if isprimitivetype(eltype(bunch.coords.v)) && tm.radiation_fluctuations_on
+    photon_params = (get_backend(bunch.coords.v), q, mc2, E_ref, 0, 0, mm, kn, ks)
+  else
+    photon_params = nothing
+  end
+  return push(kc, integration_launcher(BeamTracking.dkd_multipole!, params, photon_params, tm, edge_params, L))
+end
 
 
 # =========== BENDING ELEMENTS ============= #
@@ -514,13 +511,8 @@ end
   E_ref = mc2/tilde_m/beta_0
   a = gyromagnetic_anomaly(bunch.species)
   radiation_params = ifelse(tm.radiation_damping_on, (q, mc2, E_ref), nothing)
-  params = (radiation_params, beta_0, gamsqr_0, tilde_m, a, omega, t_ref, E0_normalized, 0, Val{false}(), SA[0], SA[0], SA[0])
-  if isprimitivetype(eltype(bunch.coords.v)) && tm.radiation_fluctuations_on
-    photon_params = (BeamTracking.cavity!, get_backend(bunch.coords.v), q, mc2, E_ref, omega, t_ref, E0_normalized, SA[0], SA[0], SA[0])
-  else
-    photon_params = nothing
-  end
-  return push(kc, integration_launcher(BeamTracking.cavity!, params, photon_params, tm, nothing, L))
+  params = (radiation_params, beta_0, gamsqr_0, tilde_m, a, omega, t_ref, E0_normalized, 0, Val{false}(), SA[], SA[], SA[])
+  return push(kc, integration_launcher(BeamTracking.cavity!, params, nothing, tm, nothing, L))
 end
 
 @inline function thick_bmultipole_rf(tm::Union{Symplectic,DriftKick,SolenoidKick}, kc, p_over_q_ref, bunch, bm, rfparams, beamlineparams, L)
@@ -569,7 +561,7 @@ end
   radiation_params = ifelse(tm.radiation_damping_on, (q, mc2, E_ref), nothing)
   params = (radiation_params, beta_0, gamsqr_0, tilde_m, a, omega, t_ref, E0_normalized, Ksol, Val{!isnothing(Ksol)}(), mm, kn, ks)
   if isprimitivetype(eltype(bunch.coords.v)) && tm.radiation_fluctuations_on
-    photon_params = (BeamTracking.cavity!, get_backend(bunch.coords.v), q, mc2, E_ref, omega, t_ref, E0_normalized, mm, kn, ks)
+    photon_params = (get_backend(bunch.coords.v), q, mc2, E_ref, 0, 0, mm, kn, ks)
   else
     photon_params = nothing
   end

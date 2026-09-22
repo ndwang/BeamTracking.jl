@@ -89,10 +89,10 @@ end
     dynamic = (strength=BatchParam([0.5, 1.5]), constants=parameters.constants)
     lowered = BeamTracking.batch_lower(dynamic)
     @test @inferred(BeamTracking.static_batchcheck(lowered))
-    selected = @inferred BeamTracking.beval(lowered, 2)
+    selected = @inferred BeamTracking.beval(lowered, 2, 1)
     @test field_function(0.0, 0.0, 0.0, 0.0, selected).B[2] == 1.5
-    @test_opt BeamTracking.beval(lowered, 2)
-    @test @ballocated(BeamTracking.beval($lowered, 2)) == 0
+    @test_opt BeamTracking.beval(lowered, 2, 1)
+    @test @ballocated(BeamTracking.beval($lowered, 2, 1)) == 0
     timed = (strength=2 * Time(), constants=parameters.constants)
     lowered_time = BeamTracking.time_lower(timed)
     @test @inferred(BeamTracking.static_timecheck(lowered_time))
@@ -102,12 +102,28 @@ end
     @test @inferred(test_parameter_free_field(0.0, 0.0, 0.0, 0.0, nothing)).B == SA[0.0, 0.0, 1.0]
   end
 
+  @testset "Named-tuple batch offsets" begin
+    values = [10.0, 20.0, 30.0]
+    parameters = (field=(By=BatchParam(values),), scale=2.0)
+    lowered = BeamTracking.batch_lower(parameters)
+    for batch_start in (2, 4), i in 1:4
+      selected = @inferred BeamTracking.beval(lowered, i, batch_start)
+      @test selected.field.By == values[mod1(i + batch_start - 1, length(values))]
+      @test selected.scale == 2.0
+    end
+    if !(VERSION < v"1.11" && Sys.ARCH == :x86_64)
+      selected = @inferred BeamTracking.beval(lowered, SIMD.VecRange{4}(1), 2)
+      @test Tuple(selected.field.By) == (20.0, 30.0, 10.0, 20.0)
+      @test selected.scale == 2.0
+    end
+  end
+
   @testset "Multipole parameter preparation" begin
     parameters = (SA[1], SA[BatchParam([2.0, 3.0])], SA[BatchParam(0.0)])
     lowered = BeamTracking.batch_lower(parameters)
     @test BeamTracking.static_batchcheck(lowered)
     for i in 1:2
-      selected = @inferred BeamTracking.beval(lowered, i)
+      selected = @inferred BeamTracking.beval(lowered, i, 1)
       @test @inferred(BeamTracking.multipole_field(0.0, 0.0, 0.0, 0.0, selected)).B == SA[0.0, i + 1.0, 0.0]
     end
     timed = (SA[1], SA[4.0 * Time()], SA[TimeDependentParam(0.0)])
@@ -151,7 +167,7 @@ end
       t_enter=0f0, beta_gamma_enter=1f0))
     prepared = BeamTracking.push(chain, call).chain[1].args[1]
     for i in 1:2
-      evaluated = BeamTracking.teval(BeamTracking.beval(prepared, i), 0.25f0)
+      evaluated = BeamTracking.teval(BeamTracking.beval(prepared, i, 1), 0.25f0)
       field = @inferred BeamTracking.normalized_field_at(functions, evaluated, (Val(true), Val(true)), 0f0, 0f0, 0f0, 0f0, 1f0)
       @test field isa EMField{Float32}
       @test field.B[2] ≈ Float32(i * 0.1) + 0.25f0
