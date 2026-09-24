@@ -51,6 +51,33 @@ end
     return species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2
   end
 
+  @testset "EMField" begin
+    field = EMField(SA[1.0, 2.0, 3.0], SA[4.0, 5.0, 6.0])
+    @test field.E == SA[1.0, 2.0, 3.0]
+    @test field.B == SA[4.0, 5.0, 6.0]
+    @test EMField(1, 2, 3, 4, 5, 6) == EMField(SA[1, 2, 3], SA[4, 5, 6])
+    @test field + field == EMField(SA[2.0, 4.0, 6.0], SA[8.0, 10.0, 12.0])
+  end
+
+  @testset "Field unit conventions" begin
+    for T in (Float32, Float64), R in (T(-3), T(2))
+      args = (T(0.02), T(-0.01), zero(T), zero(T))
+      em_field = (x,y,s,t,p) -> EMField(p...)
+      physical_parameters = T.((1,2,3,4,5,6))
+      expected = em_field(args..., physical_parameters)
+      converted = @inferred BeamTracking.normalized_field_at(em_field, physical_parameters, Val(false), args..., inv(R))
+      direct = @inferred BeamTracking.normalized_field_at(em_field, physical_parameters ./ R, Val(true), args..., inv(R))
+      @test converted.E ≈ expected.E / R
+      @test converted.B ≈ expected.B / R
+      @test converted.E ≈ direct.E
+      @test converted.B ≈ direct.B
+      multipole = (SA[1,2], T.(SA[0.1,0.2]), T.(SA[0,0]))
+      result = @inferred BeamTracking.normalized_field_at((BeamTracking.multipole_field, em_field), (multipole, physical_parameters), (Val(true), Val(false)), args..., inv(R))
+      @test result.E ≈ converted.E
+      @test result.B ≈ BeamTracking.multipole_field(args..., multipole).B + converted.B
+    end
+  end
+
   @testset "On-axis electric acceleration" begin
     # Analytic on-axis electric acceleration, including the beta-dependent z term.
     m, beta0, Ez, z = 2.0, 1/sqrt(5.0), 0.03, 0.2
