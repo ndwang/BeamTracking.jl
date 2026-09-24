@@ -18,7 +18,7 @@ end
 @inline function runge_kutta_custom_field(params::FieldFunctionParams)
   isnothing(params.field_function) && return ((), (), ())
   return ((params.field_function,), (params.field_function_params,),
-          (Val(params.field_function_normalized),))
+          (Val{params.field_function_normalized}(),))
 end
 
 @inline function runge_kutta_body(

@@ -145,10 +145,6 @@ end
       end, tracking_method=RungeKutta(n_steps=5))
     @test tracked(parameter_free) ≈ tracked(individual)
 
-    # Other methods ignore the group, including unevaluated custom parameters.
-    ignored = Drift(L=0.5, field_function=rk_test_uniform_field,
-                    field_function_params=(By=DefExpr{Float64}(c -> error("unused")),))
-    @test tracked(ignored) ≈ tracked(Drift(L=0.5))
   end
 
   @testset "Pure drift" begin

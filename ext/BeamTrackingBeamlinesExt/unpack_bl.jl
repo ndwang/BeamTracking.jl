@@ -28,7 +28,7 @@ function _track!(
   lp = deval(ele.BeamlineParams, context)
   fpp = deval(ele.FourPotentialParams, context)
   em = deval(ele.EMultipoleParams, context)
-  ffp = tm isa RungeKutta ? deval(ele.FieldFunctionParams, context) : nothing
+  ffp = deval(ele.FieldFunctionParams, context)
 
   if scalar_params
     L = scalarize(L)

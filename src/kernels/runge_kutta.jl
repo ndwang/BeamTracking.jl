@@ -41,7 +41,7 @@ end
         tilde_m, beta_0, gx, gy)
 
 Calculate the derivative vector du/ds for relativistic particle tracking.
-Returns an SVector{6} containing [dx/ds, dpx/ds, dy/ds, dpy/ds, dz/ds, dpz/ds].
+Returns a tuple containing (dx/ds, dpx/ds, dy/ds, dpy/ds, dz/ds, dpz/ds).
 
 Uses branchless operations for GPU/SIMD compatibility. For unphysical momenta,
 returns zero derivatives (caller should mark particle as lost).
@@ -94,7 +94,7 @@ returns zero derivatives (caller should mark particle as lost).
 
   # Return zero derivatives if momenta are unphysical (branchless)
   zero_deriv = zero(dx_ds)
-  return SVector(
+  return (
     vifelse(good_momenta, dx_ds, zero_deriv),
     vifelse(good_momenta, dpx_ds, zero_deriv),
     vifelse(good_momenta, dy_ds, zero_deriv),
