@@ -24,10 +24,10 @@ struct UniformBy{T}
   strength::T
 end
 
-function (field_function::UniformBy)(x, y, s, t, parameters)
+function (em_field::UniformBy)(x, y, s, t, parameters)
   carrier = zero(x)
   return EMField(carrier, carrier, carrier,
-                 carrier, carrier + field_function.strength, carrier)
+                 carrier, carrier + em_field.strength, carrier)
 end
 
 function track_element(element, species, p_over_q_ref)
@@ -70,8 +70,8 @@ function main()
   by = 4.0e-3
   parameters = (Bx=0.0, By=by, Bz=0.0)
   functional_result = track_element(
-    Drift(L=length, field_function=uniform_magnetic_field,
-          field_function_params=parameters,
+    Drift(L=length, em_field=uniform_magnetic_field,
+          em_field_params=parameters,
           tracking_method=RungeKutta(n_steps=n_steps)),
     species, p_over_q_ref)
   dipole_result = track_element(
@@ -83,10 +83,10 @@ function main()
   # 3. The whole-group API can declare rigidity-normalized custom fields.
   normalized_result = track_element(
     Drift(L=length,
-          FieldFunctionParams=FieldFunctionParams(
-            field_function=uniform_magnetic_field,
-            field_function_params=(Bx=0.0, By=by / p_over_q_ref, Bz=0.0),
-            field_function_normalized=true),
+          EMFieldParams=EMFieldParams(
+            em_field=uniform_magnetic_field,
+            em_field_params=(Bx=0.0, By=by / p_over_q_ref, Bz=0.0),
+            em_field_normalized=true),
           tracking_method=RungeKutta(n_steps=n_steps)),
     species, p_over_q_ref)
   verify_case("Normalized vs physical function", normalized_result, functional_result)
@@ -95,8 +95,8 @@ function main()
   kn1 = 0.2
   combined_element = track_element(
     Quadrupole(L=length, Kn1=kn1,
-               field_function=uniform_magnetic_field,
-               field_function_params=parameters,
+               em_field=uniform_magnetic_field,
+               em_field_params=parameters,
                tracking_method=RungeKutta(n_steps=n_steps)),
     species, p_over_q_ref)
   combined_multipoles = track_element(
@@ -107,7 +107,7 @@ function main()
 
   # 5. A callable object also receives the fifth argument (nothing by default).
   custom_result = track_element(
-    Drift(L=length, field_function=UniformBy(by),
+    Drift(L=length, em_field=UniformBy(by),
           tracking_method=RungeKutta(n_steps=n_steps)),
     species, p_over_q_ref)
   verify_case("Callable vs parameterized function", custom_result, functional_result)

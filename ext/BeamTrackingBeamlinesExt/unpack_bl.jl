@@ -28,7 +28,7 @@ function _track!(
   lp = deval(ele.BeamlineParams, context)
   fpp = deval(ele.FourPotentialParams, context)
   em = deval(ele.EMultipoleParams, context)
-  ffp = deval(ele.FieldFunctionParams, context)
+  emfp = deval(ele.EMFieldParams, context)
 
   if scalar_params
     L = scalarize(L)
@@ -42,12 +42,12 @@ function _track!(
     lp = scalarize(lp)
     fpp = scalarize(fpp)
     em = scalarize(em)
-    ffp = scalarize(ffp)
+    emfp = scalarize(emfp)
     p_over_q_ref = scalarize(p_over_q_ref)
   end
 
   # Function barrier
-  universal!(coords, tm, ele, ramp_particle_energy_without_rf, ramp_update_each_particle, batch_start, bunch, L, p_over_q_ref, ap, bp, bm, pp, dp, rp, lp, mp, fpp, em, ffp; kwargs...)
+  universal!(coords, tm, ele, ramp_particle_energy_without_rf, ramp_update_each_particle, batch_start, bunch, L, p_over_q_ref, ap, bp, bm, pp, dp, rp, lp, mp, fpp, em, emfp; kwargs...)
 end
 
 # Step 2: Push particles through -----------------------------------------
@@ -71,7 +71,7 @@ function universal!(
   mapparams,
   fourpotentialparams,
   emultipoleparams,
-  field_function_params;
+  em_field_params;
   kwargs...
 ) 
   # Compute information about reference coordinate system:
@@ -157,7 +157,7 @@ function universal!(
   if tm isa RungeKutta
     kc = @inline(runge_kutta_body(tm, kc, p_over_q_ref, bunch, bendparams, bmultipoleparams,
                                   patchparams, rfparams, mapparams, fourpotentialparams,
-                                  emultipoleparams, field_function_params, L))
+                                  emultipoleparams, em_field_params, L))
 
   elseif isactive(mapparams)    
     if isactive(bendparams)
@@ -351,7 +351,7 @@ end
 
 function universal!(coords, tm::SaganCavity, ele, ramp_particle_energy_without_rf, ramp_update_each_particle, batch_start, bunch, L,
   p_over_q_ref, alignmentparams, bendparams, bmultipoleparams, patchparams, apertureparams,
-  rfparams, beamlineparams, mapparams, fourpotentialparams, emultipoleparams, field_function_params; kwargs...)
+  rfparams, beamlineparams, mapparams, fourpotentialparams, emultipoleparams, em_field_params; kwargs...)
 
   !isactive(mapparams) || error("SaganCavity Tracking through element $ele_name with MapParams is undefined")
   !isactive(patchparams) || error("SaganCavity Tracking through element $ele_name with PatchParams is undefined")

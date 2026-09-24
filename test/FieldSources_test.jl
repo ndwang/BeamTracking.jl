@@ -65,39 +65,39 @@ end
     context = Beamlines.Context(strength=0.25)
     parameters = (strength=Beamlines.DefExpr{Float64}(c -> 2 * c.strength),
                   constants=(label="map", count=2))
-    field_function = (x, y, s, t, p) -> begin
+    em_field = (x, y, s, t, p) -> begin
       v = zero(x)
       EMField(v, v, v, v, v + p.strength, v)
     end
-    group = FieldFunctionParams(field_function=field_function, field_function_params=parameters)
+    group = EMFieldParams(em_field=em_field, em_field_params=parameters)
     prepared = @inferred Beamlines.deval(group, context)
-    @test prepared.field_function === field_function
-    @test prepared.field_function_params.strength == 0.5
-    @test prepared.field_function_params.constants === parameters.constants
-    @test group.field_function_params.strength isa Beamlines.DefExpr
+    @test prepared.em_field === em_field
+    @test prepared.em_field_params.strength == 0.5
+    @test prepared.em_field_params.constants === parameters.constants
+    @test group.em_field_params.strength isa Beamlines.DefExpr
     context.strength = 0.75
-    @test Beamlines.deval(group, context).field_function_params.strength == 1.5
+    @test Beamlines.deval(group, context).em_field_params.strength == 1.5
     opaque = FieldTestParameters(parameters.strength)
-    opaque_group = FieldFunctionParams(field_function=field_function, field_function_params=opaque)
-    @test Beamlines.deval(opaque_group, context).field_function_params === opaque
-    dual_group = FieldFunctionParams(field_function=field_function,
-      field_function_params=(strength=ForwardDiff.Dual(0.5, 1.0), constants=parameters.constants))
+    opaque_group = EMFieldParams(em_field=em_field, em_field_params=opaque)
+    @test Beamlines.deval(opaque_group, context).em_field_params === opaque
+    dual_group = EMFieldParams(em_field=em_field,
+      em_field_params=(strength=ForwardDiff.Dual(0.5, 1.0), constants=parameters.constants))
     scalar_group = @inferred Beamlines.scalarize(dual_group)
-    @test scalar_group.field_function === field_function
-    @test scalar_group.field_function_params.strength === 0.5
+    @test scalar_group.em_field === em_field
+    @test scalar_group.em_field_params.strength === 0.5
 
     dynamic = (strength=BatchParam([0.5, 1.5]), constants=parameters.constants)
     lowered = BeamTracking.batch_lower(dynamic)
     @test @inferred(BeamTracking.static_batchcheck(lowered))
     selected = @inferred BeamTracking.beval(lowered, 2, 1)
-    @test field_function(0.0, 0.0, 0.0, 0.0, selected).B[2] == 1.5
+    @test em_field(0.0, 0.0, 0.0, 0.0, selected).B[2] == 1.5
     @test_opt BeamTracking.beval(lowered, 2, 1)
     @test @ballocated(BeamTracking.beval($lowered, 2, 1)) == 0
     timed = (strength=2 * Time(), constants=parameters.constants)
     lowered_time = BeamTracking.time_lower(timed)
     @test @inferred(BeamTracking.static_timecheck(lowered_time))
     evaluated = @inferred BeamTracking.teval(lowered_time, 0.25)
-    @test field_function(0.0, 0.0, 0.0, 0.0, evaluated).B[2] == 0.5
+    @test em_field(0.0, 0.0, 0.0, 0.0, evaluated).B[2] == 0.5
     @test @ballocated(BeamTracking.teval($lowered_time, 0.25)) == 0
     @test @inferred(test_parameter_free_field(0.0, 0.0, 0.0, 0.0, nothing)).B == SA[0.0, 0.0, 1.0]
   end
@@ -191,19 +191,19 @@ end
 @testset "Field unit conventions" begin
   for T in (Float32, Float64), R in (T(-3), T(2))
     args = (T(0.02), T(-0.01), zero(T), zero(T))
-    field_function = (x,y,s,t,p) -> EMField(p...)
+    em_field = (x,y,s,t,p) -> EMField(p...)
     physical_parameters = T.((1,2,3,4,5,6))
-    expected = field_function(args..., physical_parameters)
-    converted = @inferred BeamTracking.normalized_field_at(field_function, physical_parameters, Val(false), args..., inv(R))
-    direct = @inferred BeamTracking.normalized_field_at(field_function, physical_parameters ./ R, Val(true), args..., inv(R))
+    expected = em_field(args..., physical_parameters)
+    converted = @inferred BeamTracking.normalized_field_at(em_field, physical_parameters, Val(false), args..., inv(R))
+    direct = @inferred BeamTracking.normalized_field_at(em_field, physical_parameters ./ R, Val(true), args..., inv(R))
     @test converted.E ≈ expected.E / R
     @test converted.B ≈ expected.B / R
     @test converted.E ≈ direct.E
     @test converted.B ≈ direct.B
-    @test field_function(args..., physical_parameters).E == expected.E
+    @test em_field(args..., physical_parameters).E == expected.E
     @test @inferred(BeamTracking.normalized_field_at(test_parameter_free_field, nothing, Val(true), args..., inv(R))) == test_parameter_free_field(args..., nothing)
     multipole = (SA[1,2], T.(SA[0.1,0.2]), T.(SA[0,0]))
-    result = @inferred BeamTracking.normalized_field_at((BeamTracking.multipole_field, field_function), (multipole, physical_parameters), (Val(true), Val(false)), args..., inv(R))
+    result = @inferred BeamTracking.normalized_field_at((BeamTracking.multipole_field, em_field), (multipole, physical_parameters), (Val(true), Val(false)), args..., inv(R))
     @test result.E ≈ converted.E
     @test result.B ≈ BeamTracking.multipole_field(args..., multipole).B + converted.B
   end

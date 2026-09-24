@@ -15,10 +15,10 @@ end
 
 @inline runge_kutta_custom_field(::Nothing) = ((), (), ())
 
-@inline function runge_kutta_custom_field(params::FieldFunctionParams)
-  isnothing(params.field_function) && return ((), (), ())
-  return ((params.field_function,), (params.field_function_params,),
-          (Val{params.field_function_normalized}(),))
+@inline function runge_kutta_custom_field(params::EMFieldParams)
+  isnothing(params.em_field) && return ((), (), ())
+  return ((params.em_field,), (params.em_field_params,),
+          (Val{params.em_field_normalized}(),))
 end
 
 @inline function runge_kutta_body(
@@ -33,7 +33,7 @@ end
   mapparams,
   fourpotentialparams,
   emultipoleparams,
-  field_function_params,
+  em_field_params,
   L,
 )
   L > 0 || error("RungeKutta tracking requires a positive element length")
@@ -66,7 +66,7 @@ end
   multipole_functions, multipole_parameters, multipole_normalized =
     runge_kutta_field(bmultipoleparams, L, p_over_q_ref)
   custom_functions, custom_parameters, custom_normalized =
-    runge_kutta_custom_field(field_function_params)
+    runge_kutta_custom_field(em_field_params)
   field_functions = (multipole_functions..., custom_functions...)
   field_parameters = (multipole_parameters..., custom_parameters...)
   field_normalized = (multipole_normalized..., custom_normalized...)

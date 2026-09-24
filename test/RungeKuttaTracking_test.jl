@@ -87,7 +87,7 @@ end
     @test rk_nothing.n_steps == -1
 
     @test fieldnames(RungeKutta) == (:ds_step, :n_steps)
-    @test_throws MethodError RungeKutta(field_function=rk_test_uniform_field)
+    @test_throws MethodError RungeKutta(em_field=rk_test_uniform_field)
 
   end
 
@@ -95,28 +95,28 @@ end
     using Beamlines
     species, R, _, _, _, _, _, _ = setup_particle()
     parameters = (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=0.004, Bz=0.0)
-    group = FieldFunctionParams(field_function=rk_test_uniform_field,
-                                field_function_params=parameters)
-    whole = Quadrupole(L=0.5, Kn1=0.1, FieldFunctionParams=group,
+    group = EMFieldParams(em_field=rk_test_uniform_field,
+                                em_field_params=parameters)
+    whole = Quadrupole(L=0.5, Kn1=0.1, EMFieldParams=group,
                        tracking_method=RungeKutta(n_steps=5))
-    individual = Quadrupole(L=0.5, Kn1=0.1, field_function=rk_test_uniform_field,
-                            field_function_params=parameters,
+    individual = Quadrupole(L=0.5, Kn1=0.1, em_field=rk_test_uniform_field,
+                            em_field_params=parameters,
                             tracking_method=RungeKutta(n_steps=5))
-    @test whole.FieldFunctionParams === group
-    @test whole.field_function === rk_test_uniform_field
-    @test whole.FieldFunctionParams ≈ individual.FieldFunctionParams
-    @test whole.field_function_params === parameters
-    @test !whole.field_function_normalized
-    @test isnothing(Drift().FieldFunctionParams)
-    @test isnothing(Drift().field_function)
+    @test whole.EMFieldParams === group
+    @test whole.em_field === rk_test_uniform_field
+    @test whole.EMFieldParams ≈ individual.EMFieldParams
+    @test whole.em_field_params === parameters
+    @test !whole.em_field_normalized
+    @test isnothing(Drift().EMFieldParams)
+    @test isnothing(Drift().em_field)
     copied = Beamlines.deepcopy_no_beamline(whole)
-    @test copied.FieldFunctionParams ≈ group
-    @test copied.FieldFunctionParams !== group
-    copied.field_function = RKCustomField(0.003) # Rebuild when callable type changes.
-    @test copied.field_function isa RKCustomField
-    @test whole.field_function === rk_test_uniform_field
-    copied.FieldFunctionParams = nothing
-    @test isnothing(copied.FieldFunctionParams)
+    @test copied.EMFieldParams ≈ group
+    @test copied.EMFieldParams !== group
+    copied.em_field = RKCustomField(0.003) # Rebuild when callable type changes.
+    @test copied.em_field isa RKCustomField
+    @test whole.em_field === rk_test_uniform_field
+    copied.EMFieldParams = nothing
+    @test isnothing(copied.EMFieldParams)
 
     initial = [0.001 0.01 -0.002 0.003 0.0 0.0]
     function tracked(ele)
@@ -126,20 +126,20 @@ end
       return bunch.coords.v
     end
     @test tracked(whole) ≈ tracked(individual)
-    empty_group = Quadrupole(L=0.5, Kn1=0.1, FieldFunctionParams=FieldFunctionParams(),
+    empty_group = Quadrupole(L=0.5, Kn1=0.1, EMFieldParams=EMFieldParams(),
                              tracking_method=RungeKutta(n_steps=5))
     plain = Quadrupole(L=0.5, Kn1=0.1, tracking_method=RungeKutta(n_steps=5))
     @test tracked(empty_group) ≈ tracked(plain)
 
     # Beamline children inherit the group and see updates on their parent.
     line = Beamline([whole]; p_over_q_ref=R, species_ref=species)
-    @test line.line[1].field_function === rk_test_uniform_field
-    whole.field_function = RKCustomField(0.004)
-    whole.field_function_params = nothing
-    @test line.line[1].field_function isa RKCustomField
+    @test line.line[1].em_field === rk_test_uniform_field
+    whole.em_field = RKCustomField(0.004)
+    whole.em_field_params = nothing
+    @test line.line[1].em_field isa RKCustomField
     @test tracked(whole) ≈ tracked(individual)
     parameter_free = Quadrupole(L=0.5, Kn1=0.1,
-      field_function=(x,y,s,t,p) -> begin
+      em_field=(x,y,s,t,p) -> begin
         @assert isnothing(p)
         RKCustomField(0.004)(x,y,s,t)
       end, tracking_method=RungeKutta(n_steps=5))
@@ -419,7 +419,7 @@ end
     initial = [0.001 0.01 -0.002 0.003 0.0 0.0]
     external = (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=0.004, Bz=0.0)
     element = Quadrupole(L=0.5, Kn1=0.2,
-      field_function=rk_test_uniform_field, field_function_params=external,
+      em_field=rk_test_uniform_field, em_field_params=external,
       tracking_method=RungeKutta(n_steps=5))
     # Independent complete map, without BMultipoleParams, gives the same total field.
     complete_map = (x,y,s,t,p) -> EMField(zero(x), zero(x), zero(x),
@@ -433,8 +433,8 @@ end
     previous = nothing
     for strength in (0.2, 1.0)
       element.Kn1 = strength
-      reference = Drift(L=0.5, field_function=complete_map,
-        field_function_params=(gradient=strength*R, dipole=external.By),
+      reference = Drift(L=0.5, em_field=complete_map,
+        em_field_params=(gradient=strength*R, dipole=external.By),
         tracking_method=RungeKutta(n_steps=5))
       reference_line = Beamline([reference]; p_over_q_ref=R, species_ref=species)
       result = tracked(line)
@@ -453,14 +453,14 @@ end
     parameters = (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0,
                   By=DefExpr{Float64}(c -> c.external), Bz=0.0)
     context_element = Drift(L=0.5, Bn0=DefExpr{Float64}(c -> c.dipole),
-      field_function=rk_test_uniform_field, field_function_params=parameters,
+      em_field=rk_test_uniform_field, em_field_params=parameters,
       tracking_method=RungeKutta(n_steps=5))
     context_line = Beamline([context_element]; context, p_over_q_ref=R, species_ref=species)
     for external in (0.004, 0.008)
       context.external = external
       fixed_element = Drift(L=0.5, Bn0=context.dipole,
-        field_function=rk_test_uniform_field,
-        field_function_params=(Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=external, Bz=0.0),
+        em_field=rk_test_uniform_field,
+        em_field_params=(Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=external, Bz=0.0),
         tracking_method=RungeKutta(n_steps=5))
       fixed_line = Beamline([fixed_element]; p_over_q_ref=R, species_ref=species)
       context_bunch = Bunch(copy(initial); p_over_q_ref=R, species)
@@ -504,8 +504,8 @@ end
         if strength isa DefExpr{BatchParam} && use_explicit_SIMD && !batch_simd_supported
           continue
         end
-        line = Beamline([Drift(L=0.5, field_function=functional[1],
-                              field_function_params=functional[2],
+        line = Beamline([Drift(L=0.5, em_field=functional[1],
+                              em_field_params=functional[2],
                               tracking_method=RungeKutta(n_steps=5))],
                         context=context, p_over_q_ref=p_over_q_ref, species_ref=species)
         bunch = Bunch(copy(initial), p_over_q_ref=p_over_q_ref, species=species)
@@ -541,8 +541,8 @@ end
       # Float32 batch gathers currently hit an upstream SIMD pointer-cast bug.
       # Cover SIMD with static parameters and batches on scalar/KA paths.
       strength = use_explicit_SIMD ? BatchParam(0.002) : BatchParam([0.002, 0.004])
-      line = Beamline([Drift(L=0.5, Bn0=0.001, field_function=evaluator,
-                              field_function_params=(By=strength,),
+      line = Beamline([Drift(L=0.5, Bn0=0.001, em_field=evaluator,
+                              em_field_params=(By=strength,),
                               tracking_method=RungeKutta(n_steps=5))];
                       p_over_q_ref=R, species_ref=species)
       reference = Beamline([Drift(L=0.5, Bn0=strength + 0.001,
@@ -570,7 +570,7 @@ end
     )
     element = Drift(
       L=0.5,
-      field_function=field_source[1], field_function_params=field_source[2],
+      em_field=field_source[1], em_field_params=field_source[2],
       tracking_method=RungeKutta(n_steps=5),
     )
     line = Beamline([element], p_over_q_ref=p_over_q_ref, species_ref=species)
@@ -595,7 +595,7 @@ end
       )
       fixed_element = Drift(
         L=0.5,
-        field_function=fixed_field_source[1], field_function_params=fixed_field_source[2],
+        em_field=fixed_field_source[1], em_field_params=fixed_field_source[2],
         tracking_method=RungeKutta(n_steps=5),
       )
       fixed_line = Beamline(
@@ -644,12 +644,12 @@ end
     )
     element = Drift(
       L=0.5,
-      field_function=field_source[1], field_function_params=field_source[2],
+      em_field=field_source[1], em_field_params=field_source[2],
       tracking_method=RungeKutta(n_steps=5),
     )
     fixed_element = Drift(
       L=0.5,
-      field_function=fixed_field_source[1], field_function_params=fixed_field_source[2],
+      em_field=fixed_field_source[1], em_field_params=fixed_field_source[2],
       tracking_method=RungeKutta(n_steps=5),
     )
     line = Beamline([element], p_over_q_ref=p_over_q_ref, species_ref=species)
@@ -685,7 +685,7 @@ end
     )
     element = Drift(
       L=0.5,
-      field_function=field_source[1], field_function_params=field_source[2],
+      em_field=field_source[1], em_field_params=field_source[2],
       tracking_method=RungeKutta(n_steps=5),
     )
     line = Beamline([element], p_over_q_ref=p_over_q_ref, species_ref=species)
@@ -714,7 +714,7 @@ end
       )
       fixed_element = Drift(
         L=0.5,
-        field_function=fixed_field_source[1], field_function_params=fixed_field_source[2],
+        em_field=fixed_field_source[1], em_field_params=fixed_field_source[2],
         tracking_method=RungeKutta(n_steps=5),
       )
       fixed_line = Beamline(
@@ -877,10 +877,10 @@ end
   for species in (Species("electron"), Species("proton")), T in (Float32, Float64)
     R = T(chargeof(species) * 3)
     params = T.((1e4, -2e4, 3e4, 0.001, -0.002, 0.003))
-    field_function = (x,y,s,t,p) -> EMField(p...)
+    em_field = (x,y,s,t,p) -> EMField(p...)
     results = map(((params, false), (params ./ R, true))) do (parameters, normalized)
-      ele = Drift(L=0.2, field_function=field_function, field_function_params=parameters,
-        field_function_normalized=normalized, tracking_method=RungeKutta(n_steps=10))
+      ele = Drift(L=0.2, em_field=em_field, em_field_params=parameters,
+        em_field_normalized=normalized, tracking_method=RungeKutta(n_steps=10))
       line = Beamline([ele]; p_over_q_ref=R, species_ref=species)
       bunch = Bunch(T.([0.001 0.002 -0.003 0.001 0.0 0.01]); p_over_q_ref=R, species=species)
       track!(bunch, line)
