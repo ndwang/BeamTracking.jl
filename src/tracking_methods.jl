@@ -92,12 +92,18 @@ end
 struct RungeKutta
   ds_step::Float64
   n_steps::Int
+  ibs_damping_on::Bool
+  ibs_fluctuations_on::Bool
 end
+
+RungeKutta(ds_step, n_steps) = RungeKutta(ds_step, n_steps, false, false)
 
 DEFAULT_RK4_DS_STEP = 0.2
 function RungeKutta(;
   ds_step::Union{Float64,Nothing}=nothing,
   n_steps::Union{Int,Nothing}=nothing,
+  ibs_damping_on::Bool=false,
+  ibs_fluctuations_on::Bool=false,
 )
   # Get actual values (use provided or sentinel)
   _ds_step = ds_step === nothing ? -1.0 : ds_step
@@ -110,14 +116,14 @@ function RungeKutta(;
   
   # If user sets n_steps (and it's positive), set ds_step to negative
   if _n_steps > 0
-    return RungeKutta(-1.0, _n_steps)
+    return RungeKutta(-1.0, _n_steps, ibs_damping_on, ibs_fluctuations_on)
   end
   
   # If user sets ds_step (and it's positive), set n_steps to -1
   if _ds_step > 0
-    return RungeKutta(_ds_step, -1)
+    return RungeKutta(_ds_step, -1, ibs_damping_on, ibs_fluctuations_on)
   end
   
   # Fallback: use defaults if both are negative/not set
-  return RungeKutta(DEFAULT_RK4_DS_STEP, -1)
+  return RungeKutta(DEFAULT_RK4_DS_STEP, -1, ibs_damping_on, ibs_fluctuations_on)
 end

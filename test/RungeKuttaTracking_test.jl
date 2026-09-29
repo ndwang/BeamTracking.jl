@@ -122,6 +122,8 @@ end
     rk_default = RungeKutta()
     @test rk_default.ds_step == 0.2
     @test rk_default.n_steps == -1
+    @test !rk_default.ibs_damping_on
+    @test !rk_default.ibs_fluctuations_on
 
     # Test constructor with ds_step only
     rk_ds = RungeKutta(ds_step=0.1)
@@ -141,7 +143,8 @@ end
     @test rk_nothing.ds_step == 0.2
     @test rk_nothing.n_steps == -1
 
-    @test fieldnames(RungeKutta) == (:ds_step, :n_steps)
+    @test fieldnames(RungeKutta) == (:ds_step, :n_steps, :ibs_damping_on, :ibs_fluctuations_on)
+    @test RungeKutta(0.1, -1) == rk_ds
     @test_throws MethodError RungeKutta(em_field=rk_test_uniform_field)
 
   end
