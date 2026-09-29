@@ -36,6 +36,7 @@ end
   em_field_params,
   L,
 )
+  isnothing(bunch.coords.q) || error("RungeKutta tracking does not support spin tracking")
   L > 0 || error("RungeKutta tracking requires a positive element length")
   !isactive(patchparams) || error("RungeKutta tracking does not support patch elements")
   !isactive(rfparams) || error("RungeKutta tracking does not support RF fields")
