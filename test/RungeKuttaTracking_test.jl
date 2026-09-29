@@ -1,12 +1,14 @@
+# Field parameters use positional tuples, as supported by Beamlines EMFieldParams.
+# Uniform-field components are ordered (Ex, Ey, Ez, Bx, By, Bz).
 function rk_test_uniform_field(x, y, s, t, parameters)
   carrier = zero(x)
   return (
-    carrier + parameters.Ex,
-    carrier + parameters.Ey,
-    carrier + parameters.Ez,
-    carrier + parameters.Bx,
-    carrier + parameters.By,
-    carrier + parameters.Bz,
+    carrier + parameters[1],
+    carrier + parameters[2],
+    carrier + parameters[3],
+    carrier + parameters[4],
+    carrier + parameters[5],
+    carrier + parameters[6],
   )
 end
 
@@ -152,7 +154,7 @@ end
   @testset "Element field function parameters" begin
     using Beamlines
     species, R, _, _, _, _, _, _ = setup_particle()
-    parameters = (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=0.004, Bz=0.0)
+    parameters = (0.0, 0.0, 0.0, 0.0, 0.004, 0.0)
     group = EMFieldParams(em_field=rk_test_uniform_field,
                                 em_field_params=parameters)
     whole = Quadrupole(L=0.5, Kn1=0.1, EMFieldParams=group,
@@ -478,13 +480,13 @@ end
   @testset "Beamlines additive field functions" begin
     species, R, _, _, _, _, _, _ = setup_particle()
     initial = [0.001 0.01 -0.002 0.003 0.0 0.0]
-    external = (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=0.004, Bz=0.0)
+    external = (0.0, 0.0, 0.0, 0.0, 0.004, 0.0)
     element = Quadrupole(L=0.5, Kn1=0.2,
       em_field=rk_test_uniform_field, em_field_params=external,
       tracking_method=RungeKutta(n_steps=5))
     # Independent complete map, without BMultipoleParams, gives the same total field.
     complete_map = (x,y,s,t,p) -> (zero(x), zero(x), zero(x),
-                                        p.gradient*y, p.gradient*x + p.dipole, zero(x))
+                                        p[1]*y, p[1]*x + p[2], zero(x))
     line = Beamline([element]; p_over_q_ref=R, species_ref=species)
     function tracked(line)
       bunch = Bunch(copy(initial); p_over_q_ref=R, species)
@@ -495,7 +497,7 @@ end
     for strength in (0.2, 1.0)
       element.Kn1 = strength
       reference = Drift(L=0.5, em_field=complete_map,
-        em_field_params=(gradient=strength*R, dipole=external.By),
+        em_field_params=(strength*R, external[5]),
         tracking_method=RungeKutta(n_steps=5))
       reference_line = Beamline([reference]; p_over_q_ref=R, species_ref=species)
       result = tracked(line)
@@ -511,8 +513,8 @@ end
     species, R, _, _, _, _, _, _ = setup_particle()
     initial = [0.001 0.01 -0.002 0.003 0.0 0.0]
     context = Context(dipole=0.003, external=0.004)
-    parameters = (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0,
-                  By=DefExpr{Float64}(c -> c.external), Bz=0.0)
+    parameters = (0.0, 0.0, 0.0, 0.0,
+                  DefExpr{Float64}(c -> c.external), 0.0)
     context_element = Drift(L=0.5, Bn0=DefExpr{Float64}(c -> c.dipole),
       em_field=rk_test_uniform_field, em_field_params=parameters,
       tracking_method=RungeKutta(n_steps=5))
@@ -521,7 +523,7 @@ end
       context.external = external
       fixed_element = Drift(L=0.5, Bn0=context.dipole,
         em_field=rk_test_uniform_field,
-        em_field_params=(Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=external, Bz=0.0),
+        em_field_params=(0.0, 0.0, 0.0, 0.0, external, 0.0),
         tracking_method=RungeKutta(n_steps=5))
       fixed_line = Beamline([fixed_element]; p_over_q_ref=R, species_ref=species)
       context_bunch = Bunch(copy(initial); p_over_q_ref=R, species)
@@ -550,8 +552,8 @@ end
     )
     for (strength, expected_strengths, scalar_params) in cases
       functional = (
-        (x, y, s, t, p) -> RKCustomField(p.strength)(x, y, s, t),
-        (strength=strength,),
+        (x, y, s, t, p) -> RKCustomField(p[1])(x, y, s, t),
+        (strength,),
       )
       expected = similar(initial)
       for i in axes(initial, 1)
@@ -576,8 +578,8 @@ end
     end
 
     field_source = (
-      (x, y, s, t, p) -> RKCustomField(p.strength)(x, y, s, t),
-      (strength=BatchParam([0.002, 0.004]),),
+      (x, y, s, t, p) -> RKCustomField(p[1])(x, y, s, t),
+      (BatchParam([0.002, 0.004]),),
     )
     call = BeamTracking.make_kernel_call(BeamTracking.rk4_kernel!, (
       beta_0, tilde_m, charge, p0c, mc2, 0.5, 0.1, 5, 0.0, 0.0, field_source..., Val(false),
@@ -594,16 +596,16 @@ end
     # Check every RK stage, including SIMD lanes, not just storage.
     evaluator = (x, y, s, t, p) -> begin
       @assert eltype(x) === eltype(y) === eltype(s) === eltype(t) === Float32
-      @assert eltype(p.By) === Float32
+      @assert eltype(p[1]) === Float32
       v = zero(x)
-      (v, v, v, v, v + p.By, v)
+      (v, v, v, v, v + p[1], v)
     end
     for (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
       # Float32 batch gathers currently hit an upstream SIMD pointer-cast bug.
       # Cover SIMD with static parameters and batches on scalar/KA paths.
       strength = use_explicit_SIMD ? BatchParam(0.002) : BatchParam([0.002, 0.004])
       line = Beamline([Drift(L=0.5, Bn0=0.001, em_field=evaluator,
-                              em_field_params=(By=strength,),
+                              em_field_params=(strength,),
                               tracking_method=RungeKutta(n_steps=5))];
                       p_over_q_ref=R, species_ref=species)
       reference = Beamline([Drift(L=0.5, Bn0=strength + 0.001,
@@ -627,7 +629,7 @@ end
     initial = repeat(initial_particle, 8, 1)
     field_source = (
       rk_test_uniform_field,
-      (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=BatchParam(batch_fields), Bz=0.0),
+      (0.0, 0.0, 0.0, 0.0, BatchParam(batch_fields), 0.0),
     )
     element = Drift(
       L=0.5,
@@ -646,12 +648,12 @@ end
       fixed_field_source = (
         rk_test_uniform_field,
         (
-          Ex=0.0,
-          Ey=0.0,
-          Ez=0.0,
-          Bx=0.0,
-          By=batch_fields[mod1(i, length(batch_fields))],
-          Bz=0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          batch_fields[mod1(i, length(batch_fields))],
+          0.0,
         ),
       )
       fixed_element = Drift(
@@ -676,7 +678,7 @@ end
     @test simd_bunch.coords.v ≈ expected
     @test ka_bunch.coords.v ≈ expected
 
-    # The same offset must reach field-function named tuples through both the
+    # The same offset must reach field-function tuples through both the
     # scalar and SIMD/KA launch paths, with cyclic batch selection preserved.
     for batch_start in (2, length(batch_fields) + 2)
       shifted = expected[[mod1(i + batch_start - 1, length(batch_fields))
@@ -697,11 +699,11 @@ end
     dual_field = ForwardDiff.Dual(0.004, 1.0)
     field_source = (
       rk_test_uniform_field,
-      (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=dual_field, Bz=0.0),
+      (0.0, 0.0, 0.0, 0.0, dual_field, 0.0),
     )
     fixed_field_source = (
       rk_test_uniform_field,
-      (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=ForwardDiff.value(dual_field), Bz=0.0),
+      (0.0, 0.0, 0.0, 0.0, ForwardDiff.value(dual_field), 0.0),
     )
     element = Drift(
       L=0.5,
@@ -742,7 +744,7 @@ end
     field_at_time = 0.002 + 1.0e6 * Time()
     field_source = (
       rk_test_uniform_field,
-      (Ex=0.0, Ey=0.0, Ez=0.0, Bx=0.0, By=field_at_time, Bz=0.0),
+      (0.0, 0.0, 0.0, 0.0, field_at_time, 0.0),
     )
     element = Drift(
       L=0.5,
@@ -765,12 +767,12 @@ end
       fixed_field_source = (
         rk_test_uniform_field,
         (
-          Ex=0.0,
-          Ey=0.0,
-          Ez=0.0,
-          Bx=0.0,
-          By=field_at_time(particle_time),
-          Bz=0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          field_at_time(particle_time),
+          0.0,
         ),
       )
       fixed_element = Drift(
