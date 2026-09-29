@@ -1,6 +1,6 @@
 function rk_test_uniform_field(x, y, s, t, parameters)
   carrier = zero(x)
-  return EMField(
+  return (
     carrier + parameters.Ex,
     carrier + parameters.Ey,
     carrier + parameters.Ez,
@@ -12,7 +12,7 @@ end
 
 function rk_test_parameter_free_field(x, y, s, t, parameters)
   carrier = zero(x)
-  return EMField(carrier, carrier, carrier, carrier, carrier, carrier + 1)
+  return (carrier, carrier, carrier, carrier, carrier, carrier + 1)
 end
 
 struct RKCustomField{T}
@@ -21,7 +21,7 @@ end
 
 function (field_source::RKCustomField)(x, y, s, t, parameters=nothing)
   v = zero(x)
-  return EMField(v, v, v, v, v + field_source.strength, v)
+  return (v, v, v, v, v + field_source.strength, v)
 end
 
 @testset "RungeKuttaTracking" begin
@@ -51,30 +51,58 @@ end
     return species, p_over_q_ref, beta_0, gamsqr_0, tilde_m, charge, p0c, mc2
   end
 
-  @testset "EMField" begin
-    field = EMField(SA[1.0, 2.0, 3.0], SA[4.0, 5.0, 6.0])
-    @test field.E == SA[1.0, 2.0, 3.0]
-    @test field.B == SA[4.0, 5.0, 6.0]
-    @test EMField(1, 2, 3, 4, 5, 6) == EMField(SA[1, 2, 3], SA[4, 5, 6])
-    @test field + field == EMField(SA[2.0, 4.0, 6.0], SA[8.0, 10.0, 12.0])
+  @testset "Field tuples" begin
+    using BeamTracking: add_fields, scale_field, normalized_field_at
+    field = (1, 2.0f0, 3.0, 4, 5.0f0, 6.0)
+    evaluator = (x,y,s,t,p) -> p
+    args = (0.0, 0.0, 0.0, 0.0, -0.5)
+    @test (@inferred add_fields(field, field)) === (2, 4.0f0, 6.0, 8, 10.0f0, 12.0)
+    @test (@inferred scale_field(field, 2)) === (2, 4.0f0, 6.0, 8, 10.0f0, 12.0)
+    @test (@inferred normalized_field_at(evaluator, field, Val(true), args...)) === field
+    @test (@inferred normalized_field_at((evaluator,), (field,), (Val(true),), args...)) === field
+    @test (@inferred normalized_field_at((), (), (), args...)) === ntuple(_ -> 0.0, 6)
+    @test (@inferred BeamTracking.zero_field(0.0f0, 0, 0, 0)) === ntuple(_ -> 0.0f0, 6)
+
+    # Rejected derivatives must retain their own types, even when different
+    # field components give different precision to the equations of motion.
+    for px in (0.0f0, 2.0f0)
+      rhs = @inferred BeamTracking._kick_vector(0.0f0, px, 0.0f0, 0.0f0, 0.0f0, 0.0f0,
+        0.0f0, (1.0f0,2.0f0,3.0f0,4.0f0,5.0f0,6.0), 0.1f0, 0.99f0, 0.0f0, 0.0f0)
+      @test rhs isa Tuple{Float32,Float64,Float32,Float64,Float32,Float32}
+      px == 2 && @test all(iszero, rhs)
+    end
+
+    # Preserve the recursive (right-associated) summation order.
+    large = ntuple(_ -> 1e16, 6)
+    small = ntuple(_ -> 1.0, 6)
+    @test normalized_field_at((evaluator, evaluator, evaluator),
+      (large, map(-, large), small), (Val(true), Val(true), Val(true)), args...) ==
+      map(+, large, map(+, map(-, large), small))
+
   end
 
   @testset "Field unit conventions" begin
     for T in (Float32, Float64), R in (T(-3), T(2))
       args = (T(0.02), T(-0.01), zero(T), zero(T))
-      em_field = (x,y,s,t,p) -> EMField(p...)
+      em_field = (x,y,s,t,p) -> p
       physical_parameters = T.((1,2,3,4,5,6))
       expected = em_field(args..., physical_parameters)
       converted = @inferred BeamTracking.normalized_field_at(em_field, physical_parameters, Val(false), args..., inv(R))
       direct = @inferred BeamTracking.normalized_field_at(em_field, physical_parameters ./ R, Val(true), args..., inv(R))
-      @test converted.E ≈ expected.E / R
-      @test converted.B ≈ expected.B / R
-      @test converted.E ≈ direct.E
-      @test converted.B ≈ direct.B
+      @test all(isapprox.(converted, expected ./ R))
+      @test all(isapprox.(converted, direct))
+      @test converted isa NTuple{6,T}
+      @test direct isa NTuple{6,T}
       multipole = (SA[1,2], T.(SA[0.1,0.2]), T.(SA[0,0]))
       result = @inferred BeamTracking.normalized_field_at((BeamTracking.multipole_field, em_field), (multipole, physical_parameters), (Val(true), Val(false)), args..., inv(R))
-      @test result.E ≈ converted.E
-      @test result.B ≈ BeamTracking.multipole_field(args..., multipole).B + converted.B
+      @test all(isapprox.(result, BeamTracking.multipole_field(args..., multipole) .+ converted))
+      for flags in ((Val(false), Val(false)), (Val(true), Val(true)), (Val(false), Val(true)))
+        result = @inferred BeamTracking.normalized_field_at((em_field, em_field),
+          (physical_parameters, reverse(physical_parameters)), flags, args..., inv(R))
+        first_field = flags[1] == Val(true) ? physical_parameters : physical_parameters ./ R
+        second_field = flags[2] == Val(true) ? reverse(physical_parameters) : reverse(physical_parameters) ./ R
+        @test all(isapprox.(result, first_field .+ second_field))
+      end
     end
   end
 
@@ -82,7 +110,7 @@ end
     # Analytic on-axis electric acceleration, including the beta-dependent z term.
     m, beta0, Ez, z = 2.0, 1/sqrt(5.0), 0.03, 0.2
     rhs = BeamTracking.kick_vector(0., 0., 0., 0., z, 0., 0.,
-      EMField(0., 0., Ez, 0., 0., 0.), 1., m, beta0, 0., 0., 1., m)
+      (0., 0., Ez, 0., 0., 0.), 1., m, beta0, 0., 0., 1., m)
     @test rhs[6] ≈ Ez / beta0
     @test rhs[5] ≈ m^2 * beta0 * Ez * z
   end
@@ -135,7 +163,7 @@ end
     @test whole.em_field_params === parameters
     @test !whole.em_field_normalized
     @test isnothing(Drift().EMFieldParams)
-    @test isnothing(Drift().em_field)
+    @test Drift().em_field(0, 0, 0, 0) === (0, 0, 0, 0, 0, 0)
     copied = Beamlines.deepcopy_no_beamline(whole)
     @test copied.EMFieldParams ≈ group
     @test copied.EMFieldParams !== group
@@ -157,6 +185,9 @@ end
                              tracking_method=RungeKutta(n_steps=5))
     plain = Quadrupole(L=0.5, Kn1=0.1, tracking_method=RungeKutta(n_steps=5))
     @test tracked(empty_group) ≈ tracked(plain)
+    disabled_group = Quadrupole(L=0.5, Kn1=0.1, em_field=nothing,
+                                tracking_method=RungeKutta(n_steps=5))
+    @test tracked(disabled_group) ≈ tracked(plain)
 
     # Beamline children inherit the group and see updates on their parent.
     line = Beamline([whole]; p_over_q_ref=R, species_ref=species)
@@ -309,7 +340,7 @@ end
     final_loss = ((x, y, s, t, R) -> begin
       v = zero(x)
       by = v + ifelse(s == 1, 12 * R, zero(R))
-      EMField(v, v, v, v, by, v)
+      (v, v, v, v, by, v)
     end, R)
     for field_source in (intermediate_loss, final_loss)
       for (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
@@ -331,7 +362,7 @@ end
     # Electric deceleration may also make total momentum nonpositive midstep.
     field_source = ((x, y, s, t, p) -> begin
       v = zero(x)
-      EMField(v, v, v + 4 * pc, v, v, v)
+      (v, v, v + 4 * pc, v, v, v)
     end, nothing)
     bunch = Bunch(zeros(1, 6); species, p_over_q_ref=R)
     BeamTracking.rk4_step!(bunch.coords, 1, 0.0, 1.0, field_source..., Val(false),
@@ -347,7 +378,7 @@ end
     field_source = ((x, y, s, t, p) -> begin
       @assert all(isfinite(t))
       v = zero(x)
-      EMField(v, v, v, v, v, v + t)
+      (v, v, v, v, v, v + t)
     end, nothing)
     for T in (Float32, Float64), (use_KA, use_explicit_SIMD) in
         ((false, false), (false, true), (true, false))
@@ -449,7 +480,7 @@ end
       em_field=rk_test_uniform_field, em_field_params=external,
       tracking_method=RungeKutta(n_steps=5))
     # Independent complete map, without BMultipoleParams, gives the same total field.
-    complete_map = (x,y,s,t,p) -> EMField(zero(x), zero(x), zero(x),
+    complete_map = (x,y,s,t,p) -> (zero(x), zero(x), zero(x),
                                         p.gradient*y, p.gradient*x + p.dipole, zero(x))
     line = Beamline([element]; p_over_q_ref=R, species_ref=species)
     function tracked(line)
@@ -562,7 +593,7 @@ end
       @assert eltype(x) === eltype(y) === eltype(s) === eltype(t) === Float32
       @assert eltype(p.By) === Float32
       v = zero(x)
-      EMField(v, v, v, v, v + p.By, v)
+      (v, v, v, v, v + p.By, v)
     end
     for (use_KA, use_explicit_SIMD) in ((false, false), (false, true), (true, false))
       # Float32 batch gathers currently hit an upstream SIMD pointer-cast bug.
@@ -904,7 +935,7 @@ end
   for species in (Species("electron"), Species("proton")), T in (Float32, Float64)
     R = T(chargeof(species) * 3)
     params = T.((1e4, -2e4, 3e4, 0.001, -0.002, 0.003))
-    em_field = (x,y,s,t,p) -> EMField(p...)
+    em_field = (x,y,s,t,p) -> p
     results = map(((params, false), (params ./ R, true))) do (parameters, normalized)
       ele = Drift(L=0.2, em_field=em_field, em_field_params=parameters,
         em_field_normalized=normalized, tracking_method=RungeKutta(n_steps=10))

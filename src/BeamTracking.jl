@@ -25,7 +25,6 @@ import GTPSA: sincu, sinhcu
 export Species
 export Bunch, State, ParticleView, Time, TimeDependentParam, BatchParam
 export Symplectic, MatrixKick, BendKick, SolenoidKick, DriftKick, Exact, RungeKutta
-export EMField
 export Fringe, SaganCavity, track!
 
 include("utils/float32.jl")

@@ -92,15 +92,17 @@ returns zero derivatives (caller should mark particle as lost).
   dz_accel = (tilde_m^2 / kinematics.energy_squared) * dpz_ds * z * inv_rel_p
   dz_ds = beta * reference.inv_beta0 - path_factor + dz_accel
 
-  # Return zero derivatives if momenta are unphysical (branchless)
+  # Return zero derivatives if momenta are unphysical (branchless). Match each
+  # derivative's type so heterogeneous fields do not introduce boxed unions.
+  # Reuse the zero when types match, especially for TPSA.
   zero_deriv = zero(dx_ds)
   return (
     vifelse(good_momenta, dx_ds, zero_deriv),
-    vifelse(good_momenta, dpx_ds, zero_deriv),
-    vifelse(good_momenta, dy_ds, zero_deriv),
-    vifelse(good_momenta, dpy_ds, zero_deriv),
-    vifelse(good_momenta, dz_ds, zero_deriv),
-    vifelse(good_momenta, dpz_ds, zero_deriv)
+    vifelse(good_momenta, dpx_ds, oftype(dpx_ds, zero_deriv)),
+    vifelse(good_momenta, dy_ds, oftype(dy_ds, zero_deriv)),
+    vifelse(good_momenta, dpy_ds, oftype(dpy_ds, zero_deriv)),
+    vifelse(good_momenta, dz_ds, oftype(dz_ds, zero_deriv)),
+    vifelse(good_momenta, dpz_ds, oftype(dpz_ds, zero_deriv))
   )
 end
 
@@ -110,36 +112,35 @@ end
                       tilde_m, beta_0, gx, gy, _rk_kinematics(pz, tilde_m))
 end
 
-@inline function _kick_vector(x, px, y, py, z, pz, s, field::EMField,
+@inline function _kick_vector(x, px, y, py, z, pz, s, field,
                 tilde_m, beta_0, gx, gy, kinematics=_rk_kinematics(pz, tilde_m),
                 reference=_rk_reference_factors(beta_0, tilde_m))
-  Ex, Ey, Ez = field.E
-  Bx, By, Bz = field.B
+  Ex, Ey, Ez, Bx, By, Bz = field
   return _kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
                      tilde_m, beta_0, gx, gy, kinematics, reference)
 end
 
 """
-    kick_vector(x, px, y, py, z, pz, s, field::EMField,
+    kick_vector(x, px, y, py, z, pz, s, field,
                 charge, tilde_m, beta_0, gx, gy, p0c, mc2)
 
 Evaluate the simplified RK equations with physical electric (V/m) and magnetic
 (T) fields. `charge` is in units of e and `p0c` is in eV. The original argument
 list is preserved; `mc2` is redundant with `tilde_m` and `p0c` and is unused.
-The component overload accepts `Ex, Ey, Ez, Bx, By, Bz` in place of `field`.
+`field` is `(Ex, Ey, Ez, Bx, By, Bz)`. Also accepts those six
+components in place of the tuple.
 """
 @inline function kick_vector(x, px, y, py, z, pz, s, Ex, Ey, Ez, Bx, By, Bz,
                              charge, tilde_m, beta_0, gx, gy, p0c, mc2)
   electric_scale = charge / p0c
   magnetic_scale = electric_scale * c_light(typeof(p0c))
-  field = EMField(Ex * magnetic_scale, Ey * magnetic_scale, Ez * magnetic_scale,
-                  Bx * magnetic_scale, By * magnetic_scale, Bz * magnetic_scale)
+  field = scale_field((Ex, Ey, Ez, Bx, By, Bz), magnetic_scale)
   return _kick_vector(x, px, y, py, z, pz, s, field, tilde_m, beta_0, gx, gy)
 end
 
-@inline function kick_vector(x, px, y, py, z, pz, s, field::EMField,
+@inline function kick_vector(x, px, y, py, z, pz, s, field,
                              charge, tilde_m, beta_0, gx, gy, p0c, mc2)
-  return kick_vector(x, px, y, py, z, pz, s, field.E..., field.B...,
+  return kick_vector(x, px, y, py, z, pz, s, field...,
                      charge, tilde_m, beta_0, gx, gy, p0c, mc2)
 end
 
